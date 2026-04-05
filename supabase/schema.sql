@@ -15,8 +15,6 @@ create table if not exists public.wrestlers (
   is_missing_target boolean not null default false,
   notes text not null default '',
   tags text[] not null default '{}',
-  moveset_json jsonb,
-  profile_json jsonb,
   headshot_path text not null default '',
   headshot_name text not null default '',
   headshot_external_url text not null default '',
@@ -47,6 +45,8 @@ create table if not exists public.attires (
   render_dds_name text not null default '',
   notes text not null default '',
   status text not null default 'complete' check (status in ('complete','partial','needs_work','missing')),
+  moveset_json jsonb,
+  profile_json jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -117,7 +117,6 @@ drop policy if exists "Public can read wrestlers" on public.wrestlers;
 drop policy if exists "Authenticated can create wrestlers" on public.wrestlers;
 drop policy if exists "Owners can update wrestlers" on public.wrestlers;
 drop policy if exists "Owners can delete wrestlers" on public.wrestlers;
-
 create policy "Public can read wrestlers" on public.wrestlers for select using (true);
 create policy "Authenticated can create wrestlers" on public.wrestlers for insert to authenticated with check (auth.uid() = owner_id);
 create policy "Owners can update wrestlers" on public.wrestlers for update to authenticated using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
@@ -132,7 +131,6 @@ drop policy if exists "Public can read attires" on public.attires;
 drop policy if exists "Authenticated can create attires" on public.attires;
 drop policy if exists "Owners can update attires" on public.attires;
 drop policy if exists "Owners can delete attires" on public.attires;
-
 create policy "Public can read attires" on public.attires for select using (true);
 create policy "Authenticated can create attires" on public.attires for insert to authenticated with check (auth.uid() = owner_id);
 create policy "Owners can update attires" on public.attires for update to authenticated using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
@@ -167,7 +165,6 @@ drop policy if exists "Public can read mod assets" on storage.objects;
 drop policy if exists "Users can upload own mod assets" on storage.objects;
 drop policy if exists "Users can update own mod assets" on storage.objects;
 drop policy if exists "Users can delete own mod assets" on storage.objects;
-
 create policy "Public can read mod assets" on storage.objects for select using (bucket_id = 'mod-assets');
 create policy "Users can upload own mod assets" on storage.objects for insert to authenticated with check (
   bucket_id = 'mod-assets' and auth.uid()::text = (storage.foldername(name))[1]

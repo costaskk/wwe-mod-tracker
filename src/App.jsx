@@ -44,6 +44,7 @@ export default function App() {
   const [uploading, setUploading] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [newCreatorName, setNewCreatorName] = useState('')
+  const [addingCreator, setAddingCreator] = useState(false)
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -135,7 +136,9 @@ export default function App() {
             attire.creator_name,
             attire.notes,
             attire.source_game,
-            attire.mod_type
+            attire.mod_type,
+            JSON.stringify(attire.moveset_json || {}),
+            JSON.stringify(attire.profile_json || {})
           ].join(' ').toLowerCase()
 
           const queryOk = haystack.includes(query.toLowerCase())
@@ -182,8 +185,6 @@ export default function App() {
         is_missing_target: Boolean(wrestlerForm.is_missing_target),
         notes: wrestlerForm.notes.trim(),
         tags: parseTags(wrestlerForm.tags_text),
-        moveset_json: parseJsonOrNull(wrestlerForm.moveset_json_text),
-        profile_json: parseJsonOrNull(wrestlerForm.profile_json_text),
         headshot_path: wrestlerForm.headshot_path || '',
         headshot_name: wrestlerForm.headshot_name || '',
         headshot_external_url: wrestlerForm.headshot_external_url || ''
@@ -226,7 +227,9 @@ export default function App() {
         render_dds_path: attireForm.render_dds_path || '',
         render_dds_name: attireForm.render_dds_name || '',
         notes: attireForm.notes.trim(),
-        status: attireForm.status
+        status: attireForm.status,
+        moveset_json: parseJsonOrNull(attireForm.moveset_json_text),
+        profile_json: parseJsonOrNull(attireForm.profile_json_text)
       }
 
       let attireId = attireForm.id
@@ -300,9 +303,7 @@ export default function App() {
   }
 
   async function removeWrestlerHeadshot() {
-    if (wrestlerForm.headshot_path) {
-      await removeAssets([wrestlerForm.headshot_path])
-    }
+    if (wrestlerForm.headshot_path) await removeAssets([wrestlerForm.headshot_path])
     setWrestlerForm((current) => ({ ...current, headshot_path: '', headshot_name: '', headshot_url: '', headshot_external_url: '' }))
   }
 
@@ -369,15 +370,15 @@ export default function App() {
     }
   }
 
-  async function uploadJsonFile(file, target) {
+  async function uploadAttireJsonFile(file, target) {
     if (!file) return
     try {
       const text = await file.text()
       JSON.parse(text)
       if (target === 'moveset') {
-        setWrestlerForm((current) => ({ ...current, moveset_json_text: text }))
+        setAttireForm((current) => ({ ...current, moveset_json_text: text }))
       } else {
-        setWrestlerForm((current) => ({ ...current, profile_json_text: text }))
+        setAttireForm((current) => ({ ...current, profile_json_text: text }))
       }
     } catch {
       setSaveError('That file is not valid JSON.')
@@ -388,14 +389,18 @@ export default function App() {
     if (!session) return
     const name = newCreatorName.trim()
     if (!name) return
-    const { data, error } = await supabase.from('creators').insert({ name }).select('*').single()
-    if (error) {
-      setSaveError(error.message)
-      return
+    setAddingCreator(true)
+    try {
+      const { data, error } = await supabase.from('creators').insert({ name }).select('*').single()
+      if (error) throw error
+      setCreators((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name)))
+      setAttireForm((current) => ({ ...current, creator_name: data.name }))
+      setNewCreatorName('')
+    } catch (err) {
+      setSaveError(err.message || 'Could not add creator.')
+    } finally {
+      setAddingCreator(false)
     }
-    setCreators((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name)))
-    setAttireForm((current) => ({ ...current, creator_name: data.name }))
-    setNewCreatorName('')
   }
 
   async function toggleInstalled(attire, installed) {
@@ -506,6 +511,10 @@ export default function App() {
             missingDownloadOnly={missingDownloadOnly}
             setMissingDownloadOnly={setMissingDownloadOnly}
             session={session}
+            newCreatorName={newCreatorName}
+            setNewCreatorName={setNewCreatorName}
+            onAddCreator={addCreator}
+            addingCreator={addingCreator}
           />
 
           <WrestlerList
@@ -540,7 +549,6 @@ export default function App() {
         onUploadHeadshot={handleWrestlerHeadshotUpload}
         onAutoMatchHeadshot={handleAutoMatchHeadshot}
         onRemoveHeadshot={removeWrestlerHeadshot}
-        onUploadJson={uploadJsonFile}
         saving={saving}
         uploading={uploading}
         error={saveError}
@@ -558,9 +566,11 @@ export default function App() {
         newCreatorName={newCreatorName}
         setNewCreatorName={setNewCreatorName}
         onAddCreator={addCreator}
+        onUploadJson={uploadAttireJsonFile}
         saving={saving}
         uploading={uploading}
         error={saveError}
+        addingCreator={addingCreator}
       />
 
       {loading ? <div className="loading-overlay">Loading database…</div> : null}

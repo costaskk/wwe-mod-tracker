@@ -11,7 +11,11 @@ export default function Filters({
   setInstalledOnly,
   missingDownloadOnly,
   setMissingDownloadOnly,
-  session
+  session,
+  newCreatorName,
+  setNewCreatorName,
+  onAddCreator,
+  addingCreator
 }) {
   return (
     <section className="panel soft-panel">
@@ -70,6 +74,21 @@ export default function Filters({
             </label>
           ) : null}
         </div>
+
+        {session ? (
+          <div className="creator-quick-add">
+            <div>
+              <strong>Add a mod creator</strong>
+              <div className="muted-text">Add a creator once so everyone can reuse it from the dropdown.</div>
+            </div>
+            <div className="inline-stack creator-inline-stack">
+              <input value={newCreatorName} onChange={(e) => setNewCreatorName(e.target.value)} placeholder="Creator name" />
+              <button type="button" className="secondary-button small-btn" onClick={onAddCreator} disabled={addingCreator || !newCreatorName.trim()}>
+                {addingCreator ? 'Adding…' : 'Add creator'}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </section>
   )

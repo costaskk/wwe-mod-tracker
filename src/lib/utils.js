@@ -14,8 +14,6 @@ export function emptyWrestler() {
     is_missing_target: false,
     notes: '',
     tags_text: '',
-    moveset_json_text: '',
-    profile_json_text: '',
     headshot_path: '',
     headshot_url: '',
     headshot_name: '',
@@ -39,7 +37,10 @@ export function emptyAttire(wrestlerId = null) {
     render_dds_path: '',
     render_dds_url: '',
     render_dds_name: '',
-    images: []
+    images: [],
+    pendingImageUploads: [],
+    moveset_json_text: '',
+    profile_json_text: ''
   }
 }
 
@@ -51,8 +52,6 @@ export function normalizeWrestlerForEditor(wrestler) {
     is_missing_target: Boolean(wrestler.is_missing_target),
     notes: wrestler.notes || '',
     tags_text: (wrestler.tags || []).join(', '),
-    moveset_json_text: wrestler.moveset_json ? JSON.stringify(wrestler.moveset_json, null, 2) : '',
-    profile_json_text: wrestler.profile_json ? JSON.stringify(wrestler.profile_json, null, 2) : '',
     headshot_path: wrestler.headshot_path || '',
     headshot_url: wrestler.headshot_path ? wrestler.headshot_url || '' : (wrestler.headshot_external_url || ''),
     headshot_name: wrestler.headshot_name || '',
@@ -76,12 +75,15 @@ export function normalizeAttireForEditor(attire) {
     render_dds_path: attire.render_dds_path || '',
     render_dds_url: attire.render_dds_url || '',
     render_dds_name: attire.render_dds_name || '',
+    moveset_json_text: attire.moveset_json ? JSON.stringify(attire.moveset_json, null, 2) : '',
+    profile_json_text: attire.profile_json ? JSON.stringify(attire.profile_json, null, 2) : '',
     images: (attire.attire_images || attire.images || []).map((img) => ({
       id: img.id,
       path: img.image_path || img.path || '',
       url: img.image_url || img.url || '',
       name: img.image_name || img.name || ''
-    }))
+    })),
+    pendingImageUploads: []
   }
 }
 
@@ -90,7 +92,7 @@ export function parseTags(text) {
 }
 
 export function parseJsonOrNull(text) {
-  const clean = text.trim()
+  const clean = (text || '').trim()
   if (!clean) return null
   return JSON.parse(clean)
 }

@@ -1,4 +1,56 @@
+import { useState } from 'react'
 import { ATTIRE_STATUSES, MOD_TYPES, SOURCE_GAMES } from '../lib/utils'
+
+function JsonEditor({ title, value, onChange, onUpload, filenameHint }) {
+  const [expanded, setExpanded] = useState(true)
+
+  return (
+    <div className="json-editor-card">
+      <div className="json-editor-head">
+        <div>
+          <h5>{title}</h5>
+          <p>Upload a JSON file or paste raw JSON code.</p>
+        </div>
+        <div className="hero-actions">
+          <label className="secondary-button inline-file file-button small-btn">
+            Upload JSON
+            <input type="file" accept="application/json,.json" onChange={(e) => onUpload(e.target.files?.[0])} />
+          </label>
+          <button type="button" className="ghost-button small-btn" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Hide code' : 'Browse code'}
+          </button>
+        </div>
+      </div>
+      {expanded ? (
+        <textarea
+          className="json-editor-area"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={`Paste ${filenameHint || 'JSON'} here...`}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function DdsPreview({ url, name }) {
+  const [failed, setFailed] = useState(false)
+  if (!url) return <div className="upload-placeholder">No DDS render uploaded</div>
+
+  return (
+    <div className="dds-preview-wrap">
+      {!failed ? (
+        <img className="upload-preview dds-preview" src={url} alt={name || 'DDS render'} onError={() => setFailed(true)} />
+      ) : (
+        <div className="render-tile">
+          <div className="render-badge">DDS</div>
+          <div className="render-name">This browser cannot render DDS directly. You can still download the file.</div>
+        </div>
+      )}
+      <a className="secondary-button inline-btn small-btn" href={url} target="_blank" rel="noreferrer">Open / download DDS</a>
+    </div>
+  )
+}
 
 export default function AttireEditorModal({
   open,
@@ -12,9 +64,11 @@ export default function AttireEditorModal({
   newCreatorName,
   setNewCreatorName,
   onAddCreator,
+  onUploadJson,
   saving,
   uploading,
-  error
+  error,
+  addingCreator
 }) {
   if (!open) return null
 
@@ -27,7 +81,7 @@ export default function AttireEditorModal({
       <div className="panel modal-card large-modal">
         <div className="modal-header">
           <h2>{form.persisted ? 'Edit attire mod' : 'Add attire mod'}</h2>
-          <p className="subtle-copy">Each attire stores its own creator, links, multiple screenshots, and DDS render.</p>
+          <p className="subtle-copy">Each attire stores its own creator, links, screenshots, DDS render, moveset JSON, and profile JSON.</p>
         </div>
 
         <div className="modal-scroll">
@@ -64,9 +118,9 @@ export default function AttireEditorModal({
 
                   <label>
                     Add creator
-                    <div className="inline-stack">
+                    <div className="inline-stack creator-inline-stack">
                       <input value={newCreatorName} onChange={(e) => setNewCreatorName(e.target.value)} placeholder="New creator name" />
-                      <button type="button" className="secondary-button small-btn" onClick={onAddCreator}>Add</button>
+                      <button type="button" className="secondary-button small-btn" onClick={onAddCreator} disabled={addingCreator || !newCreatorName.trim()}>{addingCreator ? 'Adding…' : 'Add'}</button>
                     </div>
                   </label>
                 </div>
@@ -96,6 +150,22 @@ export default function AttireEditorModal({
                   Notes
                   <textarea value={form.notes} onChange={(e) => updateField('notes', e.target.value)} />
                 </label>
+
+                <JsonEditor
+                  title="Moveset / animations JSON"
+                  value={form.moveset_json_text}
+                  onChange={(value) => updateField('moveset_json_text', value)}
+                  onUpload={(file) => onUploadJson(file, 'moveset')}
+                  filenameHint="moveset JSON"
+                />
+
+                <JsonEditor
+                  title="Hype / DC profile JSON"
+                  value={form.profile_json_text}
+                  onChange={(value) => updateField('profile_json_text', value)}
+                  onUpload={(file) => onUploadJson(file, 'profile')}
+                  filenameHint="profile JSON"
+                />
               </div>
             </section>
 
@@ -131,18 +201,10 @@ export default function AttireEditorModal({
                 <div className="upload-card">
                   <div className="upload-card-header">
                     <h5>DDS render</h5>
-                    <p>Character selection render file.</p>
+                    <p>Character selection render file. The app tries to preview it, then falls back to download if the browser cannot decode DDS.</p>
                   </div>
 
-                  {form.render_dds_url ? (
-                    <div className="render-tile">
-                      <div className="render-badge">DDS</div>
-                      <div className="render-name">{form.render_dds_name || 'Render file'}</div>
-                      <a className="secondary-button inline-btn" href={form.render_dds_url} target="_blank" rel="noreferrer">Download render</a>
-                    </div>
-                  ) : (
-                    <div className="upload-placeholder">No DDS render uploaded</div>
-                  )}
+                  <DdsPreview url={form.render_dds_url} name={form.render_dds_name} />
 
                   <div className="upload-actions">
                     <label className="secondary-button inline-file file-button">
