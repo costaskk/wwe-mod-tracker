@@ -1,9 +1,9 @@
 
 import { formatDate } from '../lib/utils'
 
-export default function ProfileCollections({ session, collections, onCreate, onEdit, onDelete, onOpen, onShare }) {
+export default function ProfileCollections({ session, collections, onCreate, onEdit, onDelete, onOpen, onShare, sectionId }) {
   return (
-    <section className="panel soft-panel">
+    <section className="panel soft-panel" id={sectionId}>
       <div className="panel-header with-actions">
         <div>
           <h2>My collections</h2>

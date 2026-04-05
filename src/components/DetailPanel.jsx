@@ -103,7 +103,6 @@ export default function DetailPanel({
     return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
   }
 
-  const attireGap = Math.max(0, (wrestler.target_attire_count || 0) - (wrestler.attires?.length || 0))
 
   return (
     <div className="detail-stack">
@@ -127,10 +126,9 @@ export default function DetailPanel({
           </div>
         </div>
 
-        <div className="mini-stats">
+        <div className="mini-stats mini-stats-three">
           <div><span>Attire mods</span><strong>{wrestler.attires?.length || 0}</strong></div>
           <div><span>Target count</span><strong>{wrestler.target_attire_count || 0}</strong></div>
-          <div><span>Attire gap</span><strong>{attireGap}</strong></div>
           <div><span>Updated</span><strong>{formatDate(wrestler.updated_at)}</strong></div>
         </div>
 
