@@ -38,7 +38,6 @@ export default function WrestlerList({ wrestlers, selectedId, onSelect, onEdit, 
               <tr>
                 <th>Wrestler</th>
                 <th>Attires</th>
-                <th>Target</th>
                 <th>Requests</th>
                 <th>Updated</th>
                 <th></th>
@@ -46,9 +45,8 @@ export default function WrestlerList({ wrestlers, selectedId, onSelect, onEdit, 
             </thead>
             <tbody>
               {wrestlers.length === 0 ? (
-                <tr><td colSpan="6" className="table-empty">No wrestlers match the current filters.</td></tr>
+                <tr><td colSpan="5" className="table-empty">No wrestlers match the current filters.</td></tr>
               ) : wrestlers.map((wrestler) => {
-                const gap = Math.max(0, (wrestler.target_attire_count || 0) - (wrestler.attires?.length || 0))
                 const openRequests = (wrestler.requests || []).filter(item => item.status === 'open').length
                 const isSelected = wrestler.id === selectedId
                 return (
@@ -58,12 +56,10 @@ export default function WrestlerList({ wrestlers, selectedId, onSelect, onEdit, 
                         {wrestler.headshot_url ? <img className="table-thumb" src={wrestler.headshot_url} alt={wrestler.wrestler_name} /> : <div className="table-thumb placeholder-thumb">{wrestler.wrestler_name.slice(0,2).toUpperCase()}</div>}
                         <div>
                           <strong>{wrestler.wrestler_name}</strong>
-                          {wrestler.is_missing_target ? <div className="muted-text tiny-text">Wanted target</div> : null}
                         </div>
                       </div>
                     </td>
                     <td>{wrestler.attires?.length || 0}</td>
-                    <td>{wrestler.target_attire_count || 0}{gap > 0 ? ` (${gap} missing)` : ''}</td>
                     <td>{openRequests}</td>
                     <td>{formatDate(wrestler.updated_at)}</td>
                     <td>

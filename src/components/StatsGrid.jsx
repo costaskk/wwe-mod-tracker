@@ -3,12 +3,11 @@ export default function StatsGrid({ stats }) {
     ['Wrestlers', stats.wrestlers],
     ['Attire mods', stats.attires],
     ['Open requests', stats.requests],
-    ['Missing targets', stats.missingTargets],
     ['No download link', stats.missingDownloads]
   ]
 
   return (
-    <section className="stats-grid stats-grid-five">
+    <section className="stats-grid stats-grid-four">
       {items.map(([label, value]) => (
         <div className="stat-card panel soft-panel" key={label}>
           <div className="stat-label">{label}</div>
