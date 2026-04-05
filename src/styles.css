@@ -788,3 +788,45 @@ body { background-attachment: fixed; }
     grid-template-columns: 1fr;
   }
 }
+
+
+.link-issues-list {
+  display: grid;
+  gap: 14px;
+}
+
+.link-issue-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.03);
+}
+
+.link-issue-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.link-issue-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .link-issue-card {
+    grid-template-columns: 1fr;
+  }
+
+  .link-issue-actions {
+    justify-content: flex-start;
+  }
+}
