@@ -892,9 +892,8 @@ export default function App() {
       <StatsGrid stats={stats} />
       {error ? <div className="message error">{error}</div> : null}
 
-      {currentPage === 'collections' ? (
-        <>
-          {selectedCollection ? (
+        {currentPage === 'collections' ? (
+          selectedCollection ? (
             <CollectionView
               collection={selectedCollection}
               onClose={goCollectionsPage}
@@ -914,17 +913,16 @@ export default function App() {
               onOpen={openCollection}
               onShare={shareCollection}
             />
-          )}
-        </>
-      ) : currentPage === 'admin' ? (
-        <AdminPanel
-          session={session}
-          currentProfile={currentProfile}
-          profiles={profiles}
-          onUpdateProfile={updateProfile}
-          updating={updatingProfile}
-        />
-      ) : (
+          )
+        ) : currentPage === 'admin' ? (
+          <AdminPanel
+            session={session}
+            currentProfile={currentProfile}
+            profiles={profiles}
+            onUpdateProfile={updateProfile}
+            updating={updatingProfile}
+          />
+        ) : (
         <>
           <div className="layout-grid">
             <div className="left-column">
@@ -989,14 +987,6 @@ export default function App() {
           </div>
         </>
       )}
-
-      <AdminPanel
-        session={session}
-        currentProfile={currentProfile}
-        profiles={profiles}
-        onUpdateProfile={updateProfile}
-        updating={updatingProfile}
-      />
       <WrestlerEditorModal
         open={wrestlerModalOpen}
         form={wrestlerForm}
