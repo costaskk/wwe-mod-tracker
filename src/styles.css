@@ -1642,3 +1642,37 @@ select:focus {
     border-radius: 24px;
   }
 }
+
+.page-nav-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nav-chip {
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.04);
+  color: var(--muted);
+  padding: .55rem .9rem;
+  border-radius: 999px;
+}
+
+.nav-chip.active {
+  color: var(--text);
+  border-color: rgba(63,166,255,.32);
+  background: rgba(63,166,255,.12);
+}
+
+.pagination-row {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.duplicate-hint {
+  color: var(--warn);
+  font-size: .86rem;
+}

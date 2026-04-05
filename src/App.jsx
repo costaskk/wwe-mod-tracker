@@ -30,7 +30,11 @@ import {
   parseTags,
   slugify,
   sortAttires,
-  SOURCE_GAMES
+  SOURCE_GAMES,
+  uniqueCollectionSlug,
+  paginateItems,
+  findDuplicateWrestler,
+  findDuplicateAttire
 } from './lib/utils'
 
 export default function App() {
@@ -56,6 +60,9 @@ export default function App() {
   const [deadLinkOnly, setDeadLinkOnly] = useState(false)
   const [wrestlerViewMode, setWrestlerViewMode] = useState('cards')
   const [attireViewMode, setAttireViewMode] = useState('gallery')
+  const [currentPage, setCurrentPage] = useState('mods')
+  const [modsPage, setModsPage] = useState(1)
+  const modsPerPage = 14
 
   const [wrestlerModalOpen, setWrestlerModalOpen] = useState(false)
   const [wrestlerForm, setWrestlerForm] = useState(emptyWrestler())
@@ -112,7 +119,12 @@ export default function App() {
   }, [session])
 
   useEffect(() => {
-    const slug = new URLSearchParams(window.location.search).get('collection')
+    const params = new URLSearchParams(window.location.search)
+    const slug = params.get('collection')
+    const page = params.get('page')
+    if (page === 'collections') setCurrentPage('collections')
+    else if (page === 'admin') setCurrentPage('admin')
+    else setCurrentPage('mods')
     if (!slug) return
     const found = collections.find((item) => item.slug === slug)
     if (found) setSelectedCollection(found)
@@ -292,6 +304,14 @@ export default function App() {
       .filter(Boolean)
   }, [wrestlers, query, showMissingOnly, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, deadLinkOnly, installedIds])
 
+
+  const paginatedMods = useMemo(() => paginateItems(filteredWrestlers, modsPage, modsPerPage), [filteredWrestlers, modsPage])
+  const visibleWrestlers = paginatedMods.items
+
+  useEffect(() => {
+    setModsPage(1)
+  }, [query, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, deadLinkOnly, showMissingOnly])
+
   const myCollections = useMemo(() => session ? collections.filter((item) => item.owner_id === session.user.id) : [], [collections, session])
   const selectedWrestler = useMemo(() => filteredWrestlers.find((item) => item.id === selectedId) || filteredWrestlers[0] || null, [filteredWrestlers, selectedId])
   const collectionMemberships = useMemo(() => {
@@ -329,6 +349,8 @@ export default function App() {
     setSaving(true)
     try {
       if (!wrestlerForm.wrestler_name.trim()) throw new Error('Wrestler name is required.')
+      const duplicateWrestler = findDuplicateWrestler(wrestlers, wrestlerForm.wrestler_name)
+      if (duplicateWrestler && duplicateWrestler.id !== wrestlerForm.id) throw new Error(`Wrestler already exists: ${duplicateWrestler.wrestler_name}`)
       const payload = {
         wrestler_name: wrestlerForm.wrestler_name.trim(),
         notes: wrestlerForm.notes.trim(),
@@ -361,6 +383,9 @@ export default function App() {
     setSaving(true)
     try {
       if (!attireForm.name.trim()) throw new Error('Attire name is required.')
+      const parentWrestler = wrestlers.find((item) => item.id === attireForm.wrestler_id)
+      const duplicateAttire = findDuplicateAttire(parentWrestler?.attires || [], attireForm.name)
+      if (duplicateAttire && duplicateAttire.id !== attireForm.id) throw new Error(`Attire already exists for this wrestler: ${duplicateAttire.name}`)
       const payload = {
         wrestler_id: attireForm.wrestler_id,
         name: attireForm.name.trim(),
@@ -410,7 +435,7 @@ export default function App() {
     try {
       const cleanName = collectionForm.name.trim()
       if (!cleanName) throw new Error('Collection name is required.')
-      const cleanSlug = slugify(collectionForm.slug || cleanName)
+      const cleanSlug = uniqueCollectionSlug(collectionForm.slug || cleanName, session.user.id)
       if (!cleanSlug) throw new Error('Please enter a valid slug using letters and numbers.')
       const payload = {
         name: cleanName,
@@ -714,25 +739,36 @@ export default function App() {
 
   function openCollection(collection) {
     setSelectedCollection(collection)
-    const next = `${window.location.pathname}?collection=${encodeURIComponent(collection.slug)}`
+    setCurrentPage('collections')
+    const next = `${window.location.pathname}?page=collections&collection=${encodeURIComponent(collection.slug)}`
     window.history.replaceState({}, '', next)
   }
 
   function closeCollectionView() {
     setSelectedCollection(null)
+    window.history.replaceState({}, '', `${window.location.pathname}?page=collections`)
+  }
+
+  function goHome() {
+    setSelectedCollection(null)
+    setCurrentPage('mods')
     window.history.replaceState({}, '', window.location.pathname)
   }
 
-  function browseCollections() {
-    if (selectedCollection) {
-      closeCollectionView()
-      requestAnimationFrame(() => {
-        document.getElementById('my-collections-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      })
-      return
-    }
+  function goCollectionsPage() {
+    setSelectedCollection(null)
+    setCurrentPage('collections')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=collections`)
+  }
 
-    document.getElementById('my-collections-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  function goAdminPage() {
+    setSelectedCollection(null)
+    setCurrentPage('admin')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=admin`)
+  }
+
+  function browseCollections() {
+    goCollectionsPage()
   }
 
   async function shareCollection(collection) {
@@ -829,7 +865,8 @@ export default function App() {
           onAddWrestler={() => {}}
           session={null}
           onBrowseCollections={() => {}}
-          activeCollection={null}
+          onGoHome={() => {}}
+          currentPage="mods"
           currentProfile={null}
           canContribute={false}
           onBrowseAdmin={() => {}}
@@ -844,20 +881,49 @@ export default function App() {
       <Header
         onAddWrestler={openAddWrestler}
         session={session}
-        onBrowseCollections={browseCollections}
-        activeCollection={selectedCollection}
+        onBrowseCollections={goCollectionsPage}
+        onGoHome={goHome}
+        currentPage={currentPage}
         currentProfile={currentProfile}
         canContribute={isApproved}
-        onBrowseAdmin={() => {
-          document.getElementById('admin-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }}
+        onBrowseAdmin={goAdminPage}
       />
       <AuthPanel session={session} currentProfile={currentProfile} />
       <StatsGrid stats={stats} />
       {error ? <div className="message error">{error}</div> : null}
 
-      {selectedCollection ? (
-        <CollectionView collection={selectedCollection} onClose={closeCollectionView} onSelectWrestler={(id) => { closeCollectionView(); setSelectedId(id) }} />
+      {currentPage === 'collections' ? (
+        <>
+          {selectedCollection ? (
+            <CollectionView
+              collection={selectedCollection}
+              onClose={goCollectionsPage}
+              onSelectWrestler={(id) => {
+                setSelectedId(id)
+                goHome()
+              }}
+            />
+          ) : (
+            <ProfileCollections
+              sectionId="my-collections-section"
+              session={session}
+              collections={myCollections}
+              onCreate={openCreateCollection}
+              onEdit={openEditCollection}
+              onDelete={deleteCollection}
+              onOpen={openCollection}
+              onShare={shareCollection}
+            />
+          )}
+        </>
+      ) : currentPage === 'admin' ? (
+        <AdminPanel
+          session={session}
+          currentProfile={currentProfile}
+          profiles={profiles}
+          onUpdateProfile={updateProfile}
+          updating={updatingProfile}
+        />
       ) : (
         <>
           <div className="layout-grid">
@@ -887,7 +953,7 @@ export default function App() {
               />
 
               <WrestlerList
-                wrestlers={filteredWrestlers}
+                wrestlers={visibleWrestlers}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 onEdit={openEditWrestler}
@@ -897,6 +963,8 @@ export default function App() {
                 canManageContent={canManageContent}
                 viewMode={wrestlerViewMode}
                 setViewMode={setWrestlerViewMode}
+                pagination={paginatedMods}
+                onPageChange={setModsPage}
               />
             </div>
 
@@ -919,19 +987,9 @@ export default function App() {
               onOpenCollectionPicker={openCollectionPicker}
             />
           </div>
-
-          <ProfileCollections
-            sectionId="my-collections-section"
-            session={session}
-            collections={myCollections}
-            onCreate={openCreateCollection}
-            onEdit={openEditCollection}
-            onDelete={deleteCollection}
-            onOpen={openCollection}
-            onShare={shareCollection}
-          />
         </>
       )}
+
       <AdminPanel
         session={session}
         currentProfile={currentProfile}

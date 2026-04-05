@@ -200,3 +200,36 @@ export function requestSummary(requests = [], attireId) {
     deadLinks: relevant.filter((item) => item.request_type === 'dead_link').length
   }
 }
+
+
+export function uniqueCollectionSlug(name, ownerId = '') {
+  const base = slugify(name || 'collection') || 'collection'
+  const shortOwner = (ownerId || 'public').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toLowerCase() || 'public'
+  return `${base}-${shortOwner}`
+}
+
+export function paginateItems(items = [], page = 1, perPage = 16) {
+  const safePerPage = Math.max(1, perPage)
+  const totalPages = Math.max(1, Math.ceil(items.length / safePerPage))
+  const safePage = Math.min(Math.max(1, page), totalPages)
+  const start = (safePage - 1) * safePerPage
+  return {
+    page: safePage,
+    perPage: safePerPage,
+    totalPages,
+    totalItems: items.length,
+    items: items.slice(start, start + safePerPage)
+  }
+}
+
+export function findDuplicateWrestler(wrestlers = [], name = '') {
+  const clean = (name || '').trim().toLowerCase()
+  if (!clean) return null
+  return wrestlers.find((w) => (w.wrestler_name || '').trim().toLowerCase() === clean) || null
+}
+
+export function findDuplicateAttire(attires = [], name = '') {
+  const clean = (name || '').trim().toLowerCase()
+  if (!clean) return null
+  return attires.find((a) => (a.name || '').trim().toLowerCase() === clean) || null
+}
