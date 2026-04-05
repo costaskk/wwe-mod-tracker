@@ -17,16 +17,20 @@ export default function WrestlerList({ wrestlers, selectedId, onSelect, onEdit, 
           const isSelected = wrestler.id === selectedId
           const gap = Math.max(0, (wrestler.target_attire_count || 0) - (wrestler.attires?.length || 0))
           const openRequests = (wrestler.requests || []).filter(item => item.status === 'open').length
+          const hasHeadshot = Boolean(wrestler.headshot_url)
 
           return (
             <button
               type="button"
               key={wrestler.id}
-              className={`list-card ${isSelected ? 'selected' : ''}`}
+              className={`list-card wrestler-list-card ${isSelected ? 'selected' : ''}`}
               onClick={() => onSelect(wrestler.id)}
             >
-              <div className="list-card-top">
-                <div>
+              <div className="list-card-top with-thumb">
+                <div className="list-thumb-wrap">
+                  {hasHeadshot ? <img className="list-thumb" src={wrestler.headshot_url} alt={wrestler.wrestler_name} /> : <div className="list-thumb placeholder-thumb">{wrestler.wrestler_name.slice(0, 2).toUpperCase()}</div>}
+                </div>
+                <div className="list-main-copy">
                   <div className="list-title">{wrestler.wrestler_name}</div>
                   <div className="small-text muted-text">Updated {formatDate(wrestler.updated_at)}</div>
                 </div>
