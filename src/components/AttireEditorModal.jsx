@@ -1,7 +1,20 @@
 import { ATTIRE_STATUSES, MOD_TYPES, SOURCE_GAMES } from '../lib/utils'
 
 export default function AttireEditorModal({
-  open, form, setForm, onClose, onSave, onUpload, onRemoveAsset, saving, uploading, error
+  open,
+  form,
+  setForm,
+  onClose,
+  onSave,
+  onUpload,
+  onRemoveAsset,
+  creatorOptions,
+  newCreatorName,
+  setNewCreatorName,
+  onAddCreator,
+  saving,
+  uploading,
+  error
 }) {
   if (!open) return null
 
@@ -13,8 +26,8 @@ export default function AttireEditorModal({
     <div className="modal-backdrop">
       <div className="panel modal-card large-modal">
         <div className="modal-header">
-          <h2>{form.id ? 'Edit attire mod' : 'Add attire mod'}</h2>
-          <p className="subtle-copy">Each attire stores its own creator, download link, preview image, DDS render, game source, and status.</p>
+          <h2>{form.persisted ? 'Edit attire mod' : 'Add attire mod'}</h2>
+          <p className="subtle-copy">Each attire stores its own creator, links, multiple screenshots, and DDS render.</p>
         </div>
 
         <div className="modal-scroll">
@@ -28,20 +41,8 @@ export default function AttireEditorModal({
 
                 <div className="form-grid compact-grid">
                   <label>
-                    Slot
-                    <input value={form.slot_name} onChange={(e) => updateField('slot_name', e.target.value)} placeholder="A, B, 1, 2" />
-                  </label>
-
-                  <label>
-                    Era
-                    <input value={form.era} onChange={(e) => updateField('era', e.target.value)} placeholder="1997 WCW, 2001 WWF" />
-                  </label>
-                </div>
-
-                <div className="form-grid compact-grid">
-                  <label>
-                    Creator
-                    <input value={form.creator_name} onChange={(e) => updateField('creator_name', e.target.value)} />
+                    Era / appearance date hint
+                    <input value={form.era} onChange={(e) => updateField('era', e.target.value)} placeholder="1997 WCW, March 2001, Ruthless Aggression" />
                   </label>
 
                   <label>
@@ -49,6 +50,24 @@ export default function AttireEditorModal({
                     <select value={form.status} onChange={(e) => updateField('status', e.target.value)}>
                       {ATTIRE_STATUSES.map(item => <option key={item} value={item}>{item}</option>)}
                     </select>
+                  </label>
+                </div>
+
+                <div className="form-grid compact-grid">
+                  <label>
+                    Creator
+                    <select value={form.creator_name} onChange={(e) => updateField('creator_name', e.target.value)}>
+                      <option value="">Select a creator</option>
+                      {creatorOptions.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
+                    </select>
+                  </label>
+
+                  <label>
+                    Add creator
+                    <div className="inline-stack">
+                      <input value={newCreatorName} onChange={(e) => setNewCreatorName(e.target.value)} placeholder="New creator name" />
+                      <button type="button" className="secondary-button small-btn" onClick={onAddCreator}>Add</button>
+                    </div>
                   </label>
                 </div>
 
@@ -69,11 +88,6 @@ export default function AttireEditorModal({
                 </div>
 
                 <label>
-                  Game patch version
-                  <input value={form.game_version} onChange={(e) => updateField('game_version', e.target.value)} />
-                </label>
-
-                <label>
                   Download link
                   <input value={form.download_url} onChange={(e) => updateField('download_url', e.target.value)} placeholder="https://..." />
                 </label>
@@ -86,25 +100,31 @@ export default function AttireEditorModal({
             </section>
 
             <section className="panel soft-panel">
-              <div className="upload-grid">
+              <div className="upload-grid single-column-upload-grid">
                 <div className="upload-card">
                   <div className="upload-card-header">
-                    <h5>Preview image</h5>
-                    <p>Normal image shown in the browser.</p>
+                    <h5>Attire screenshots</h5>
+                    <p>Upload multiple images for this attire.</p>
                   </div>
 
-                  {form.preview_image_url ? (
-                    <img className="upload-preview" src={form.preview_image_url} alt="Preview" />
+                  {form.images.length ? (
+                    <div className="gallery-grid modal-gallery-grid">
+                      {form.images.map((image) => (
+                        <div className="gallery-tile" key={image.path || image.id}>
+                          <img className="gallery-img" src={image.url} alt={image.name || 'Attire screenshot'} />
+                          <button className="ghost-button small-btn gallery-remove" type="button" onClick={() => onRemoveAsset('image', image.path)}>Remove</button>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
-                    <div className="upload-placeholder">No preview uploaded</div>
+                    <div className="upload-placeholder">No attire images uploaded</div>
                   )}
 
                   <div className="upload-actions">
                     <label className="secondary-button inline-file file-button">
-                      Upload image
-                      <input type="file" accept="image/*" onChange={(e) => onUpload(e.target.files?.[0], 'preview')} />
+                      Upload image(s)
+                      <input type="file" accept="image/*" multiple onChange={(e) => onUpload(Array.from(e.target.files || []), 'image')} />
                     </label>
-                    {form.preview_image_path ? <button className="ghost-button" onClick={() => onRemoveAsset('preview')}>Remove</button> : null}
                   </div>
                 </div>
 
@@ -129,7 +149,7 @@ export default function AttireEditorModal({
                       Upload DDS
                       <input type="file" accept=".dds" onChange={(e) => onUpload(e.target.files?.[0], 'render')} />
                     </label>
-                    {form.render_dds_path ? <button className="ghost-button" onClick={() => onRemoveAsset('render')}>Remove</button> : null}
+                    {form.render_dds_path ? <button className="ghost-button" type="button" onClick={() => onRemoveAsset('render', form.render_dds_path)}>Remove</button> : null}
                   </div>
                 </div>
               </div>

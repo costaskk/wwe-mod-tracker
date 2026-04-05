@@ -1,5 +1,17 @@
 export default function Filters({
-  query, setQuery, showMissingOnly, setShowMissingOnly, sourceFilter, setSourceFilter, typeFilter, setTypeFilter
+  query,
+  setQuery,
+  showMissingOnly,
+  setShowMissingOnly,
+  sourceFilter,
+  setSourceFilter,
+  typeFilter,
+  setTypeFilter,
+  installedOnly,
+  setInstalledOnly,
+  missingDownloadOnly,
+  setMissingDownloadOnly,
+  session
 }) {
   return (
     <section className="panel soft-panel">
@@ -9,11 +21,11 @@ export default function Filters({
 
       <div className="form-grid">
         <label>
-          Search wrestler, attire, era, creator, notes
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="e.g. Sting, 1997, Joker, WCW" />
+          Search wrestler, attire, creator, era, notes
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="e.g. Sting, 1997, Joker, WhatsTheStatus" />
         </label>
 
-        <div className="form-grid compact-grid">
+        <div className="form-grid compact-grid compact-grid-3">
           <label>
             Source game
             <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}>
@@ -38,12 +50,26 @@ export default function Filters({
               <option value="update">Update</option>
             </select>
           </label>
+
+          <label className="checkbox-row card-checkbox-row">
+            <input type="checkbox" checked={missingDownloadOnly} onChange={(e) => setMissingDownloadOnly(e.target.checked)} />
+            Only missing download links
+          </label>
         </div>
 
-        <label className="checkbox-row">
-          <input type="checkbox" checked={showMissingOnly} onChange={(e) => setShowMissingOnly(e.target.checked)} />
-          Show missing targets, open requests, or incomplete attires only
-        </label>
+        <div className="filter-checkbox-grid">
+          <label className="checkbox-row card-checkbox-row">
+            <input type="checkbox" checked={showMissingOnly} onChange={(e) => setShowMissingOnly(e.target.checked)} />
+            Show missing targets, open requests, or incomplete attires only
+          </label>
+
+          {session ? (
+            <label className="checkbox-row card-checkbox-row">
+              <input type="checkbox" checked={installedOnly} onChange={(e) => setInstalledOnly(e.target.checked)} />
+              Only attires installed in my game
+            </label>
+          ) : null}
+        </div>
       </div>
     </section>
   )

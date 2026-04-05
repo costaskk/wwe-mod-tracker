@@ -4,7 +4,7 @@ export default function StatsGrid({ stats }) {
     ['Attire mods', stats.attires],
     ['Open requests', stats.requests],
     ['Missing targets', stats.missingTargets],
-    ['Attire gap', stats.gapCount]
+    ['No download link', stats.missingDownloads]
   ]
 
   return (

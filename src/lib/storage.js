@@ -2,10 +2,9 @@ import { supabase } from './supabase'
 
 const BUCKET = 'mod-assets'
 
-export async function uploadAsset({ userId, attireId, file, kind }) {
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'bin'
+export async function uploadAsset({ userId, entityId, file, kind, folder = 'attires' }) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const path = `${userId}/${attireId}/${kind}-${Date.now()}-${safeName}`
+  const path = `${userId}/${folder}/${entityId}/${kind}-${Date.now()}-${safeName}`
 
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
     cacheControl: '3600',
@@ -27,4 +26,25 @@ export function getAssetUrl(path) {
   if (!path) return ''
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
   return data.publicUrl
+}
+
+export async function tryAutoMatchHeadshot(name) {
+  const query = encodeURIComponent(name.trim())
+  if (!query) throw new Error('Wrestler name is required for auto-match.')
+
+  const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${query}&limit=1&namespace=0&format=json&origin=*`
+  const searchResponse = await fetch(searchUrl)
+  if (!searchResponse.ok) throw new Error('Auto-match search failed.')
+  const searchData = await searchResponse.json()
+  const title = searchData?.[1]?.[0]
+  if (!title) throw new Error('No matching public image found.')
+
+  const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
+  const summaryResponse = await fetch(summaryUrl)
+  if (!summaryResponse.ok) throw new Error('Auto-match summary failed.')
+  const summaryData = await summaryResponse.json()
+  const imageUrl = summaryData?.thumbnail?.source || summaryData?.originalimage?.source
+  if (!imageUrl) throw new Error('No public headshot was available for that name.')
+
+  return { imageUrl, sourceTitle: title }
 }
