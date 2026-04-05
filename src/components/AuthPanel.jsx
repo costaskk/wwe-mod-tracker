@@ -29,7 +29,7 @@ export default function AuthPanel() {
     }
 
     if (mode === 'signup') {
-      setMessage('Account created. Check your email if confirmation is enabled in Supabase.')
+      setMessage('Account created. If email confirmation is enabled, verify your email before signing in.')
     }
 
     setLoading(false)
@@ -38,25 +38,17 @@ export default function AuthPanel() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <div className="eyebrow">SUPABASE DATABASE</div>
-        <h1>WWE 2K25 Mod Tracker</h1>
+        <div className="eyebrow">SUPABASE + STORAGE</div>
+        <h1>WWE 2K25 Mod Database</h1>
         <p className="muted">
-          Sign in to manage your private database of wrestlers, attires, profiles, downloads, and missing ports.
+          Track wrestlers, attire slots, creators, DDS renders, preview screenshots, movesets, and merged hype/DC profiles in one clean database.
         </p>
 
         <div className="segment-control">
-          <button
-            className={mode === 'signin' ? 'active' : ''}
-            type="button"
-            onClick={() => setMode('signin')}
-          >
+          <button className={mode === 'signin' ? 'active' : ''} type="button" onClick={() => setMode('signin')}>
             Sign in
           </button>
-          <button
-            className={mode === 'signup' ? 'active' : ''}
-            type="button"
-            onClick={() => setMode('signup')}
-          >
+          <button className={mode === 'signup' ? 'active' : ''} type="button" onClick={() => setMode('signup')}>
             Create account
           </button>
         </div>
@@ -69,13 +61,7 @@ export default function AuthPanel() {
 
           <label>
             <span>Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={6}
-              required
-            />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
           </label>
 
           {error ? <div className="message error">{error}</div> : null}

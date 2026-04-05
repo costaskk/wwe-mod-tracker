@@ -9,17 +9,21 @@ export function emptyAttire() {
     slot_name: '',
     era: '',
     creator_name: '',
-    image_url: '',
     download_url: '',
     notes: '',
-    status: 'complete'
+    status: 'complete',
+    preview_image_path: '',
+    preview_image_url: '',
+    preview_image_name: '',
+    render_dds_path: '',
+    render_dds_url: '',
+    render_dds_name: ''
   }
 }
 
 export function emptyMod() {
   return {
     wrestler_name: '',
-    mod_creator_name: '',
     game_version: '1.00',
     source_game: 'WWE 2K25',
     mod_type: 'original',
@@ -27,20 +31,10 @@ export function emptyMod() {
     target_attire_count: 1,
     notes: '',
     tags_text: '',
-    image_urls_text: '',
-    download_links_text: '',
     moveset_json_text: '',
-    hype_profile_json_text: '',
-    dc_profile_json_text: '',
+    profile_json_text: '',
     attires: [emptyAttire()]
   }
-}
-
-export function splitLines(value) {
-  return value
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
 }
 
 export function parseTags(value) {
@@ -68,7 +62,6 @@ export function formatDate(value) {
 export function normalizeModForEditor(mod) {
   return {
     wrestler_name: mod.wrestler_name || '',
-    mod_creator_name: mod.mod_creator_name || '',
     game_version: mod.game_version || '1.00',
     source_game: mod.source_game || 'WWE 2K25',
     mod_type: mod.mod_type || 'original',
@@ -76,11 +69,8 @@ export function normalizeModForEditor(mod) {
     target_attire_count: mod.target_attire_count || 1,
     notes: mod.notes || '',
     tags_text: (mod.tags || []).join(', '),
-    image_urls_text: (mod.image_urls || []).join('\n'),
-    download_links_text: (mod.download_links || []).join('\n'),
     moveset_json_text: prettifyJson(mod.moveset_json),
-    hype_profile_json_text: prettifyJson(mod.hype_profile_json),
-    dc_profile_json_text: prettifyJson(mod.dc_profile_json),
+    profile_json_text: prettifyJson(mod.profile_json),
     attires:
       mod.attires && mod.attires.length
         ? mod.attires.map((attire) => ({
@@ -89,10 +79,15 @@ export function normalizeModForEditor(mod) {
             slot_name: attire.slot_name || '',
             era: attire.era || '',
             creator_name: attire.creator_name || '',
-            image_url: attire.image_url || '',
             download_url: attire.download_url || '',
             notes: attire.notes || '',
-            status: attire.status || 'complete'
+            status: attire.status || 'complete',
+            preview_image_path: attire.preview_image_path || '',
+            preview_image_url: attire.preview_image_url || '',
+            preview_image_name: attire.preview_image_name || '',
+            render_dds_path: attire.render_dds_path || '',
+            render_dds_url: attire.render_dds_url || '',
+            render_dds_name: attire.render_dds_name || ''
           }))
         : [emptyAttire()]
   }
@@ -110,6 +105,23 @@ export function computeDashboardStats(mods) {
     (sum, mod) => sum + Math.max(0, (mod.target_attire_count || 0) - (mod.attires?.length || 0)),
     0
   )
+  const withRenders = mods.reduce(
+    (sum, mod) => sum + (mod.attires?.filter((attire) => attire.render_dds_path).length || 0),
+    0
+  )
 
-  return { totalMods, totalAttires, incompleteAttires, missingTargets, attireGap }
+  return { totalMods, totalAttires, incompleteAttires, missingTargets, attireGap, withRenders }
+}
+
+export function statusLabel(value) {
+  return value.replaceAll('_', ' ')
+}
+
+export function extFromFile(fileName = '') {
+  const safe = fileName.split('.').pop()
+  return safe ? safe.toLowerCase() : 'bin'
+}
+
+export function isImageFile(file) {
+  return file.type.startsWith('image/')
 }
