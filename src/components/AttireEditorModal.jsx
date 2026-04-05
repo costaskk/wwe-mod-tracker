@@ -1,11 +1,12 @@
+
 import { useState } from 'react'
-import { ATTIRE_STATUSES, MOD_TYPES, SOURCE_GAMES } from '../lib/utils'
+import { ATTIRE_STATUSES, MOD_TYPES, SOURCE_GAMES, titleCase } from '../lib/utils'
 
 function JsonEditor({ title, value, onChange, onUpload, filenameHint }) {
   const [expanded, setExpanded] = useState(true)
 
   return (
-    <div className="json-editor-card">
+    <div className="json-editor-card elevated-card">
       <div className="json-editor-head">
         <div>
           <h5>{title}</h5>
@@ -44,7 +45,7 @@ function DdsPreview({ url, name }) {
       ) : (
         <div className="render-tile">
           <div className="render-badge">DDS</div>
-          <div className="render-name">This browser cannot render DDS directly. You can still download the file.</div>
+          <div className="render-name">This browser cannot render DDS directly. You can still open or download the file.</div>
         </div>
       )}
       <a className="secondary-button inline-btn small-btn" href={url} target="_blank" rel="noreferrer">Open / download DDS</a>
@@ -67,7 +68,6 @@ export default function AttireEditorModal({
   onUploadJson,
   saving,
   uploading,
-  error,
   addingCreator
 }) {
   if (!open) return null
@@ -81,12 +81,12 @@ export default function AttireEditorModal({
       <div className="panel modal-card large-modal">
         <div className="modal-header">
           <h2>{form.persisted ? 'Edit attire mod' : 'Add attire mod'}</h2>
-          <p className="subtle-copy">Each attire stores its own creator, links, screenshots, DDS render, moveset JSON, and profile JSON.</p>
+          <p className="subtle-copy">Each attire stores its own creator, link, screenshots, DDS render, moveset JSON, and hype / DC profile JSON.</p>
         </div>
 
         <div className="modal-scroll">
           <div className="editor-grid">
-            <section className="panel soft-panel">
+            <section className="panel soft-panel elevated-card">
               <div className="form-grid">
                 <label>
                   Attire name
@@ -102,7 +102,7 @@ export default function AttireEditorModal({
                   <label>
                     Status
                     <select value={form.status} onChange={(e) => updateField('status', e.target.value)}>
-                      {ATTIRE_STATUSES.map(item => <option key={item} value={item}>{item}</option>)}
+                      {ATTIRE_STATUSES.map(item => <option key={item} value={item}>{titleCase(item)}</option>)}
                     </select>
                   </label>
                 </div>
@@ -136,7 +136,7 @@ export default function AttireEditorModal({
                   <label>
                     Mod type
                     <select value={form.mod_type} onChange={(e) => updateField('mod_type', e.target.value)}>
-                      {MOD_TYPES.map(item => <option key={item} value={item}>{item}</option>)}
+                      {MOD_TYPES.map(item => <option key={item} value={item}>{titleCase(item)}</option>)}
                     </select>
                   </label>
                 </div>
@@ -169,12 +169,12 @@ export default function AttireEditorModal({
               </div>
             </section>
 
-            <section className="panel soft-panel">
+            <section className="panel soft-panel elevated-card">
               <div className="upload-grid single-column-upload-grid">
-                <div className="upload-card">
+                <div className="upload-card premium-upload-card">
                   <div className="upload-card-header">
                     <h5>Attire screenshots</h5>
-                    <p>Upload multiple images for this attire.</p>
+                    <p>Upload multiple screenshots for this attire.</p>
                   </div>
 
                   {form.images.length ? (
@@ -198,10 +198,10 @@ export default function AttireEditorModal({
                   </div>
                 </div>
 
-                <div className="upload-card">
+                <div className="upload-card premium-upload-card">
                   <div className="upload-card-header">
                     <h5>DDS render</h5>
-                    <p>Character selection render file. The app tries to preview it, then falls back to download if the browser cannot decode DDS.</p>
+                    <p>Character select render. The app tries to preview it, then falls back to a download link if the browser cannot decode DDS.</p>
                   </div>
 
                   <DdsPreview url={form.render_dds_url} name={form.render_dds_name} />
@@ -218,8 +218,6 @@ export default function AttireEditorModal({
             </section>
           </div>
         </div>
-
-        {error ? <div className="message error modal-message">{error}</div> : null}
 
         <div className="modal-footer">
           <div className="muted-text">{uploading ? 'Uploading asset…' : ''}</div>

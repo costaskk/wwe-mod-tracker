@@ -1,14 +1,14 @@
+
 export default function Filters({
   query,
   setQuery,
   showMissingOnly,
   setShowMissingOnly,
-  sourceFilter,
-  setSourceFilter,
-  typeFilter,
-  setTypeFilter,
-  installedOnly,
-  setInstalledOnly,
+  creatorFilter,
+  setCreatorFilter,
+  creators,
+  installFilter,
+  setInstallFilter,
   missingDownloadOnly,
   setMissingDownloadOnly,
   session,
@@ -18,68 +18,60 @@ export default function Filters({
   addingCreator
 }) {
   return (
-    <section className="panel soft-panel">
+    <section className="panel soft-panel filters-panel">
       <div className="panel-header">
-        <h2>Search and filters</h2>
+        <div>
+          <h2>Search and filters</h2>
+          <p className="subtle-copy">Find mods by wrestler, attire, creator, install state, or missing download links.</p>
+        </div>
       </div>
 
       <div className="form-grid">
         <label>
           Search wrestler, attire, creator, era, notes
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="e.g. Sting, 1997, Joker, WhatsTheStatus" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="e.g. Sting, Adam Cole, Joker, WhatsTheStatus"
+          />
         </label>
 
-        <div className="form-grid compact-grid compact-grid-3">
+        <div className="filter-row-grid">
           <label>
-            Source game
-            <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}>
-              <option value="all">All</option>
-              <option value="WWE 2K25">WWE 2K25</option>
-              <option value="WWE 2K24">WWE 2K24</option>
-              <option value="WWE 2K23">WWE 2K23</option>
-              <option value="WWE 2K22">WWE 2K22</option>
-              <option value="WWE 2K19">WWE 2K19</option>
-              <option value="WWE 2K18">WWE 2K18</option>
-              <option value="Other">Other</option>
+            Creator
+            <select value={creatorFilter} onChange={(e) => setCreatorFilter(e.target.value)}>
+              <option value="all">All creators</option>
+              {creators.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
             </select>
           </label>
 
           <label>
-            Mod type
-            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-              <option value="all">All</option>
-              <option value="original">Original</option>
-              <option value="port">Port</option>
-              <option value="remake">Remake</option>
-              <option value="update">Update</option>
+            Installed state
+            <select value={installFilter} onChange={(e) => setInstallFilter(e.target.value)} disabled={!session}>
+              <option value="all">All mods</option>
+              <option value="installed">Installed in my game</option>
+              <option value="not_installed">Not installed in my game</option>
             </select>
-          </label>
-
-          <label className="checkbox-row card-checkbox-row">
-            <input type="checkbox" checked={missingDownloadOnly} onChange={(e) => setMissingDownloadOnly(e.target.checked)} />
-            Only missing download links
           </label>
         </div>
 
         <div className="filter-checkbox-grid">
           <label className="checkbox-row card-checkbox-row">
-            <input type="checkbox" checked={showMissingOnly} onChange={(e) => setShowMissingOnly(e.target.checked)} />
-            Show missing targets, open requests, or incomplete attires only
+            <input type="checkbox" checked={missingDownloadOnly} onChange={(e) => setMissingDownloadOnly(e.target.checked)} />
+            Only missing download links
           </label>
 
-          {session ? (
-            <label className="checkbox-row card-checkbox-row">
-              <input type="checkbox" checked={installedOnly} onChange={(e) => setInstalledOnly(e.target.checked)} />
-              Only attires installed in my game
-            </label>
-          ) : null}
+          <label className="checkbox-row card-checkbox-row">
+            <input type="checkbox" checked={showMissingOnly} onChange={(e) => setShowMissingOnly(e.target.checked)} />
+            Only missing targets, open requests, or incomplete attires
+          </label>
         </div>
 
         {session ? (
-          <div className="creator-quick-add">
+          <div className="creator-quick-add elevated-card">
             <div>
               <strong>Add a mod creator</strong>
-              <div className="muted-text">Add a creator once so everyone can reuse it from the dropdown.</div>
+              <div className="muted-text">Add a creator once so everyone can select them from the dropdown.</div>
             </div>
             <div className="inline-stack creator-inline-stack">
               <input value={newCreatorName} onChange={(e) => setNewCreatorName(e.target.value)} placeholder="Creator name" />

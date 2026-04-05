@@ -1,5 +1,6 @@
+
 import { useState } from 'react'
-import { formatDate, requestSummary } from '../lib/utils'
+import { formatDate, requestSummary, titleCase } from '../lib/utils'
 
 function statusClass(status) {
   return `status-pill status-${status || 'complete'}`
@@ -8,7 +9,7 @@ function statusClass(status) {
 function JsonBrowser({ title, value }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="json-browser-card">
+    <div className="json-browser-card elevated-card">
       <div className="json-browser-head">
         <strong>{title}</strong>
         <button className="ghost-button small-btn" onClick={() => setOpen((v) => !v)}>
@@ -66,7 +67,8 @@ export default function DetailPanel({
               <div className="eyebrow">Wrestler page</div>
               <h2>{wrestler.wrestler_name}</h2>
               <p className="hero-copy compact-copy">
-                Browse public attire mods for this wrestler, sorted by era or appearance date when the attire name includes one. Users can add mods, screenshots, renders, JSON profiles, requests, and install markers.
+                Browse public attire mods for this wrestler, sorted by era or appearance date when the attire name includes one.
+                Users can add mods, screenshots, renders, JSON profiles, requests, and install markers.
               </p>
             </div>
           </div>
@@ -103,18 +105,18 @@ export default function DetailPanel({
             const requestInfo = requestSummary(wrestler.requests || [], attire.id)
             const screenshots = attire.attire_images || []
             return (
-              <article className="attire-card improved-attire-card" key={attire.id}>
+              <article className="attire-card improved-attire-card elevated-card" key={attire.id}>
                 <div className="attire-card-top">
                   <div>
                     <h3>{attire.name}</h3>
                     <div className="list-meta wrap-meta">
                       <span>{attire.era || 'No era given'}</span>
                       <span>{attire.source_game}</span>
-                      <span>{attire.mod_type}</span>
+                      <span>{titleCase(attire.mod_type)}</span>
                       {attire.creator_name ? <span>by {attire.creator_name}</span> : null}
                     </div>
                   </div>
-                  <span className={statusClass(attire.status)}>{attire.status}</span>
+                  <span className={statusClass(attire.status)}>{titleCase(attire.status)}</span>
                 </div>
 
                 <div className="attire-visuals single-column-visuals">
@@ -165,7 +167,7 @@ export default function DetailPanel({
                   </button>
                   <button className="ghost-button small-btn" disabled={!session || session.user.id !== attire.owner_id} onClick={() => onEditAttire(attire)}>Edit</button>
                   <button className="ghost-button small-btn" disabled={!session || session.user.id !== attire.owner_id} onClick={() => onDeleteAttire(attire)}>Delete</button>
-                  <button className="ghost-button small-btn" disabled={!session} onClick={() => onCreateRequest(wrestler.id, attire.id, attire.download_url ? 'dead_link' : 'missing_link')}>
+                  <button className="ghost-button small-btn" disabled={!session} onClick={() => onCreateRequest(wrestler.id, attire.id, attire.download_url ? 'dead_link' : 'missing_link', wrestler.wrestler_name, attire.name)}>
                     {attire.download_url ? 'Report dead link' : 'Request link'}
                   </button>
                 </div>

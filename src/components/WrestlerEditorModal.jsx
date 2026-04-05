@@ -1,3 +1,4 @@
+
 export default function WrestlerEditorModal({
   open,
   form,
@@ -8,8 +9,7 @@ export default function WrestlerEditorModal({
   onAutoMatchHeadshot,
   onRemoveHeadshot,
   saving,
-  uploading,
-  error
+  uploading
 }) {
   if (!open) return null
 
@@ -18,12 +18,12 @@ export default function WrestlerEditorModal({
       <div className="panel modal-card large-modal">
         <div className="modal-header">
           <h2>{form.id ? 'Edit wrestler' : 'Add wrestler'}</h2>
-          <p className="subtle-copy">Create the public wrestler page and upload a headshot. JSON profiles now live on each attire.</p>
+          <p className="subtle-copy">Create a wrestler page, add notes and tags, and upload or auto-match a headshot.</p>
         </div>
 
         <div className="modal-scroll">
           <div className="editor-grid single-editor-grid">
-            <section className="panel soft-panel">
+            <section className="panel soft-panel elevated-card">
               <div className="form-grid compact-grid">
                 <label>
                   Wrestler name
@@ -52,15 +52,15 @@ export default function WrestlerEditorModal({
               </div>
             </section>
 
-            <section className="panel soft-panel">
-              <div className="upload-card">
+            <section className="panel soft-panel elevated-card">
+              <div className="upload-card premium-upload-card">
                 <div className="upload-card-header">
                   <h5>Wrestler headshot</h5>
-                  <p>Upload a headshot, or try an automatic public match based on the wrestler name.</p>
+                  <p>Upload a headshot, or try a public auto-match. Press the button again to look for an alternative image.</p>
                 </div>
 
                 {form.headshot_url ? (
-                  <img className="upload-preview portrait-preview" src={form.headshot_url} alt="Headshot" />
+                  <img className="upload-preview portrait-preview spotlight-image" src={form.headshot_url} alt="Headshot" />
                 ) : (
                   <div className="upload-placeholder">No wrestler image saved</div>
                 )}
@@ -77,8 +77,6 @@ export default function WrestlerEditorModal({
             </section>
           </div>
         </div>
-
-        {error ? <div className="message error modal-message">{error}</div> : null}
 
         <div className="modal-footer">
           <div className="muted-text">{uploading ? 'Uploading asset…' : ''}</div>
