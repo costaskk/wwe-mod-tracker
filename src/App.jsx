@@ -2,10 +2,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import AuthPanel from './components/AuthPanel'
 import AttireEditorModal from './components/AttireEditorModal'
+import CollectionModal from './components/CollectionModal'
+import CollectionPickerModal from './components/CollectionPickerModal'
+import CollectionView from './components/CollectionView'
 import DetailPanel from './components/DetailPanel'
 import Filters from './components/Filters'
 import Header from './components/Header'
 import ModalNotice from './components/ModalNotice'
+import ProfileCollections from './components/ProfileCollections'
 import RequestModal from './components/RequestModal'
 import StatsGrid from './components/StatsGrid'
 import WrestlerEditorModal from './components/WrestlerEditorModal'
@@ -15,13 +19,16 @@ import { getAssetUrl, removeAssets, tryAutoMatchHeadshot, uploadAsset } from './
 import {
   computeStats,
   emptyAttire,
+  emptyCollection,
   emptyWrestler,
-  SOURCE_GAMES,
   normalizeAttireForEditor,
+  normalizeCollectionForEditor,
   normalizeWrestlerForEditor,
   parseJsonOrNull,
   parseTags,
-  sortAttires
+  slugify,
+  sortAttires,
+  SOURCE_GAMES
 } from './lib/utils'
 
 export default function App() {
@@ -30,8 +37,10 @@ export default function App() {
   const [error, setError] = useState('')
   const [wrestlers, setWrestlers] = useState([])
   const [creators, setCreators] = useState([])
+  const [collections, setCollections] = useState([])
   const [installedIds, setInstalledIds] = useState(new Set())
   const [selectedId, setSelectedId] = useState(null)
+  const [selectedCollection, setSelectedCollection] = useState(null)
 
   const [query, setQuery] = useState('')
   const [showMissingOnly, setShowMissingOnly] = useState(false)
@@ -39,11 +48,16 @@ export default function App() {
   const [sourceGameFilter, setSourceGameFilter] = useState('all')
   const [installFilter, setInstallFilter] = useState('all')
   const [missingDownloadOnly, setMissingDownloadOnly] = useState(false)
+  const [wrestlerViewMode, setWrestlerViewMode] = useState('cards')
+  const [attireViewMode, setAttireViewMode] = useState('gallery')
 
   const [wrestlerModalOpen, setWrestlerModalOpen] = useState(false)
   const [wrestlerForm, setWrestlerForm] = useState(emptyWrestler())
   const [attireModalOpen, setAttireModalOpen] = useState(false)
   const [attireForm, setAttireForm] = useState(emptyAttire())
+  const [collectionModalOpen, setCollectionModalOpen] = useState(false)
+  const [collectionForm, setCollectionForm] = useState(emptyCollection())
+  const [collectionPicker, setCollectionPicker] = useState({ open: false, attire: null })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [newCreatorName, setNewCreatorName] = useState('')
@@ -79,11 +93,52 @@ export default function App() {
     fetchAll()
   }, [session])
 
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get('collection')
+    if (!slug) return
+    const found = collections.find((item) => item.slug === slug)
+    if (found) setSelectedCollection(found)
+  }, [collections])
+
   async function fetchAll() {
     setLoading(true)
     setError('')
 
-    const [wrestlerResult, creatorResult, installsResult] = await Promise.all([
+    const publicCollectionsQuery = supabase
+      .from('collections')
+      .select(`
+        *,
+        collection_items (
+          *,
+          attire:attires (
+            *,
+            wrestler:wrestlers (*),
+            attire_images (*)
+          )
+        )
+      `)
+      .eq('visibility', 'public')
+      .order('updated_at', { ascending: false })
+
+    const ownCollectionsQuery = session?.user?.id
+      ? supabase
+          .from('collections')
+          .select(`
+            *,
+            collection_items (
+              *,
+              attire:attires (
+                *,
+                wrestler:wrestlers (*),
+                attire_images (*)
+              )
+            )
+          `)
+          .eq('owner_id', session.user.id)
+          .order('updated_at', { ascending: false })
+      : Promise.resolve({ data: [], error: null })
+
+    const [wrestlerResult, creatorResult, installsResult, publicCollectionsResult, ownCollectionsResult] = await Promise.all([
       supabase
         .from('wrestlers')
         .select(`
@@ -98,21 +153,18 @@ export default function App() {
       supabase.from('creators').select('*').order('name', { ascending: true }),
       session?.user?.id
         ? supabase.from('user_installed_attires').select('attire_id').eq('user_id', session.user.id)
-        : Promise.resolve({ data: [], error: null })
+        : Promise.resolve({ data: [], error: null }),
+      publicCollectionsQuery,
+      ownCollectionsQuery
     ])
 
-    if (wrestlerResult.error) {
-      setError(wrestlerResult.error.message)
-      setLoading(false)
-      return
-    }
-    if (creatorResult.error) {
-      setError(creatorResult.error.message)
+    if (wrestlerResult.error || creatorResult.error || publicCollectionsResult.error || ownCollectionsResult.error) {
+      setError(wrestlerResult.error?.message || creatorResult.error?.message || publicCollectionsResult.error?.message || ownCollectionsResult.error?.message || 'Failed to load data.')
       setLoading(false)
       return
     }
 
-    const normalized = (wrestlerResult.data || []).map((wrestler) => ({
+    const normalizedWrestlers = (wrestlerResult.data || []).map((wrestler) => ({
       ...wrestler,
       headshot_url: wrestler.headshot_path ? getAssetUrl(wrestler.headshot_path) : (wrestler.headshot_external_url || ''),
       attires: sortAttires((wrestler.attires || []).map((attire) => ({
@@ -127,9 +179,39 @@ export default function App() {
       requests: [...(wrestler.mod_requests || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     }))
 
-    setWrestlers(normalized)
+    const collectionMap = new Map()
+    ;[...(publicCollectionsResult.data || []), ...(ownCollectionsResult.data || [])].forEach((collection) => {
+      const normalizedItems = (collection.collection_items || []).map((item) => ({
+        ...item,
+        attire: item.attire ? {
+          ...item.attire,
+          render_dds_url: item.attire.render_dds_path ? getAssetUrl(item.attire.render_dds_path) : '',
+          attire_images: (item.attire.attire_images || []).map((img) => ({
+            ...img,
+            image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+          })),
+          wrestler: item.attire.wrestler ? {
+            ...item.attire.wrestler,
+            headshot_url: item.attire.wrestler.headshot_path ? getAssetUrl(item.attire.wrestler.headshot_path) : (item.attire.wrestler.headshot_external_url || '')
+          } : null
+        } : null
+      }))
+      collectionMap.set(collection.id, {
+        ...collection,
+        cover_url: collection.cover_path ? getAssetUrl(collection.cover_path) : '',
+        items: normalizedItems
+      })
+    })
+
+    const mergedCollections = [...collectionMap.values()].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+    const slug = new URLSearchParams(window.location.search).get('collection')
+    const collectionFromUrl = slug ? mergedCollections.find((item) => item.slug === slug) : null
+
+    setWrestlers(normalizedWrestlers)
     setCreators(creatorResult.data || [])
-    setSelectedId((current) => current || normalized[0]?.id || null)
+    setCollections(mergedCollections)
+    setSelectedCollection(collectionFromUrl || null)
+    setSelectedId((current) => current || normalizedWrestlers[0]?.id || null)
     setInstalledIds(new Set((installsResult.data || []).map((item) => item.attire_id)))
     setLoading(false)
   }
@@ -174,25 +256,23 @@ export default function App() {
       .filter(Boolean)
   }, [wrestlers, query, showMissingOnly, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, installedIds])
 
+  const myCollections = useMemo(() => session ? collections.filter((item) => item.owner_id === session.user.id) : [], [collections, session])
+  const selectedWrestler = useMemo(() => filteredWrestlers.find((item) => item.id === selectedId) || filteredWrestlers[0] || null, [filteredWrestlers, selectedId])
+  const collectionMemberships = useMemo(() => {
+    if (!collectionPicker.attire || !session) return []
+    return myCollections.filter((collection) => (collection.items || []).some((item) => item.attire_id === collectionPicker.attire.id)).map((item) => item.id)
+  }, [myCollections, collectionPicker, session])
+
   useEffect(() => {
     if (!selectedId && filteredWrestlers[0]) setSelectedId(filteredWrestlers[0].id)
-    if (selectedId && !filteredWrestlers.some((item) => item.id === selectedId)) {
-      setSelectedId(filteredWrestlers[0]?.id || null)
-    }
+    if (selectedId && !filteredWrestlers.some((item) => item.id === selectedId)) setSelectedId(filteredWrestlers[0]?.id || null)
   }, [filteredWrestlers, selectedId])
-
-  const selectedWrestler = useMemo(
-    () => filteredWrestlers.find((item) => item.id === selectedId) || filteredWrestlers[0] || null,
-    [filteredWrestlers, selectedId]
-  )
 
   async function saveWrestler() {
     if (!session) return
     setSaving(true)
-
     try {
       if (!wrestlerForm.wrestler_name.trim()) throw new Error('Wrestler name is required.')
-
       const payload = {
         wrestler_name: wrestlerForm.wrestler_name.trim(),
         target_attire_count: Number(wrestlerForm.target_attire_count) || 0,
@@ -203,7 +283,6 @@ export default function App() {
         headshot_name: wrestlerForm.headshot_name || '',
         headshot_external_url: wrestlerForm.headshot_external_url || ''
       }
-
       if (wrestlerForm.id) {
         const { error } = await supabase.from('wrestlers').update(payload).eq('id', wrestlerForm.id).eq('owner_id', session.user.id)
         if (error) throw error
@@ -214,7 +293,6 @@ export default function App() {
         setSelectedId(data.id)
         openNotice('success', 'Wrestler added', `${wrestlerForm.wrestler_name} was added to the database.`)
       }
-
       setWrestlerModalOpen(false)
       await fetchAll()
     } catch (err) {
@@ -227,10 +305,8 @@ export default function App() {
   async function saveAttire() {
     if (!session || !attireForm.wrestler_id) return
     setSaving(true)
-
     try {
       if (!attireForm.name.trim()) throw new Error('Attire name is required.')
-
       const payload = {
         wrestler_id: attireForm.wrestler_id,
         name: attireForm.name.trim(),
@@ -248,7 +324,6 @@ export default function App() {
       }
 
       let attireId = attireForm.id
-
       if (attireForm.persisted) {
         const { error } = await supabase.from('attires').update(payload).eq('id', attireForm.id).eq('owner_id', session.user.id)
         if (error) throw error
@@ -261,11 +336,7 @@ export default function App() {
       }
 
       if (Array.isArray(attireForm.pendingImageUploads) && attireForm.pendingImageUploads.length) {
-        const inserts = attireForm.pendingImageUploads.map((item) => ({
-          attire_id: attireId,
-          image_path: item.path,
-          image_name: item.name
-        }))
+        const inserts = attireForm.pendingImageUploads.map((item) => ({ attire_id: attireId, image_path: item.path, image_name: item.name }))
         const { error } = await supabase.from('attire_images').insert(inserts)
         if (error) throw error
       }
@@ -279,6 +350,40 @@ export default function App() {
     }
   }
 
+  async function saveCollection() {
+    if (!session) return
+    setSaving(true)
+    try {
+      const cleanName = collectionForm.name.trim()
+      if (!cleanName) throw new Error('Collection name is required.')
+      const cleanSlug = slugify(collectionForm.slug || cleanName)
+      if (!cleanSlug) throw new Error('Please enter a valid slug using letters and numbers.')
+      const payload = {
+        name: cleanName,
+        slug: cleanSlug,
+        description: collectionForm.description.trim(),
+        visibility: collectionForm.visibility === 'private' ? 'private' : 'public',
+        cover_path: collectionForm.cover_path || '',
+        cover_name: collectionForm.cover_name || ''
+      }
+      if (collectionForm.id) {
+        const { error } = await supabase.from('collections').update(payload).eq('id', collectionForm.id).eq('owner_id', session.user.id)
+        if (error) throw error
+        openNotice('success', 'Collection updated', `${cleanName} was updated.`)
+      } else {
+        const { error } = await supabase.from('collections').insert(payload)
+        if (error) throw error
+        openNotice('success', 'Collection created', `${cleanName} is ready.`)
+      }
+      setCollectionModalOpen(false)
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not save collection', err.message || 'Failed to save collection.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function handleWrestlerHeadshotUpload(file) {
     if (!file || !session) return
     try {
@@ -286,16 +391,7 @@ export default function App() {
       if (!file.type.startsWith('image/')) throw new Error('Headshot must be an image file.')
       const entityId = wrestlerForm.id || crypto.randomUUID()
       const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file, kind: 'headshot', folder: 'wrestlers' })
-      setWrestlerForm((current) => ({
-        ...current,
-        id: current.id || entityId,
-        headshot_path: path,
-        headshot_name: fileName,
-        headshot_url: getAssetUrl(path),
-        headshot_external_url: '',
-        auto_match_urls: [],
-        auto_match_titles: []
-      }))
+      setWrestlerForm((current) => ({ ...current, id: current.id || entityId, headshot_path: path, headshot_name: fileName, headshot_url: getAssetUrl(path), headshot_external_url: '', auto_match_urls: [], auto_match_titles: [] }))
       openNotice('success', 'Headshot uploaded', `${file.name} was uploaded successfully.`)
     } catch (err) {
       openNotice('error', 'Headshot upload failed', err.message || 'Headshot upload failed.')
@@ -304,23 +400,27 @@ export default function App() {
     }
   }
 
+  async function handleCollectionCoverUpload(file) {
+    if (!file || !session) return
+    try {
+      setUploading(true)
+      if (!file.type.startsWith('image/')) throw new Error('Cover must be an image file.')
+      const entityId = collectionForm.id || crypto.randomUUID()
+      const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file, kind: 'cover', folder: 'collections' })
+      setCollectionForm((current) => ({ ...current, id: current.id || entityId, cover_path: path, cover_name: fileName, cover_url: getAssetUrl(path) }))
+      openNotice('success', 'Cover uploaded', `${file.name} was uploaded successfully.`)
+    } catch (err) {
+      openNotice('error', 'Cover upload failed', err.message || 'Cover upload failed.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   async function handleAutoMatchHeadshot() {
     try {
       setUploading(true)
-      const { imageUrl, sourceTitle } = await tryAutoMatchHeadshot(
-        wrestlerForm.wrestler_name,
-        wrestlerForm.auto_match_titles || [],
-        wrestlerForm.auto_match_urls || []
-      )
-      setWrestlerForm((current) => ({
-        ...current,
-        headshot_path: '',
-        headshot_name: `Auto-matched image: ${sourceTitle}`,
-        headshot_url: imageUrl,
-        headshot_external_url: imageUrl,
-        auto_match_titles: [...(current.auto_match_titles || []), sourceTitle],
-        auto_match_urls: [...(current.auto_match_urls || []), imageUrl]
-      }))
+      const { imageUrl, sourceTitle } = await tryAutoMatchHeadshot(wrestlerForm.wrestler_name, wrestlerForm.auto_match_titles || [], wrestlerForm.auto_match_urls || [])
+      setWrestlerForm((current) => ({ ...current, headshot_path: '', headshot_name: `Auto-matched image: ${sourceTitle}`, headshot_url: imageUrl, headshot_external_url: imageUrl, auto_match_titles: [...(current.auto_match_titles || []), sourceTitle], auto_match_urls: [...(current.auto_match_urls || []), imageUrl] }))
       openNotice('success', 'Headshot matched', `Found a public headshot from ${sourceTitle}. Press Try auto-match again for another option.`)
     } catch (err) {
       openNotice('info', 'No alternative image found', err.message || 'Could not auto-match a different headshot.')
@@ -338,9 +438,17 @@ export default function App() {
     }
   }
 
+  async function removeCollectionCover() {
+    try {
+      if (collectionForm.cover_path) await removeAssets([collectionForm.cover_path])
+      setCollectionForm((current) => ({ ...current, cover_path: '', cover_url: '', cover_name: '' }))
+    } catch (err) {
+      openNotice('error', 'Could not remove cover', err.message || 'Could not remove cover.')
+    }
+  }
+
   async function handleAssetUpload(filesOrFile, kind) {
     if (!filesOrFile || !session) return
-
     try {
       setUploading(true)
       if (kind === 'render') {
@@ -348,16 +456,9 @@ export default function App() {
         if (!file.name.toLowerCase().endsWith('.dds')) throw new Error('Render must be a .dds file.')
         const entityId = attireForm.id || crypto.randomUUID()
         const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file, kind: 'render', folder: 'attires' })
-        setAttireForm((current) => ({
-          ...current,
-          id: current.id || entityId,
-          render_dds_path: path,
-          render_dds_name: fileName,
-          render_dds_url: getAssetUrl(path)
-        }))
+        setAttireForm((current) => ({ ...current, id: current.id || entityId, render_dds_path: path, render_dds_name: fileName, render_dds_url: getAssetUrl(path) }))
         openNotice('success', 'DDS uploaded', `${file.name} was uploaded successfully.`)
       }
-
       if (kind === 'image') {
         const files = filesOrFile
         const entityId = attireForm.id || crypto.randomUUID()
@@ -367,12 +468,7 @@ export default function App() {
           const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file, kind: 'image', folder: 'attires' })
           uploaded.push({ path, name: fileName, url: getAssetUrl(path) })
         }
-        setAttireForm((current) => ({
-          ...current,
-          id: current.id || entityId,
-          images: [...current.images, ...uploaded],
-          pendingImageUploads: [...(current.pendingImageUploads || []), ...uploaded]
-        }))
+        setAttireForm((current) => ({ ...current, id: current.id || entityId, images: [...current.images, ...uploaded], pendingImageUploads: [...(current.pendingImageUploads || []), ...uploaded] }))
         openNotice('success', 'Screenshots uploaded', `${uploaded.length} screenshot${uploaded.length === 1 ? '' : 's'} uploaded successfully.`)
       }
     } catch (err) {
@@ -385,18 +481,10 @@ export default function App() {
   async function removeAttireAsset(kind, path) {
     try {
       if (path) await removeAssets([path])
-      if (kind === 'render') {
-        setAttireForm((current) => ({ ...current, render_dds_path: '', render_dds_name: '', render_dds_url: '' }))
-      }
+      if (kind === 'render') setAttireForm((current) => ({ ...current, render_dds_path: '', render_dds_name: '', render_dds_url: '' }))
       if (kind === 'image') {
-        setAttireForm((current) => ({
-          ...current,
-          images: current.images.filter((img) => img.path !== path),
-          pendingImageUploads: (current.pendingImageUploads || []).filter((img) => img.path !== path)
-        }))
-        if (attireForm.persisted) {
-          await supabase.from('attire_images').delete().eq('attire_id', attireForm.id).eq('image_path', path)
-        }
+        setAttireForm((current) => ({ ...current, images: current.images.filter((img) => img.path !== path), pendingImageUploads: (current.pendingImageUploads || []).filter((img) => img.path !== path) }))
+        if (attireForm.persisted) await supabase.from('attire_images').delete().eq('attire_id', attireForm.id).eq('image_path', path)
       }
       openNotice('success', 'Asset removed', 'The selected asset was removed.')
     } catch (err) {
@@ -461,22 +549,14 @@ export default function App() {
 
   function createRequest(wrestlerId, attireId, requestType, wrestlerName, attireName) {
     if (!session) return
-    setRequestModal({
-      open: true,
-      context: { wrestlerId, attireId, requestType, wrestlerName, attireName }
-    })
+    setRequestModal({ open: true, context: { wrestlerId, attireId, requestType, wrestlerName, attireName } })
   }
 
   async function submitRequest(notes) {
     if (!session || !requestModal.context) return
     setRequestSubmitting(true)
     try {
-      const { error } = await supabase.from('mod_requests').insert({
-        wrestler_id: requestModal.context.wrestlerId,
-        attire_id: requestModal.context.attireId,
-        request_type: requestModal.context.requestType,
-        notes: (notes || '').trim()
-      })
+      const { error } = await supabase.from('mod_requests').insert({ wrestler_id: requestModal.context.wrestlerId, attire_id: requestModal.context.attireId, request_type: requestModal.context.requestType, notes: (notes || '').trim() })
       if (error) throw error
       setRequestModal({ open: false, context: null })
       openNotice('success', 'Request submitted', 'Your request was added successfully.')
@@ -508,10 +588,66 @@ export default function App() {
     setAttireModalOpen(true)
   }
 
+  function openCreateCollection() {
+    setCollectionForm(emptyCollection())
+    setCollectionModalOpen(true)
+  }
+
+  function openEditCollection(collection) {
+    setCollectionForm(normalizeCollectionForEditor(collection))
+    setCollectionModalOpen(true)
+  }
+
+  function openCollection(collection) {
+    setSelectedCollection(collection)
+    const next = `${window.location.pathname}?collection=${encodeURIComponent(collection.slug)}`
+    window.history.replaceState({}, '', next)
+  }
+
+  function closeCollectionView() {
+    setSelectedCollection(null)
+    window.history.replaceState({}, '', window.location.pathname)
+  }
+
+  async function shareCollection(collection) {
+    const url = `${window.location.origin}${window.location.pathname}?collection=${collection.slug}`
+    try {
+      await navigator.clipboard.writeText(url)
+      openNotice('success', 'Share link copied', 'The public collection link was copied to your clipboard.')
+    } catch {
+      openNotice('info', 'Collection link', url)
+    }
+  }
+
+  function openCollectionPicker(attire) {
+    if (!session) return
+    setCollectionPicker({ open: true, attire })
+  }
+
+  async function toggleCollectionMembership(collection, isIn) {
+    if (!session || !collectionPicker.attire) return
+    setSaving(true)
+    try {
+      if (isIn) {
+        const { error } = await supabase.from('collection_items').delete().eq('collection_id', collection.id).eq('attire_id', collectionPicker.attire.id)
+        if (error) throw error
+        openNotice('success', 'Removed from collection', `${collectionPicker.attire.name} was removed from ${collection.name}.`)
+      } else {
+        const { error } = await supabase.from('collection_items').insert({ collection_id: collection.id, attire_id: collectionPicker.attire.id })
+        if (error) throw error
+        openNotice('success', 'Added to collection', `${collectionPicker.attire.name} was added to ${collection.name}.`)
+      }
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not update collection', err.message || 'Could not update collection.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function deleteAttire(attire) {
     if (!session || session.user.id !== attire.owner_id) return
     if (!window.confirm(`Delete ${attire.name}?`)) return
-
     try {
       const paths = [attire.render_dds_path, ...(attire.attire_images || []).map((img) => img.image_path)]
       await removeAssets(paths)
@@ -527,7 +663,6 @@ export default function App() {
   async function deleteWrestler(wrestler) {
     if (!session || session.user.id !== wrestler.owner_id) return
     if (!window.confirm(`Delete ${wrestler.wrestler_name} and all attire mods?`)) return
-
     try {
       const assetPaths = [wrestler.headshot_path]
       for (const attire of wrestler.attires || []) {
@@ -544,12 +679,27 @@ export default function App() {
     }
   }
 
-  const stats = computeStats(wrestlers)
+  async function deleteCollection(collection) {
+    if (!session || session.user.id !== collection.owner_id) return
+    if (!window.confirm(`Delete collection ${collection.name}?`)) return
+    try {
+      if (collection.cover_path) await removeAssets([collection.cover_path])
+      const { error } = await supabase.from('collections').delete().eq('id', collection.id).eq('owner_id', session.user.id)
+      if (error) throw error
+      if (selectedCollection?.id === collection.id) closeCollectionView()
+      openNotice('success', 'Collection deleted', `${collection.name} was deleted.`)
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not delete collection', err.message || 'Could not delete collection.')
+    }
+  }
+
+  const stats = computeStats(wrestlers, collections)
 
   if (!isSupabaseConfigured) {
     return (
       <div className="app-shell">
-        <Header onAddWrestler={() => {}} session={null} />
+        <Header onAddWrestler={() => {}} session={null} onOpenCollectionManager={() => {}} activeCollection={null} />
         <div className="message error">Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY before running the app.</div>
       </div>
     )
@@ -557,57 +707,78 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header onAddWrestler={openAddWrestler} session={session} />
+      <Header onAddWrestler={openAddWrestler} session={session} onOpenCollectionManager={openCreateCollection} activeCollection={selectedCollection} />
       <AuthPanel session={session} />
       <StatsGrid stats={stats} />
       {error ? <div className="message error">{error}</div> : null}
 
-      <div className="layout-grid">
-        <div className="left-column">
-          <Filters
-            query={query}
-            setQuery={setQuery}
-            showMissingOnly={showMissingOnly}
-            setShowMissingOnly={setShowMissingOnly}
-            creatorFilter={creatorFilter}
-            setCreatorFilter={setCreatorFilter}
-            creators={creators}
-            sourceGameFilter={sourceGameFilter}
-            setSourceGameFilter={setSourceGameFilter}
-            sourceGames={SOURCE_GAMES}
-            installFilter={installFilter}
-            setInstallFilter={setInstallFilter}
-            missingDownloadOnly={missingDownloadOnly}
-            setMissingDownloadOnly={setMissingDownloadOnly}
-            session={session}
-            newCreatorName={newCreatorName}
-            setNewCreatorName={setNewCreatorName}
-            onAddCreator={addCreator}
-            addingCreator={addingCreator}
-          />
+      {selectedCollection ? (
+        <CollectionView collection={selectedCollection} onClose={closeCollectionView} onSelectWrestler={(id) => { closeCollectionView(); setSelectedId(id) }} />
+      ) : (
+        <>
+          <div className="layout-grid">
+            <div className="left-column">
+              <Filters
+                query={query}
+                setQuery={setQuery}
+                showMissingOnly={showMissingOnly}
+                setShowMissingOnly={setShowMissingOnly}
+                creatorFilter={creatorFilter}
+                setCreatorFilter={setCreatorFilter}
+                creators={creators}
+                sourceGameFilter={sourceGameFilter}
+                setSourceGameFilter={setSourceGameFilter}
+                sourceGames={SOURCE_GAMES}
+                installFilter={installFilter}
+                setInstallFilter={setInstallFilter}
+                missingDownloadOnly={missingDownloadOnly}
+                setMissingDownloadOnly={setMissingDownloadOnly}
+                session={session}
+                newCreatorName={newCreatorName}
+                setNewCreatorName={setNewCreatorName}
+                onAddCreator={addCreator}
+                addingCreator={addingCreator}
+              />
 
-          <WrestlerList
-            wrestlers={filteredWrestlers}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onEdit={openEditWrestler}
-            onDelete={deleteWrestler}
-            session={session}
-          />
-        </div>
+              <WrestlerList
+                wrestlers={filteredWrestlers}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onEdit={openEditWrestler}
+                onDelete={deleteWrestler}
+                session={session}
+                viewMode={wrestlerViewMode}
+                setViewMode={setWrestlerViewMode}
+              />
+            </div>
 
-        <DetailPanel
-          wrestler={selectedWrestler}
-          session={session}
-          installedIds={installedIds}
-          onAddAttire={openAddAttire}
-          onEditWrestler={openEditWrestler}
-          onEditAttire={openEditAttire}
-          onDeleteAttire={deleteAttire}
-          onToggleInstalled={toggleInstalled}
-          onCreateRequest={createRequest}
-        />
-      </div>
+            <DetailPanel
+              wrestler={selectedWrestler}
+              session={session}
+              installedIds={installedIds}
+              onAddAttire={openAddAttire}
+              onEditWrestler={openEditWrestler}
+              onEditAttire={openEditAttire}
+              onDeleteAttire={deleteAttire}
+              onToggleInstalled={toggleInstalled}
+              onCreateRequest={createRequest}
+              attireViewMode={attireViewMode}
+              setAttireViewMode={setAttireViewMode}
+              onOpenCollectionPicker={openCollectionPicker}
+            />
+          </div>
+
+          <ProfileCollections
+            session={session}
+            collections={myCollections}
+            onCreate={openCreateCollection}
+            onEdit={openEditCollection}
+            onDelete={deleteCollection}
+            onOpen={openCollection}
+            onShare={shareCollection}
+          />
+        </>
+      )}
 
       <WrestlerEditorModal
         open={wrestlerModalOpen}
@@ -640,6 +811,28 @@ export default function App() {
         addingCreator={addingCreator}
       />
 
+      <CollectionModal
+        open={collectionModalOpen}
+        form={collectionForm}
+        setForm={setCollectionForm}
+        onClose={() => setCollectionModalOpen(false)}
+        onSave={saveCollection}
+        onUploadCover={handleCollectionCoverUpload}
+        onRemoveCover={removeCollectionCover}
+        saving={saving}
+        uploading={uploading}
+      />
+
+      <CollectionPickerModal
+        open={collectionPicker.open}
+        attire={collectionPicker.attire}
+        collections={myCollections}
+        memberships={collectionMemberships}
+        onClose={() => setCollectionPicker({ open: false, attire: null })}
+        onToggle={toggleCollectionMembership}
+        saving={saving}
+      />
+
       <RequestModal
         open={requestModal.open}
         context={requestModal.context}
@@ -649,7 +842,6 @@ export default function App() {
       />
 
       <ModalNotice notice={notice} onClose={() => setNotice(null)} />
-
       {loading ? <div className="loading-overlay">Loading database…</div> : null}
     </div>
   )

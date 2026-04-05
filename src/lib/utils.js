@@ -7,10 +7,19 @@ export function uid() {
   return crypto.randomUUID()
 }
 
+export function slugify(value = '') {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+}
+
 export function titleCase(value = '') {
   return value
     .replace(/_/g, ' ')
-    .replace(/\b\w/g, (m) => m.toUpperCase())
+    .replace(/\w/g, (m) => m.toUpperCase())
 }
 
 export function emptyWrestler() {
@@ -50,6 +59,19 @@ export function emptyAttire(wrestlerId = null) {
     pendingImageUploads: [],
     moveset_json_text: '',
     profile_json_text: ''
+  }
+}
+
+export function emptyCollection() {
+  return {
+    id: null,
+    name: '',
+    slug: '',
+    description: '',
+    visibility: 'public',
+    cover_path: '',
+    cover_url: '',
+    cover_name: ''
   }
 }
 
@@ -98,6 +120,19 @@ export function normalizeAttireForEditor(attire) {
   }
 }
 
+export function normalizeCollectionForEditor(collection) {
+  return {
+    id: collection.id,
+    name: collection.name || '',
+    slug: collection.slug || '',
+    description: collection.description || '',
+    visibility: collection.visibility || 'public',
+    cover_path: collection.cover_path || '',
+    cover_url: collection.cover_url || '',
+    cover_name: collection.cover_name || ''
+  }
+}
+
 export function parseTags(text) {
   return text.split(',').map(item => item.trim()).filter(Boolean)
 }
@@ -115,7 +150,7 @@ export function formatDate(value) {
 
 export function parseAppearanceDate(name = '') {
   const normalized = name.toLowerCase()
-  const yearMatch = normalized.match(/\b(19[6-9]\d|20[0-4]\d)\b/)
+  const yearMatch = normalized.match(/(19[6-9]\d|20[0-4]\d)/)
   const year = yearMatch ? Number(yearMatch[1]) : null
   const months = {
     january: 1, jan: 1, february: 2, feb: 2, march: 3, mar: 3, april: 4, apr: 4,
@@ -148,18 +183,26 @@ export function sortAttires(attires = []) {
   })
 }
 
-export function computeStats(wrestlers) {
+export function computeStats(wrestlers, collections = []) {
   const attireCount = wrestlers.reduce((sum, wrestler) => sum + (wrestler.attires?.length || 0), 0)
   const requestCount = wrestlers.reduce((sum, wrestler) => sum + (wrestler.requests?.length || 0), 0)
   const missingTargets = wrestlers.filter(item => item.is_missing_target).length
   const gapCount = wrestlers.reduce((sum, item) => sum + Math.max(0, (item.target_attire_count || 0) - (item.attires?.length || 0)), 0)
-  const missingDownloads = wrestlers.reduce((sum, wrestler) => sum + (wrestler.attires || []).filter((attire) => !attire.download_url?.trim()).length, 0)
-  return { wrestlers: wrestlers.length, attires: attireCount, requests: requestCount, missingTargets, gapCount, missingDownloads }
+  return {
+    wrestlerCount: wrestlers.length,
+    attireCount,
+    requestCount,
+    missingTargets,
+    gapCount,
+    collectionCount: collections.length
+  }
 }
 
 export function requestSummary(requests = [], attireId) {
-  const relevant = requests.filter(item => item.attire_id === attireId && item.status === 'open')
-  const deadLinks = relevant.filter(item => item.request_type === 'dead_link').length
-  const missingLinks = relevant.filter(item => item.request_type === 'missing_link').length
-  return { total: relevant.length, deadLinks, missingLinks }
+  const relevant = requests.filter((item) => item.attire_id === attireId && item.status === 'open')
+  return {
+    total: relevant.length,
+    missingLinks: relevant.filter((item) => item.request_type === 'missing_link').length,
+    deadLinks: relevant.filter((item) => item.request_type === 'dead_link').length
+  }
 }

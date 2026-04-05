@@ -40,6 +40,51 @@ function DdsDisplay({ url, name }) {
   )
 }
 
+function Toggle({ value, onChange, options }) {
+  return (
+    <div className="view-toggle">
+      {options.map((opt) => (
+        <button key={opt.value} type="button" className={value === opt.value ? 'active' : ''} onClick={() => onChange(opt.value)}>
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function CompactRow({ attire, wrestler, session, installed, requestInfo, onToggleInstalled, onEditAttire, onDeleteAttire, onCreateRequest, onOpenCollectionPicker }) {
+  return (
+    <div className="compact-attire-row">
+      <div className="compact-main">
+        <div className="compact-title-row">
+          <strong>{attire.name}</strong>
+          <span className={statusClass(attire.status)}>{titleCase(attire.status)}</span>
+        </div>
+        <div className="compact-meta-line">
+          <span>{attire.source_game}</span>
+          <span>{titleCase(attire.mod_type)}</span>
+          <span>{attire.era || 'No era given'}</span>
+          {attire.creator_name ? <span className="creator-badge small-creator-badge">{attire.creator_name}</span> : null}
+        </div>
+      </div>
+      <div className="compact-side">
+        <div className="compact-link-wrap">{attire.download_url ? <a href={attire.download_url} target="_blank" rel="noreferrer">Download</a> : <span className="muted-text">Missing link</span>}</div>
+        <div className="compact-actions-row">
+          <button className={installed ? 'primary-button small-btn' : 'secondary-button small-btn'} disabled={!session} onClick={() => onToggleInstalled(attire, installed)}>
+            {installed ? 'Installed' : 'Install'}
+          </button>
+          <button className="ghost-button small-btn" disabled={!session} onClick={() => onOpenCollectionPicker(attire)}>Collection</button>
+          <button className="ghost-button small-btn" disabled={!session || session.user.id !== attire.owner_id} onClick={() => onEditAttire(attire)}>Edit</button>
+          <button className="ghost-button small-btn" disabled={!session || session.user.id !== attire.owner_id} onClick={() => onDeleteAttire(attire)}>Delete</button>
+          <button className="ghost-button small-btn" disabled={!session} onClick={() => onCreateRequest(wrestler.id, attire.id, attire.download_url ? 'dead_link' : 'missing_link', wrestler.wrestler_name, attire.name)}>
+            {requestInfo.deadLinks || attire.download_url ? 'Dead link' : 'Request link'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function DetailPanel({
   wrestler,
   session,
@@ -49,7 +94,10 @@ export default function DetailPanel({
   onEditAttire,
   onDeleteAttire,
   onToggleInstalled,
-  onCreateRequest
+  onCreateRequest,
+  attireViewMode,
+  setAttireViewMode,
+  onOpenCollectionPicker
 }) {
   if (!wrestler) {
     return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
@@ -68,7 +116,7 @@ export default function DetailPanel({
               <h2>{wrestler.wrestler_name}</h2>
               <p className="hero-copy compact-copy">
                 Browse public attire mods for this wrestler, sorted by era or appearance date when the attire name includes one.
-                Users can add mods, screenshots, renders, JSON profiles, requests, and install markers.
+                Users can add mods, screenshots, renders, JSON profiles, requests, install markers, and save attires into collections.
               </p>
             </div>
           </div>
@@ -93,93 +141,128 @@ export default function DetailPanel({
         <div className="panel-header with-actions">
           <div>
             <h2>Attire mods</h2>
-            <p className="subtle-copy">Creator, download, screenshots, DDS render, and JSON profiles all live on each attire.</p>
+            <p className="subtle-copy">Switch between a rich gallery view and a compact database-style list.</p>
           </div>
+          <Toggle
+            value={attireViewMode}
+            onChange={setAttireViewMode}
+            options={[
+              { value: 'gallery', label: 'Gallery' },
+              { value: 'compact', label: 'Compact' }
+            ]}
+          />
         </div>
 
-        <div className="attire-grid single-attire-grid">
-          {(wrestler.attires || []).length === 0 ? (
-            <div className="empty-state small-empty">No attire mods added yet.</div>
-          ) : (wrestler.attires || []).map((attire) => {
-            const installed = installedIds.has(attire.id)
-            const requestInfo = requestSummary(wrestler.requests || [], attire.id)
-            const screenshots = attire.attire_images || []
-            return (
-              <article className="attire-card improved-attire-card elevated-card" key={attire.id}>
-                <div className="attire-card-top">
-                  <div className="attire-title-stack">
-                    <h3>{attire.name}</h3>
-                    {attire.creator_name ? (
-                      <div className="creator-highlight-row">
-                        <span className="creator-label">Mod creator</span>
-                        <span className="creator-badge prominent-creator-badge">{attire.creator_name}</span>
+        {attireViewMode === 'compact' ? (
+          <div className="compact-attire-table">
+            {(wrestler.attires || []).length === 0 ? (
+              <div className="empty-state small-empty">No attire mods added yet.</div>
+            ) : (wrestler.attires || []).map((attire) => {
+              const installed = installedIds.has(attire.id)
+              const requestInfo = requestSummary(wrestler.requests || [], attire.id)
+              return (
+                <CompactRow
+                  key={attire.id}
+                  attire={attire}
+                  wrestler={wrestler}
+                  session={session}
+                  installed={installed}
+                  requestInfo={requestInfo}
+                  onToggleInstalled={onToggleInstalled}
+                  onEditAttire={onEditAttire}
+                  onDeleteAttire={onDeleteAttire}
+                  onCreateRequest={onCreateRequest}
+                  onOpenCollectionPicker={onOpenCollectionPicker}
+                />
+              )
+            })}
+          </div>
+        ) : (
+          <div className="attire-grid single-attire-grid">
+            {(wrestler.attires || []).length === 0 ? (
+              <div className="empty-state small-empty">No attire mods added yet.</div>
+            ) : (wrestler.attires || []).map((attire) => {
+              const installed = installedIds.has(attire.id)
+              const requestInfo = requestSummary(wrestler.requests || [], attire.id)
+              const screenshots = attire.attire_images || []
+              return (
+                <article className="attire-card improved-attire-card elevated-card" key={attire.id}>
+                  <div className="attire-card-top">
+                    <div className="attire-title-stack">
+                      <h3>{attire.name}</h3>
+                      {attire.creator_name ? (
+                        <div className="creator-highlight-row">
+                          <span className="creator-label">Mod creator</span>
+                          <span className="creator-badge prominent-creator-badge">{attire.creator_name}</span>
+                        </div>
+                      ) : null}
+                      <div className="list-meta wrap-meta">
+                        <span>{attire.era || 'No era given'}</span>
+                        <span>{attire.source_game}</span>
+                        <span>{titleCase(attire.mod_type)}</span>
                       </div>
-                    ) : null}
-                    <div className="list-meta wrap-meta">
-                      <span>{attire.era || 'No era given'}</span>
-                      <span>{attire.source_game}</span>
-                      <span>{titleCase(attire.mod_type)}</span>
+                    </div>
+                    <span className={statusClass(attire.status)}>{titleCase(attire.status)}</span>
+                  </div>
+
+                  <div className="attire-visuals single-column-visuals">
+                    <div className="visual-block">
+                      <div className="visual-label">Screenshots</div>
+                      <div className="gallery-grid detail-gallery-grid">
+                        {screenshots.length ? screenshots.map((image) => (
+                          <a key={image.id} href={image.image_url} target="_blank" rel="noreferrer" className="gallery-tile">
+                            <img className="gallery-img" src={image.image_url} alt={image.image_name || attire.name} />
+                          </a>
+                        )) : <div className="visual-placeholder">No screenshots uploaded</div>}
+                      </div>
+                    </div>
+
+                    <div className="visual-block">
+                      <div className="visual-label">DDS render</div>
+                      <DdsDisplay url={attire.render_dds_url} name={attire.render_dds_name} />
                     </div>
                   </div>
-                  <span className={statusClass(attire.status)}>{titleCase(attire.status)}</span>
-                </div>
 
-                <div className="attire-visuals single-column-visuals">
-                  <div className="visual-block">
-                    <div className="visual-label">Screenshots</div>
-                    <div className="gallery-grid detail-gallery-grid">
-                      {screenshots.length ? screenshots.map((image) => (
-                        <a key={image.id} href={image.image_url} target="_blank" rel="noreferrer" className="gallery-tile">
-                          <img className="gallery-img" src={image.image_url} alt={image.image_name || attire.name} />
-                        </a>
-                      )) : <div className="visual-placeholder">No screenshots uploaded</div>}
+                  <div className="split-meta">
+                    <div>
+                      <span className="muted-text">Download</span>
+                      <div className="meta-value break-line">{attire.download_url ? <a href={attire.download_url} target="_blank" rel="noreferrer">Open link</a> : 'Missing link'}</div>
+                    </div>
+                    <div>
+                      <span className="muted-text">Added</span>
+                      <div className="meta-value break-line">{formatDate(attire.created_at)}</div>
                     </div>
                   </div>
 
-                  <div className="visual-block">
-                    <div className="visual-label">DDS render</div>
-                    <DdsDisplay url={attire.render_dds_url} name={attire.render_dds_name} />
+                  {attire.notes ? <div className="note-box compact-note">{attire.notes}</div> : null}
+
+                  <div className="json-grid attire-json-grid">
+                    <JsonBrowser title="Moveset / animations" value={attire.moveset_json} />
+                    <JsonBrowser title="Hype / DC profile" value={attire.profile_json} />
                   </div>
-                </div>
 
-                <div className="split-meta">
-                  <div>
-                    <span className="muted-text">Download</span>
-                    <div className="meta-value break-line">{attire.download_url ? <a href={attire.download_url} target="_blank" rel="noreferrer">Open link</a> : 'Missing link'}</div>
+                  <div className="request-summary-row">
+                    <span className="pill">{requestInfo.total} open requests</span>
+                    {requestInfo.missingLinks ? <span className="pill">{requestInfo.missingLinks} missing link</span> : null}
+                    {requestInfo.deadLinks ? <span className="pill danger-pill">{requestInfo.deadLinks} dead link</span> : null}
                   </div>
-                  <div>
-                    <span className="muted-text">Added</span>
-                    <div className="meta-value break-line">{formatDate(attire.created_at)}</div>
+
+                  <div className="attire-actions wrap-actions">
+                    <button className={installed ? 'primary-button small-btn' : 'secondary-button small-btn'} disabled={!session} onClick={() => onToggleInstalled(attire, installed)}>
+                      {installed ? 'Installed in my game' : 'Mark installed'}
+                    </button>
+                    <button className="ghost-button small-btn" disabled={!session} onClick={() => onOpenCollectionPicker(attire)}>Save to collection</button>
+                    <button className="ghost-button small-btn" disabled={!session || session.user.id !== attire.owner_id} onClick={() => onEditAttire(attire)}>Edit</button>
+                    <button className="ghost-button small-btn" disabled={!session || session.user.id !== attire.owner_id} onClick={() => onDeleteAttire(attire)}>Delete</button>
+                    <button className="ghost-button small-btn" disabled={!session} onClick={() => onCreateRequest(wrestler.id, attire.id, attire.download_url ? 'dead_link' : 'missing_link', wrestler.wrestler_name, attire.name)}>
+                      {attire.download_url ? 'Report dead link' : 'Request link'}
+                    </button>
                   </div>
-                </div>
-
-                {attire.notes ? <div className="note-box compact-note">{attire.notes}</div> : null}
-
-                <div className="json-grid attire-json-grid">
-                  <JsonBrowser title="Moveset / animations" value={attire.moveset_json} />
-                  <JsonBrowser title="Hype / DC profile" value={attire.profile_json} />
-                </div>
-
-                <div className="request-summary-row">
-                  <span className="pill">{requestInfo.total} open requests</span>
-                  {requestInfo.missingLinks ? <span className="pill">{requestInfo.missingLinks} missing link</span> : null}
-                  {requestInfo.deadLinks ? <span className="pill danger-pill">{requestInfo.deadLinks} dead link</span> : null}
-                </div>
-
-                <div className="attire-actions wrap-actions">
-                  <button className={installed ? 'primary-button small-btn' : 'secondary-button small-btn'} disabled={!session} onClick={() => onToggleInstalled(attire, installed)}>
-                    {installed ? 'Installed in my game' : 'Mark installed'}
-                  </button>
-                  <button className="ghost-button small-btn" disabled={!session || session.user.id !== attire.owner_id} onClick={() => onEditAttire(attire)}>Edit</button>
-                  <button className="ghost-button small-btn" disabled={!session || session.user.id !== attire.owner_id} onClick={() => onDeleteAttire(attire)}>Delete</button>
-                  <button className="ghost-button small-btn" disabled={!session} onClick={() => onCreateRequest(wrestler.id, attire.id, attire.download_url ? 'dead_link' : 'missing_link', wrestler.wrestler_name, attire.name)}>
-                    {attire.download_url ? 'Report dead link' : 'Request link'}
-                  </button>
-                </div>
-              </article>
-            )
-          })}
-        </div>
+                </article>
+              )
+            })}
+          </div>
+        )}
       </section>
     </div>
   )
