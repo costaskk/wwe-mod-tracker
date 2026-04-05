@@ -17,14 +17,14 @@ export default function ResolveLinkModal({ open, context, onClose, onSubmit, sub
     <div className="modal-backdrop modal-backdrop-front">
       <div className="panel modal-card request-modal">
         <div className="modal-header">
-          <h2>Fix and resolve link issue</h2>
+          <h2>Fix link</h2>
           <p className="subtle-copy">
             {context.wrestlerName} · {context.attireName}
           </p>
         </div>
 
         <label>
-          Replacement / corrected download URL
+          Correct download URL
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
@@ -33,7 +33,7 @@ export default function ResolveLinkModal({ open, context, onClose, onSubmit, sub
         </label>
 
         <label>
-          Resolution notes
+          Notes
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

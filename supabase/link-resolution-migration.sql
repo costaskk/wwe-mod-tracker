@@ -1,6 +1,7 @@
 
--- Non-destructive migration for community link fixing
--- Run this in Supabase SQL Editor on your existing project.
+-- Run this in Supabase SQL Editor on your existing database.
+-- It keeps your data and only broadens update permissions so authenticated users
+-- can fix download URLs and resolve link requests from the app.
 
 drop policy if exists "Owners can update attires" on public.attires;
 create policy "Authenticated can update attires" on public.attires

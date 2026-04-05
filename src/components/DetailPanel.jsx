@@ -52,7 +52,7 @@ function Toggle({ value, onChange, options }) {
   )
 }
 
-function CompactRow({ attire, wrestler, session, installed, requestInfo, onToggleInstalled, onEditAttire, onDeleteAttire, onCreateRequest, onOpenCollectionPicker }) {
+function CompactRow({ attire, wrestler, session, installed, requestInfo, onToggleInstalled, onEditAttire, onDeleteAttire, onCreateRequest, onResolveLink, onOpenCollectionPicker }) {
   return (
     <div className="compact-attire-row">
       <div className="compact-main">
@@ -79,6 +79,11 @@ function CompactRow({ attire, wrestler, session, installed, requestInfo, onToggl
           <button className="ghost-button small-btn" disabled={!session} onClick={() => onCreateRequest(wrestler.id, attire.id, attire.download_url ? 'dead_link' : 'missing_link', wrestler.wrestler_name, attire.name)}>
             {requestInfo.deadLinks || attire.download_url ? 'Dead link' : 'Request link'}
           </button>
+          {(requestInfo.deadLinks > 0 || !attire.download_url?.trim()) ? (
+            <button className="secondary-button small-btn" disabled={!session} onClick={() => onResolveLink(wrestler, attire, requestInfo.deadLinks > 0 ? 'dead_link' : 'missing_link')}>
+              Fix link
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
@@ -95,6 +100,7 @@ export default function DetailPanel({
   onDeleteAttire,
   onToggleInstalled,
   onCreateRequest,
+  onResolveLink,
   attireViewMode,
   setAttireViewMode,
   onOpenCollectionPicker
@@ -127,9 +133,7 @@ export default function DetailPanel({
         </div>
 
         <div className="mini-stats mini-stats-three">
-          <div><span>Attire mods</span><strong>{wrestler.attires?.length || 0}</strong></div>
-          <div><span>Target count</span><strong>{wrestler.target_attire_count || 0}</strong></div>
-          <div><span>Updated</span><strong>{formatDate(wrestler.updated_at)}</strong></div>
+          <div><span>Attire mods</span><strong>{wrestler.attires?.length || 0}</strong></div>          <div><span>Updated</span><strong>{formatDate(wrestler.updated_at)}</strong></div>
         </div>
 
         {wrestler.notes ? <div className="note-box">{wrestler.notes}</div> : null}
@@ -170,6 +174,7 @@ export default function DetailPanel({
                   onEditAttire={onEditAttire}
                   onDeleteAttire={onDeleteAttire}
                   onCreateRequest={onCreateRequest}
+                  onResolveLink={onResolveLink}
                   onOpenCollectionPicker={onOpenCollectionPicker}
                 />
               )
@@ -255,12 +260,76 @@ export default function DetailPanel({
                     <button className="ghost-button small-btn" disabled={!session} onClick={() => onCreateRequest(wrestler.id, attire.id, attire.download_url ? 'dead_link' : 'missing_link', wrestler.wrestler_name, attire.name)}>
                       {attire.download_url ? 'Report dead link' : 'Request link'}
                     </button>
+                    {(requestInfo.deadLinks > 0 || !attire.download_url?.trim()) ? (
+                      <button className="secondary-button small-btn" disabled={!session} onClick={() => onResolveLink(wrestler, attire, requestInfo.deadLinks > 0 ? 'dead_link' : 'missing_link')}>
+                        Fix link
+                      </button>
+                    ) : null}
                   </div>
                 </article>
               )
             })}
           </div>
         )}
+
+      <section className="panel soft-panel">
+        <div className="panel-header">
+          <div>
+            <h2>Link issues</h2>
+            <p className="subtle-copy">Browse missing or reported dead links for this wrestler and resolve them directly.</p>
+          </div>
+        </div>
+
+        <div className="link-issues-list">
+          {(() => {
+            const issues = (wrestler.attires || []).flatMap((attire) => {
+              const summary = requestSummary(wrestler.requests || [], attire.id)
+              const missingIssue = !attire.download_url?.trim()
+              const deadIssue = summary.deadLinks > 0
+              if (!missingIssue && !deadIssue) return []
+              return [{
+                attire,
+                summary,
+                issueType: deadIssue ? 'dead_link' : 'missing_link'
+              }]
+            })
+
+            return issues.length ? issues.map((item) => (
+              <div className="link-issue-card elevated-card" key={item.attire.id}>
+                <div className="link-issue-main">
+                  <div className="link-issue-title-row">
+                    <strong>{item.attire.name}</strong>
+                    <span className={`pill ${item.issueType === 'dead_link' ? 'danger-pill' : ''}`}>
+                      {item.issueType === 'dead_link' ? 'Reported dead link' : 'Missing link'}
+                    </span>
+                  </div>
+                  <div className="list-meta wrap-meta compact-meta-gap">
+                    <span>{item.attire.source_game}</span>
+                    <span>{item.attire.era || 'No era given'}</span>
+                    {item.attire.creator_name ? <span>{item.attire.creator_name}</span> : null}
+                    <span>{item.summary.total} open requests</span>
+                  </div>
+                  <div className="muted-text break-line">
+                    Current link: {item.attire.download_url ? item.attire.download_url : 'No link saved yet'}
+                  </div>
+                </div>
+
+                <div className="link-issue-actions">
+                  <button className="secondary-button small-btn" disabled={!session} onClick={() => onResolveLink(wrestler, item.attire, item.issueType)}>
+                    Fix link
+                  </button>
+                  <button className="ghost-button small-btn" disabled={!session} onClick={() => onCreateRequest(wrestler.id, item.attire.id, item.issueType, wrestler.wrestler_name, item.attire.name)}>
+                    Add note
+                  </button>
+                  <button className="ghost-button small-btn" disabled={!session || session.user.id !== item.attire.owner_id} onClick={() => onEditAttire(item.attire)}>
+                    Edit attire
+                  </button>
+                </div>
+              </div>
+            )) : <div className="empty-state small-empty">No open link issues for this wrestler.</div>
+          })()}
+        </div>
+      </section>
       </section>
     </div>
   )
