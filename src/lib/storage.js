@@ -1,12 +1,13 @@
-import { STORAGE_BUCKET, supabase } from './supabase'
-import { extFromFile } from './utils'
+import { supabase } from './supabase'
+
+const BUCKET = 'mod-assets'
 
 export async function uploadAsset({ userId, attireId, file, kind }) {
-  const ext = extFromFile(file.name)
-  const fileName = `${kind}-${Date.now()}.${ext}`
-  const path = `${userId}/attires/${attireId}/${fileName}`
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'bin'
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const path = `${userId}/${attireId}/${kind}-${Date.now()}-${safeName}`
 
-  const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
+  const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
     cacheControl: '3600',
     upsert: true
   })
@@ -15,21 +16,15 @@ export async function uploadAsset({ userId, attireId, file, kind }) {
   return { path, fileName: file.name }
 }
 
-export async function createSignedUrl(path) {
-  if (!path) return ''
-  const { data, error } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(path, 60 * 60 * 24 * 7)
-  if (error) return ''
-  return data?.signedUrl || ''
-}
-
-export async function createSignedUrls(paths = []) {
-  const unique = [...new Set(paths.filter(Boolean))]
-  const entries = await Promise.all(unique.map(async (path) => [path, await createSignedUrl(path)]))
-  return Object.fromEntries(entries)
-}
-
 export async function removeAssets(paths = []) {
-  const clean = [...new Set(paths.filter(Boolean))]
+  const clean = paths.filter(Boolean)
   if (!clean.length) return
-  await supabase.storage.from(STORAGE_BUCKET).remove(clean)
+  const { error } = await supabase.storage.from(BUCKET).remove(clean)
+  if (error) throw error
+}
+
+export function getAssetUrl(path) {
+  if (!path) return ''
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
+  return data.publicUrl
 }

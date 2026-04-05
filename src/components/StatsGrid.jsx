@@ -1,20 +1,19 @@
 export default function StatsGrid({ stats }) {
   const items = [
-    ['Wrestlers', stats.totalMods],
-    ['Attires', stats.totalAttires],
-    ['Incomplete', stats.incompleteAttires],
-    ['Missing Targets', stats.missingTargets],
-    ['Attire Gap', stats.attireGap],
-    ['DDS Renders', stats.withRenders]
+    ['Wrestlers', stats.wrestlers],
+    ['Attire mods', stats.attires],
+    ['Open requests', stats.requests],
+    ['Missing targets', stats.missingTargets],
+    ['Attire gap', stats.gapCount]
   ]
 
   return (
-    <section className="stats-grid stats-grid-six">
+    <section className="stats-grid stats-grid-five">
       {items.map(([label, value]) => (
-        <article key={label} className="stat-card">
+        <div className="stat-card panel soft-panel" key={label}>
           <div className="stat-label">{label}</div>
           <div className="stat-value">{value}</div>
-        </article>
+        </div>
       ))}
     </section>
   )
