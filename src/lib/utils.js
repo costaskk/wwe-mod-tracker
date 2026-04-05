@@ -1,9 +1,16 @@
-export const MOD_TYPES = ['original', 'port', 'remake', 'update']
+
+export const MOD_TYPES = ['original', 'port']
 export const SOURCE_GAMES = ['WWE 2K25', 'WWE 2K24', 'WWE 2K23', 'WWE 2K22', 'WWE 2K19', 'WWE 2K18', 'Other']
 export const ATTIRE_STATUSES = ['complete', 'partial', 'needs_work', 'missing']
 
 export function uid() {
   return crypto.randomUUID()
+}
+
+export function titleCase(value = '') {
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (m) => m.toUpperCase())
 }
 
 export function emptyWrestler() {
@@ -17,7 +24,9 @@ export function emptyWrestler() {
     headshot_path: '',
     headshot_url: '',
     headshot_name: '',
-    headshot_external_url: ''
+    headshot_external_url: '',
+    auto_match_titles: [],
+    auto_match_urls: []
   }
 }
 
@@ -55,7 +64,9 @@ export function normalizeWrestlerForEditor(wrestler) {
     headshot_path: wrestler.headshot_path || '',
     headshot_url: wrestler.headshot_path ? wrestler.headshot_url || '' : (wrestler.headshot_external_url || ''),
     headshot_name: wrestler.headshot_name || '',
-    headshot_external_url: wrestler.headshot_external_url || ''
+    headshot_external_url: wrestler.headshot_external_url || '',
+    auto_match_titles: [],
+    auto_match_urls: wrestler.headshot_external_url ? [wrestler.headshot_external_url] : []
   }
 }
 
@@ -69,7 +80,7 @@ export function normalizeAttireForEditor(attire) {
     creator_name: attire.creator_name || '',
     download_url: attire.download_url || '',
     source_game: attire.source_game || 'WWE 2K25',
-    mod_type: attire.mod_type || 'original',
+    mod_type: (attire.mod_type === 'port' ? 'port' : 'original'),
     notes: attire.notes || '',
     status: attire.status || 'complete',
     render_dds_path: attire.render_dds_path || '',

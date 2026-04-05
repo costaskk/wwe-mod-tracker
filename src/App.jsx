@@ -1,9 +1,12 @@
+
 import { useEffect, useMemo, useState } from 'react'
 import AuthPanel from './components/AuthPanel'
 import AttireEditorModal from './components/AttireEditorModal'
 import DetailPanel from './components/DetailPanel'
 import Filters from './components/Filters'
 import Header from './components/Header'
+import ModalNotice from './components/ModalNotice'
+import RequestModal from './components/RequestModal'
 import StatsGrid from './components/StatsGrid'
 import WrestlerEditorModal from './components/WrestlerEditorModal'
 import WrestlerList from './components/WrestlerList'
@@ -31,9 +34,8 @@ export default function App() {
 
   const [query, setQuery] = useState('')
   const [showMissingOnly, setShowMissingOnly] = useState(false)
-  const [sourceFilter, setSourceFilter] = useState('all')
-  const [typeFilter, setTypeFilter] = useState('all')
-  const [installedOnly, setInstalledOnly] = useState(false)
+  const [creatorFilter, setCreatorFilter] = useState('all')
+  const [installFilter, setInstallFilter] = useState('all')
   const [missingDownloadOnly, setMissingDownloadOnly] = useState(false)
 
   const [wrestlerModalOpen, setWrestlerModalOpen] = useState(false)
@@ -42,9 +44,15 @@ export default function App() {
   const [attireForm, setAttireForm] = useState(emptyAttire())
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [saveError, setSaveError] = useState('')
   const [newCreatorName, setNewCreatorName] = useState('')
   const [addingCreator, setAddingCreator] = useState(false)
+  const [notice, setNotice] = useState(null)
+  const [requestModal, setRequestModal] = useState({ open: false, context: null })
+  const [requestSubmitting, setRequestSubmitting] = useState(false)
+
+  function openNotice(type, title, message) {
+    setNotice({ type, title, message })
+  }
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -107,6 +115,7 @@ export default function App() {
       headshot_url: wrestler.headshot_path ? getAssetUrl(wrestler.headshot_path) : (wrestler.headshot_external_url || ''),
       attires: sortAttires((wrestler.attires || []).map((attire) => ({
         ...attire,
+        mod_type: attire.mod_type === 'port' ? 'port' : 'original',
         render_dds_url: attire.render_dds_path ? getAssetUrl(attire.render_dds_path) : '',
         attire_images: (attire.attire_images || []).map((img) => ({
           ...img,
@@ -124,6 +133,8 @@ export default function App() {
   }
 
   const filteredWrestlers = useMemo(() => {
+    const q = query.toLowerCase().trim()
+
     return wrestlers
       .map((wrestler) => {
         const filteredAttires = (wrestler.attires || []).filter((attire) => {
@@ -136,28 +147,29 @@ export default function App() {
             attire.creator_name,
             attire.notes,
             attire.source_game,
-            attire.mod_type,
             JSON.stringify(attire.moveset_json || {}),
             JSON.stringify(attire.profile_json || {})
           ].join(' ').toLowerCase()
 
-          const queryOk = haystack.includes(query.toLowerCase())
-          const sourceOk = sourceFilter === 'all' || attire.source_game === sourceFilter
-          const typeOk = typeFilter === 'all' || attire.mod_type === typeFilter
-          const installedOk = !installedOnly || installedIds.has(attire.id)
+          const queryOk = !q || haystack.includes(q)
+          const creatorOk = creatorFilter === 'all' || attire.creator_name === creatorFilter
+          const installedOk =
+            installFilter === 'all' ||
+            (installFilter === 'installed' && installedIds.has(attire.id)) ||
+            (installFilter === 'not_installed' && !installedIds.has(attire.id))
           const missingDownloadOk = !missingDownloadOnly || !attire.download_url?.trim()
-          return queryOk && sourceOk && typeOk && installedOk && missingDownloadOk
+          return queryOk && creatorOk && installedOk && missingDownloadOk
         })
 
         const hasOpenRequests = (wrestler.requests || []).some((request) => request.status === 'open')
         const missingOnlyOk = !showMissingOnly || wrestler.is_missing_target || filteredAttires.some((attire) => attire.status !== 'complete' || !attire.download_url?.trim()) || hasOpenRequests
-        const wrestlerQueryOk = [wrestler.wrestler_name, wrestler.notes, ...(wrestler.tags || [])].join(' ').toLowerCase().includes(query.toLowerCase())
+        const wrestlerQueryOk = !q || [wrestler.wrestler_name, wrestler.notes, ...(wrestler.tags || [])].join(' ').toLowerCase().includes(q)
         const include = missingOnlyOk && (filteredAttires.length > 0 || wrestlerQueryOk)
 
         return include ? { ...wrestler, attires: filteredAttires } : null
       })
       .filter(Boolean)
-  }, [wrestlers, query, showMissingOnly, sourceFilter, typeFilter, installedOnly, missingDownloadOnly, installedIds])
+  }, [wrestlers, query, showMissingOnly, creatorFilter, installFilter, missingDownloadOnly, installedIds])
 
   useEffect(() => {
     if (!selectedId && filteredWrestlers[0]) setSelectedId(filteredWrestlers[0].id)
@@ -173,7 +185,6 @@ export default function App() {
 
   async function saveWrestler() {
     if (!session) return
-    setSaveError('')
     setSaving(true)
 
     try {
@@ -193,16 +204,18 @@ export default function App() {
       if (wrestlerForm.id) {
         const { error } = await supabase.from('wrestlers').update(payload).eq('id', wrestlerForm.id).eq('owner_id', session.user.id)
         if (error) throw error
+        openNotice('success', 'Wrestler updated', `${wrestlerForm.wrestler_name} was updated successfully.`)
       } else {
         const { data, error } = await supabase.from('wrestlers').insert(payload).select('id').single()
         if (error) throw error
         setSelectedId(data.id)
+        openNotice('success', 'Wrestler added', `${wrestlerForm.wrestler_name} was added to the database.`)
       }
 
       setWrestlerModalOpen(false)
       await fetchAll()
     } catch (err) {
-      setSaveError(err.message || 'Failed to save wrestler.')
+      openNotice('error', 'Could not save wrestler', err.message || 'Failed to save wrestler.')
     } finally {
       setSaving(false)
     }
@@ -210,7 +223,6 @@ export default function App() {
 
   async function saveAttire() {
     if (!session || !attireForm.wrestler_id) return
-    setSaveError('')
     setSaving(true)
 
     try {
@@ -223,7 +235,7 @@ export default function App() {
         creator_name: attireForm.creator_name.trim(),
         download_url: attireForm.download_url.trim(),
         source_game: attireForm.source_game,
-        mod_type: attireForm.mod_type,
+        mod_type: attireForm.mod_type === 'port' ? 'port' : 'original',
         render_dds_path: attireForm.render_dds_path || '',
         render_dds_name: attireForm.render_dds_name || '',
         notes: attireForm.notes.trim(),
@@ -237,10 +249,12 @@ export default function App() {
       if (attireForm.persisted) {
         const { error } = await supabase.from('attires').update(payload).eq('id', attireForm.id).eq('owner_id', session.user.id)
         if (error) throw error
+        openNotice('success', 'Attire updated', `${attireForm.name} was updated successfully.`)
       } else {
         const { data, error } = await supabase.from('attires').insert(payload).select('id').single()
         if (error) throw error
         attireId = data.id
+        openNotice('success', 'Attire added', `${attireForm.name} was added successfully.`)
       }
 
       if (Array.isArray(attireForm.pendingImageUploads) && attireForm.pendingImageUploads.length) {
@@ -256,7 +270,7 @@ export default function App() {
       setAttireModalOpen(false)
       await fetchAll()
     } catch (err) {
-      setSaveError(err.message || 'Failed to save attire.')
+      openNotice('error', 'Could not save attire', err.message || 'Failed to save attire.')
     } finally {
       setSaving(false)
     }
@@ -275,10 +289,13 @@ export default function App() {
         headshot_path: path,
         headshot_name: fileName,
         headshot_url: getAssetUrl(path),
-        headshot_external_url: ''
+        headshot_external_url: '',
+        auto_match_urls: [],
+        auto_match_titles: []
       }))
+      openNotice('success', 'Headshot uploaded', `${file.name} was uploaded successfully.`)
     } catch (err) {
-      setSaveError(err.message || 'Headshot upload failed.')
+      openNotice('error', 'Headshot upload failed', err.message || 'Headshot upload failed.')
     } finally {
       setUploading(false)
     }
@@ -287,24 +304,35 @@ export default function App() {
   async function handleAutoMatchHeadshot() {
     try {
       setUploading(true)
-      const { imageUrl } = await tryAutoMatchHeadshot(wrestlerForm.wrestler_name)
+      const { imageUrl, sourceTitle } = await tryAutoMatchHeadshot(
+        wrestlerForm.wrestler_name,
+        wrestlerForm.auto_match_titles || [],
+        wrestlerForm.auto_match_urls || []
+      )
       setWrestlerForm((current) => ({
         ...current,
         headshot_path: '',
-        headshot_name: 'Auto-matched image',
+        headshot_name: `Auto-matched image: ${sourceTitle}`,
         headshot_url: imageUrl,
-        headshot_external_url: imageUrl
+        headshot_external_url: imageUrl,
+        auto_match_titles: [...(current.auto_match_titles || []), sourceTitle],
+        auto_match_urls: [...(current.auto_match_urls || []), imageUrl]
       }))
+      openNotice('success', 'Headshot matched', `Found a public headshot from ${sourceTitle}. Press Try auto-match again for another option.`)
     } catch (err) {
-      setSaveError(err.message || 'Could not auto-match a headshot.')
+      openNotice('info', 'No alternative image found', err.message || 'Could not auto-match a different headshot.')
     } finally {
       setUploading(false)
     }
   }
 
   async function removeWrestlerHeadshot() {
-    if (wrestlerForm.headshot_path) await removeAssets([wrestlerForm.headshot_path])
-    setWrestlerForm((current) => ({ ...current, headshot_path: '', headshot_name: '', headshot_url: '', headshot_external_url: '' }))
+    try {
+      if (wrestlerForm.headshot_path) await removeAssets([wrestlerForm.headshot_path])
+      setWrestlerForm((current) => ({ ...current, headshot_path: '', headshot_name: '', headshot_url: '', headshot_external_url: '', auto_match_titles: [], auto_match_urls: [] }))
+    } catch (err) {
+      openNotice('error', 'Could not remove headshot', err.message || 'Could not remove headshot.')
+    }
   }
 
   async function handleAssetUpload(filesOrFile, kind) {
@@ -324,6 +352,7 @@ export default function App() {
           render_dds_name: fileName,
           render_dds_url: getAssetUrl(path)
         }))
+        openNotice('success', 'DDS uploaded', `${file.name} was uploaded successfully.`)
       }
 
       if (kind === 'image') {
@@ -341,9 +370,10 @@ export default function App() {
           images: [...current.images, ...uploaded],
           pendingImageUploads: [...(current.pendingImageUploads || []), ...uploaded]
         }))
+        openNotice('success', 'Screenshots uploaded', `${uploaded.length} screenshot${uploaded.length === 1 ? '' : 's'} uploaded successfully.`)
       }
     } catch (err) {
-      setSaveError(err.message || 'Upload failed.')
+      openNotice('error', 'Upload failed', err.message || 'Upload failed.')
     } finally {
       setUploading(false)
     }
@@ -365,8 +395,9 @@ export default function App() {
           await supabase.from('attire_images').delete().eq('attire_id', attireForm.id).eq('image_path', path)
         }
       }
+      openNotice('success', 'Asset removed', 'The selected asset was removed.')
     } catch (err) {
-      setSaveError(err.message || 'Could not remove asset.')
+      openNotice('error', 'Could not remove asset', err.message || 'Could not remove asset.')
     }
   }
 
@@ -377,11 +408,13 @@ export default function App() {
       JSON.parse(text)
       if (target === 'moveset') {
         setAttireForm((current) => ({ ...current, moveset_json_text: text }))
+        openNotice('success', 'Moveset JSON loaded', `${file.name} was loaded into the editor.`)
       } else {
         setAttireForm((current) => ({ ...current, profile_json_text: text }))
+        openNotice('success', 'Profile JSON loaded', `${file.name} was loaded into the editor.`)
       }
     } catch {
-      setSaveError('That file is not valid JSON.')
+      openNotice('error', 'Invalid JSON file', 'That file is not valid JSON.')
     }
   }
 
@@ -395,9 +428,11 @@ export default function App() {
       if (error) throw error
       setCreators((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name)))
       setAttireForm((current) => ({ ...current, creator_name: data.name }))
+      setCreatorFilter(data.name)
       setNewCreatorName('')
+      openNotice('success', 'Creator added', `${data.name} is now available in the creator dropdown.`)
     } catch (err) {
-      setSaveError(err.message || 'Could not add creator.')
+      openNotice('error', 'Could not add creator', err.message || 'Could not add creator.')
     } finally {
       setAddingCreator(false)
     }
@@ -405,50 +440,67 @@ export default function App() {
 
   async function toggleInstalled(attire, installed) {
     if (!session) return
-    if (installed) {
-      await supabase.from('user_installed_attires').delete().eq('user_id', session.user.id).eq('attire_id', attire.id)
-    } else {
-      await supabase.from('user_installed_attires').insert({ user_id: session.user.id, attire_id: attire.id })
+    try {
+      if (installed) {
+        const { error } = await supabase.from('user_installed_attires').delete().eq('user_id', session.user.id).eq('attire_id', attire.id)
+        if (error) throw error
+        openNotice('success', 'Removed from installed', `${attire.name} is no longer marked as installed.`)
+      } else {
+        const { error } = await supabase.from('user_installed_attires').insert({ user_id: session.user.id, attire_id: attire.id })
+        if (error) throw error
+        openNotice('success', 'Marked as installed', `${attire.name} is now marked as installed in your game.`)
+      }
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not update install status', err.message || 'Could not update install status.')
     }
-    await fetchAll()
   }
 
-  async function createRequest(wrestlerId, attireId, requestType) {
+  function createRequest(wrestlerId, attireId, requestType, wrestlerName, attireName) {
     if (!session) return
-    const notes = window.prompt('Add request notes (optional):', '') || ''
-    const { error } = await supabase.from('mod_requests').insert({
-      wrestler_id: wrestlerId,
-      attire_id: attireId,
-      request_type: requestType,
-      notes
+    setRequestModal({
+      open: true,
+      context: { wrestlerId, attireId, requestType, wrestlerName, attireName }
     })
-    if (error) {
-      setError(error.message)
-      return
+  }
+
+  async function submitRequest(notes) {
+    if (!session || !requestModal.context) return
+    setRequestSubmitting(true)
+    try {
+      const { error } = await supabase.from('mod_requests').insert({
+        wrestler_id: requestModal.context.wrestlerId,
+        attire_id: requestModal.context.attireId,
+        request_type: requestModal.context.requestType,
+        notes: (notes || '').trim()
+      })
+      if (error) throw error
+      setRequestModal({ open: false, context: null })
+      openNotice('success', 'Request submitted', 'Your request was added successfully.')
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not submit request', err.message || 'Could not submit request.')
+    } finally {
+      setRequestSubmitting(false)
     }
-    await fetchAll()
   }
 
   function openAddWrestler() {
-    setSaveError('')
     setWrestlerForm(emptyWrestler())
     setWrestlerModalOpen(true)
   }
 
   function openEditWrestler(wrestler) {
-    setSaveError('')
     setWrestlerForm(normalizeWrestlerForEditor(wrestler))
     setWrestlerModalOpen(true)
   }
 
   function openAddAttire(wrestler) {
-    setSaveError('')
     setAttireForm({ ...emptyAttire(wrestler.id), pendingImageUploads: [] })
     setAttireModalOpen(true)
   }
 
   function openEditAttire(attire) {
-    setSaveError('')
     setAttireForm({ ...normalizeAttireForEditor(attire), pendingImageUploads: [] })
     setAttireModalOpen(true)
   }
@@ -457,24 +509,36 @@ export default function App() {
     if (!session || session.user.id !== attire.owner_id) return
     if (!window.confirm(`Delete ${attire.name}?`)) return
 
-    const paths = [attire.render_dds_path, ...(attire.attire_images || []).map((img) => img.image_path)]
-    await removeAssets(paths)
-    await supabase.from('attires').delete().eq('id', attire.id).eq('owner_id', session.user.id)
-    await fetchAll()
+    try {
+      const paths = [attire.render_dds_path, ...(attire.attire_images || []).map((img) => img.image_path)]
+      await removeAssets(paths)
+      const { error } = await supabase.from('attires').delete().eq('id', attire.id).eq('owner_id', session.user.id)
+      if (error) throw error
+      openNotice('success', 'Attire deleted', `${attire.name} was deleted.`)
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not delete attire', err.message || 'Could not delete attire.')
+    }
   }
 
   async function deleteWrestler(wrestler) {
     if (!session || session.user.id !== wrestler.owner_id) return
     if (!window.confirm(`Delete ${wrestler.wrestler_name} and all attire mods?`)) return
 
-    const assetPaths = [wrestler.headshot_path]
-    for (const attire of wrestler.attires || []) {
-      if (attire.render_dds_path) assetPaths.push(attire.render_dds_path)
-      for (const img of attire.attire_images || []) assetPaths.push(img.image_path)
+    try {
+      const assetPaths = [wrestler.headshot_path]
+      for (const attire of wrestler.attires || []) {
+        if (attire.render_dds_path) assetPaths.push(attire.render_dds_path)
+        for (const img of attire.attire_images || []) assetPaths.push(img.image_path)
+      }
+      await removeAssets(assetPaths)
+      const { error } = await supabase.from('wrestlers').delete().eq('id', wrestler.id).eq('owner_id', session.user.id)
+      if (error) throw error
+      openNotice('success', 'Wrestler deleted', `${wrestler.wrestler_name} and related attire mods were deleted.`)
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not delete wrestler', err.message || 'Could not delete wrestler.')
     }
-    await removeAssets(assetPaths)
-    await supabase.from('wrestlers').delete().eq('id', wrestler.id).eq('owner_id', session.user.id)
-    await fetchAll()
   }
 
   const stats = computeStats(wrestlers)
@@ -502,12 +566,11 @@ export default function App() {
             setQuery={setQuery}
             showMissingOnly={showMissingOnly}
             setShowMissingOnly={setShowMissingOnly}
-            sourceFilter={sourceFilter}
-            setSourceFilter={setSourceFilter}
-            typeFilter={typeFilter}
-            setTypeFilter={setTypeFilter}
-            installedOnly={installedOnly}
-            setInstalledOnly={setInstalledOnly}
+            creatorFilter={creatorFilter}
+            setCreatorFilter={setCreatorFilter}
+            creators={creators}
+            installFilter={installFilter}
+            setInstallFilter={setInstallFilter}
             missingDownloadOnly={missingDownloadOnly}
             setMissingDownloadOnly={setMissingDownloadOnly}
             session={session}
@@ -551,7 +614,6 @@ export default function App() {
         onRemoveHeadshot={removeWrestlerHeadshot}
         saving={saving}
         uploading={uploading}
-        error={saveError}
       />
 
       <AttireEditorModal
@@ -569,9 +631,18 @@ export default function App() {
         onUploadJson={uploadAttireJsonFile}
         saving={saving}
         uploading={uploading}
-        error={saveError}
         addingCreator={addingCreator}
       />
+
+      <RequestModal
+        open={requestModal.open}
+        context={requestModal.context}
+        onClose={() => setRequestModal({ open: false, context: null })}
+        onSubmit={submitRequest}
+        submitting={requestSubmitting}
+      />
+
+      <ModalNotice notice={notice} onClose={() => setNotice(null)} />
 
       {loading ? <div className="loading-overlay">Loading database…</div> : null}
     </div>

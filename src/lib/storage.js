@@ -1,3 +1,4 @@
+
 import { supabase } from './supabase'
 
 const BUCKET = 'mod-assets'
@@ -28,23 +29,30 @@ export function getAssetUrl(path) {
   return data.publicUrl
 }
 
-export async function tryAutoMatchHeadshot(name) {
+export async function tryAutoMatchHeadshot(name, excludedTitles = [], excludedUrls = []) {
   const query = encodeURIComponent(name.trim())
   if (!query) throw new Error('Wrestler name is required for auto-match.')
 
-  const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${query}&limit=1&namespace=0&format=json&origin=*`
+  const searchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${query}&limit=8&namespace=0&format=json&origin=*`
   const searchResponse = await fetch(searchUrl)
   if (!searchResponse.ok) throw new Error('Auto-match search failed.')
+
   const searchData = await searchResponse.json()
-  const title = searchData?.[1]?.[0]
-  if (!title) throw new Error('No matching public image found.')
+  const titles = (searchData?.[1] || []).filter(Boolean)
 
-  const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
-  const summaryResponse = await fetch(summaryUrl)
-  if (!summaryResponse.ok) throw new Error('Auto-match summary failed.')
-  const summaryData = await summaryResponse.json()
-  const imageUrl = summaryData?.thumbnail?.source || summaryData?.originalimage?.source
-  if (!imageUrl) throw new Error('No public headshot was available for that name.')
+  for (const title of titles) {
+    if (excludedTitles.includes(title)) continue
 
-  return { imageUrl, sourceTitle: title }
+    const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
+    const summaryResponse = await fetch(summaryUrl)
+    if (!summaryResponse.ok) continue
+
+    const summaryData = await summaryResponse.json()
+    const imageUrl = summaryData?.thumbnail?.source || summaryData?.originalimage?.source
+    if (!imageUrl || excludedUrls.includes(imageUrl)) continue
+
+    return { imageUrl, sourceTitle: title }
+  }
+
+  throw new Error('No alternative public headshot was available for that wrestler name.')
 }
