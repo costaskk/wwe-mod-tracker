@@ -11,6 +11,7 @@ import Header from './components/Header'
 import ModalNotice from './components/ModalNotice'
 import ProfileCollections from './components/ProfileCollections'
 import RequestModal from './components/RequestModal'
+import ResolveLinkModal from './components/ResolveLinkModal'
 import StatsGrid from './components/StatsGrid'
 import WrestlerEditorModal from './components/WrestlerEditorModal'
 import WrestlerList from './components/WrestlerList'
@@ -48,6 +49,7 @@ export default function App() {
   const [sourceGameFilter, setSourceGameFilter] = useState('all')
   const [installFilter, setInstallFilter] = useState('all')
   const [missingDownloadOnly, setMissingDownloadOnly] = useState(false)
+  const [deadLinkOnly, setDeadLinkOnly] = useState(false)
   const [wrestlerViewMode, setWrestlerViewMode] = useState('cards')
   const [attireViewMode, setAttireViewMode] = useState('gallery')
 
@@ -65,6 +67,8 @@ export default function App() {
   const [notice, setNotice] = useState(null)
   const [requestModal, setRequestModal] = useState({ open: false, context: null })
   const [requestSubmitting, setRequestSubmitting] = useState(false)
+  const [resolveModal, setResolveModal] = useState({ open: false, context: null })
+  const [resolvingLink, setResolvingLink] = useState(false)
 
   function openNotice(type, title, message) {
     setNotice({ type, title, message })
@@ -242,12 +246,15 @@ export default function App() {
             installFilter === 'all' ||
             (installFilter === 'installed' && installedIds.has(attire.id)) ||
             (installFilter === 'not_installed' && !installedIds.has(attire.id))
+          const requestInfo = (wrestler.requests || []).filter((request) => request.attire_id === attire.id && request.status === 'open')
+          const hasDeadLink = requestInfo.some((request) => request.request_type === 'dead_link')
           const missingDownloadOk = !missingDownloadOnly || !attire.download_url?.trim()
-          return queryOk && creatorOk && sourceGameOk && installedOk && missingDownloadOk
+          const deadLinkOk = !deadLinkOnly || hasDeadLink
+          return queryOk && creatorOk && sourceGameOk && installedOk && missingDownloadOk && deadLinkOk
         })
 
         const hasOpenRequests = (wrestler.requests || []).some((request) => request.status === 'open')
-        const missingOnlyOk = !showMissingOnly || wrestler.is_missing_target || filteredAttires.some((attire) => attire.status !== 'complete' || !attire.download_url?.trim()) || hasOpenRequests
+        const missingOnlyOk = !showMissingOnly || filteredAttires.some((attire) => attire.status !== 'complete' || !attire.download_url?.trim()) || hasOpenRequests
         const wrestlerQueryOk = !q || [wrestler.wrestler_name, wrestler.notes, ...(wrestler.tags || [])].join(' ').toLowerCase().includes(q)
         const include = missingOnlyOk && (filteredAttires.length > 0 || wrestlerQueryOk)
 
@@ -275,8 +282,6 @@ export default function App() {
       if (!wrestlerForm.wrestler_name.trim()) throw new Error('Wrestler name is required.')
       const payload = {
         wrestler_name: wrestlerForm.wrestler_name.trim(),
-        target_attire_count: Number(wrestlerForm.target_attire_count) || 0,
-        is_missing_target: Boolean(wrestlerForm.is_missing_target),
         notes: wrestlerForm.notes.trim(),
         tags: parseTags(wrestlerForm.tags_text),
         headshot_path: wrestlerForm.headshot_path || '',
@@ -852,6 +857,14 @@ export default function App() {
         onClose={() => setRequestModal({ open: false, context: null })}
         onSubmit={submitRequest}
         submitting={requestSubmitting}
+      />
+
+      <ResolveLinkModal
+        open={resolveModal.open}
+        context={resolveModal.context}
+        onClose={() => setResolveModal({ open: false, context: null })}
+        onSubmit={submitResolveLink}
+        submitting={resolvingLink}
       />
 
       <ModalNotice notice={notice} onClose={() => setNotice(null)} />
