@@ -1,5 +1,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
+import AdminPanel from './components/AdminPanel'
 import AuthPanel from './components/AuthPanel'
 import AttireEditorModal from './components/AttireEditorModal'
 import CollectionModal from './components/CollectionModal'
@@ -36,6 +37,9 @@ export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [currentProfile, setCurrentProfile] = useState(null)
+  const [profiles, setProfiles] = useState([])
+  const [updatingProfile, setUpdatingProfile] = useState(false)
   const [wrestlers, setWrestlers] = useState([])
   const [creators, setCreators] = useState([])
   const [collections, setCollections] = useState([])
@@ -69,6 +73,16 @@ export default function App() {
   const [requestSubmitting, setRequestSubmitting] = useState(false)
   const [resolveModal, setResolveModal] = useState({ open: false, context: null })
   const [resolvingLink, setResolvingLink] = useState(false)
+
+  const isApproved = Boolean(session && currentProfile?.approval_status === 'approved')
+  const isModerator = currentProfile?.role === 'moderator'
+  const isAdmin = currentProfile?.role === 'admin'
+  const isStaff = isModerator || isAdmin
+
+  function canManageContent(ownerId) {
+    if (!session) return false
+    return session.user.id === ownerId || isStaff
+  }
 
   function openNotice(type, title, message) {
     setNotice({ type, title, message })
@@ -142,7 +156,7 @@ export default function App() {
           .order('updated_at', { ascending: false })
       : Promise.resolve({ data: [], error: null })
 
-    const [wrestlerResult, creatorResult, installsResult, publicCollectionsResult, ownCollectionsResult] = await Promise.all([
+      const [wrestlerResult, creatorResult, installsResult, publicCollectionsResult, ownCollectionsResult, profilesResult] = await Promise.all([
       supabase
         .from('wrestlers')
         .select(`
@@ -159,11 +173,19 @@ export default function App() {
         ? supabase.from('user_installed_attires').select('attire_id').eq('user_id', session.user.id)
         : Promise.resolve({ data: [], error: null }),
       publicCollectionsQuery,
-      ownCollectionsQuery
+      ownCollectionsQuery,
+      supabase.from('profiles').select('*').order('created_at', { ascending: false })
     ])
 
-    if (wrestlerResult.error || creatorResult.error || publicCollectionsResult.error || ownCollectionsResult.error) {
-      setError(wrestlerResult.error?.message || creatorResult.error?.message || publicCollectionsResult.error?.message || ownCollectionsResult.error?.message || 'Failed to load data.')
+    if (wrestlerResult.error || creatorResult.error || publicCollectionsResult.error || ownCollectionsResult.error || profilesResult.error) {
+      setError(
+        wrestlerResult.error?.message ||
+        creatorResult.error?.message ||
+        publicCollectionsResult.error?.message ||
+        ownCollectionsResult.error?.message ||
+        profilesResult.error?.message ||
+        'Failed to load data.'
+      )
       setLoading(false)
       return
     }
@@ -211,6 +233,13 @@ export default function App() {
     const slug = new URLSearchParams(window.location.search).get('collection')
     const collectionFromUrl = slug ? mergedCollections.find((item) => item.slug === slug) : null
 
+    const loadedProfiles = profilesResult.data || []
+    const myProfile = session
+      ? loadedProfiles.find((item) => item.user_id === session.user.id) || null
+      : null
+
+    setProfiles(loadedProfiles)
+    setCurrentProfile(myProfile)
     setWrestlers(normalizedWrestlers)
     setCreators(creatorResult.data || [])
     setCollections(mergedCollections)
@@ -275,8 +304,28 @@ export default function App() {
     if (selectedId && !filteredWrestlers.some((item) => item.id === selectedId)) setSelectedId(filteredWrestlers[0]?.id || null)
   }, [filteredWrestlers, selectedId])
 
+  async function updateProfile(userId, changes) {
+    if (!isAdmin) return
+    setUpdatingProfile(true)
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(changes)
+        .eq('user_id', userId)
+
+      if (error) throw error
+
+      openNotice('success', 'User updated', 'The user profile was updated successfully.')
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not update user', err.message || 'Could not update user.')
+    } finally {
+      setUpdatingProfile(false)
+    }
+  }
+
   async function saveWrestler() {
-    if (!session) return
+    if (!isApproved) return
     setSaving(true)
     try {
       if (!wrestlerForm.wrestler_name.trim()) throw new Error('Wrestler name is required.')
@@ -289,7 +338,7 @@ export default function App() {
         headshot_external_url: wrestlerForm.headshot_external_url || ''
       }
       if (wrestlerForm.id) {
-        const { error } = await supabase.from('wrestlers').update(payload).eq('id', wrestlerForm.id).eq('owner_id', session.user.id)
+        const { error } = await supabase.from('wrestlers').update(payload).eq('id', wrestlerForm.id)
         if (error) throw error
         openNotice('success', 'Wrestler updated', `${wrestlerForm.wrestler_name} was updated successfully.`)
       } else {
@@ -308,7 +357,7 @@ export default function App() {
   }
 
   async function saveAttire() {
-    if (!session || !attireForm.wrestler_id) return
+    if (!isApproved || !attireForm.wrestler_id) return
     setSaving(true)
     try {
       if (!attireForm.name.trim()) throw new Error('Attire name is required.')
@@ -330,7 +379,7 @@ export default function App() {
 
       let attireId = attireForm.id
       if (attireForm.persisted) {
-        const { error } = await supabase.from('attires').update(payload).eq('id', attireForm.id).eq('owner_id', session.user.id)
+        const { error } = await supabase.from('attires').update(payload).eq('id', attireForm.id)
         if (error) throw error
         openNotice('success', 'Attire updated', `${attireForm.name} was updated successfully.`)
       } else {
@@ -356,7 +405,7 @@ export default function App() {
   }
 
   async function saveCollection() {
-    if (!session) return
+    if (!isApproved) return
     setSaving(true)
     try {
       const cleanName = collectionForm.name.trim()
@@ -372,7 +421,7 @@ export default function App() {
         cover_name: collectionForm.cover_name || ''
       }
       if (collectionForm.id) {
-        const { error } = await supabase.from('collections').update(payload).eq('id', collectionForm.id).eq('owner_id', session.user.id)
+        const { error } = await supabase.from('collections').update(payload).eq('id', collectionForm.id)
         if (error) throw error
         openNotice('success', 'Collection updated', `${cleanName} was updated.`)
       } else {
@@ -390,7 +439,7 @@ export default function App() {
   }
 
   async function handleWrestlerHeadshotUpload(file) {
-    if (!file || !session) return
+    if (!file || !isApproved) return
     try {
       setUploading(true)
       if (!file.type.startsWith('image/')) throw new Error('Headshot must be an image file.')
@@ -406,7 +455,7 @@ export default function App() {
   }
 
   async function handleCollectionCoverUpload(file) {
-    if (!file || !session) return
+    if (!file || !isApproved) return
     try {
       setUploading(true)
       if (!file.type.startsWith('image/')) throw new Error('Cover must be an image file.')
@@ -422,6 +471,7 @@ export default function App() {
   }
 
   async function handleAutoMatchHeadshot() {
+    if (!isApproved) return
     try {
       setUploading(true)
       const { imageUrl, sourceTitle } = await tryAutoMatchHeadshot(wrestlerForm.wrestler_name, wrestlerForm.auto_match_titles || [], wrestlerForm.auto_match_urls || [])
@@ -435,6 +485,7 @@ export default function App() {
   }
 
   async function removeWrestlerHeadshot() {
+    if (!isApproved) return
     try {
       if (wrestlerForm.headshot_path) await removeAssets([wrestlerForm.headshot_path])
       setWrestlerForm((current) => ({ ...current, headshot_path: '', headshot_name: '', headshot_url: '', headshot_external_url: '', auto_match_titles: [], auto_match_urls: [] }))
@@ -444,6 +495,7 @@ export default function App() {
   }
 
   async function removeCollectionCover() {
+    if (!isApproved) return
     try {
       if (collectionForm.cover_path) await removeAssets([collectionForm.cover_path])
       setCollectionForm((current) => ({ ...current, cover_path: '', cover_url: '', cover_name: '' }))
@@ -453,7 +505,7 @@ export default function App() {
   }
 
   async function handleAssetUpload(filesOrFile, kind) {
-    if (!filesOrFile || !session) return
+    if (!filesOrFile || !isApproved) return
     try {
       setUploading(true)
       if (kind === 'render') {
@@ -484,6 +536,7 @@ export default function App() {
   }
 
   async function removeAttireAsset(kind, path) {
+    if (!isApproved) return
     try {
       if (path) await removeAssets([path])
       if (kind === 'render') setAttireForm((current) => ({ ...current, render_dds_path: '', render_dds_name: '', render_dds_url: '' }))
@@ -515,7 +568,7 @@ export default function App() {
   }
 
   async function addCreator() {
-    if (!session) return
+    if (!isApproved) return
     const name = newCreatorName.trim()
     if (!name) return
     setAddingCreator(true)
@@ -535,7 +588,7 @@ export default function App() {
   }
 
   async function toggleInstalled(attire, installed) {
-    if (!session) return
+    if (!isApproved) return
     try {
       if (installed) {
         const { error } = await supabase.from('user_installed_attires').delete().eq('user_id', session.user.id).eq('attire_id', attire.id)
@@ -553,12 +606,12 @@ export default function App() {
   }
 
   function createRequest(wrestlerId, attireId, requestType, wrestlerName, attireName) {
-    if (!session) return
+    if (!isApproved) return
     setRequestModal({ open: true, context: { wrestlerId, attireId, requestType, wrestlerName, attireName } })
   }
 
   async function submitRequest(notes) {
-    if (!session || !requestModal.context) return
+    if (!isApproved || !requestModal.context) return
     setRequestSubmitting(true)
     try {
       const { error } = await supabase.from('mod_requests').insert({ wrestler_id: requestModal.context.wrestlerId, attire_id: requestModal.context.attireId, request_type: requestModal.context.requestType, notes: (notes || '').trim() })
@@ -574,7 +627,7 @@ export default function App() {
   }
 
   function openResolveLink(wrestler, attire, issueType) {
-    if (!session) return
+    if (!isApproved) return
     setResolveModal({
       open: true,
       context: {
@@ -589,7 +642,7 @@ export default function App() {
   }
 
   async function submitResolveLink(url, notes) {
-    if (!session || !resolveModal.context) return
+    if (!isApproved || !resolveModal.context) return
     setResolvingLink(true)
     try {
       const cleanUrl = (url || '').trim()
@@ -627,6 +680,7 @@ export default function App() {
   }
 
   function openAddWrestler() {
+    if (!isApproved) return
     setWrestlerForm(emptyWrestler())
     setWrestlerModalOpen(true)
   }
@@ -637,6 +691,7 @@ export default function App() {
   }
 
   function openAddAttire(wrestler) {
+    if (!isApproved) return
     setAttireForm({ ...emptyAttire(wrestler.id), pendingImageUploads: [] })
     setAttireModalOpen(true)
   }
@@ -647,6 +702,7 @@ export default function App() {
   }
 
   function openCreateCollection() {
+    if (!isApproved) return
     setCollectionForm(emptyCollection())
     setCollectionModalOpen(true)
   }
@@ -690,12 +746,12 @@ export default function App() {
   }
 
   function openCollectionPicker(attire) {
-    if (!session) return
+    if (!isApproved) return
     setCollectionPicker({ open: true, attire })
   }
 
   async function toggleCollectionMembership(collection, isIn) {
-    if (!session || !collectionPicker.attire) return
+    if (!isApproved || !collectionPicker.attire) return
     setSaving(true)
     try {
       if (isIn) {
@@ -716,12 +772,12 @@ export default function App() {
   }
 
   async function deleteAttire(attire) {
-    if (!session || session.user.id !== attire.owner_id) return
+    if (!canManageContent(attire.owner_id)) return
     if (!window.confirm(`Delete ${attire.name}?`)) return
     try {
       const paths = [attire.render_dds_path, ...(attire.attire_images || []).map((img) => img.image_path)]
       await removeAssets(paths)
-      const { error } = await supabase.from('attires').delete().eq('id', attire.id).eq('owner_id', session.user.id)
+      const { error } = await supabase.from('attires').delete().eq('id', attire.id)
       if (error) throw error
       openNotice('success', 'Attire deleted', `${attire.name} was deleted.`)
       await fetchAll()
@@ -731,7 +787,7 @@ export default function App() {
   }
 
   async function deleteWrestler(wrestler) {
-    if (!session || session.user.id !== wrestler.owner_id) return
+    if (!canManageContent(wrestler.owner_id)) return
     if (!window.confirm(`Delete ${wrestler.wrestler_name} and all attire mods?`)) return
     try {
       const assetPaths = [wrestler.headshot_path]
@@ -740,7 +796,7 @@ export default function App() {
         for (const img of attire.attire_images || []) assetPaths.push(img.image_path)
       }
       await removeAssets(assetPaths)
-      const { error } = await supabase.from('wrestlers').delete().eq('id', wrestler.id).eq('owner_id', session.user.id)
+      const { error } = await supabase.from('wrestlers').delete().eq('id', wrestler.id)
       if (error) throw error
       openNotice('success', 'Wrestler deleted', `${wrestler.wrestler_name} and related attire mods were deleted.`)
       await fetchAll()
@@ -750,11 +806,11 @@ export default function App() {
   }
 
   async function deleteCollection(collection) {
-    if (!session || session.user.id !== collection.owner_id) return
+    if (!canManageContent(collection.owner_id)) return
     if (!window.confirm(`Delete collection ${collection.name}?`)) return
     try {
       if (collection.cover_path) await removeAssets([collection.cover_path])
-      const { error } = await supabase.from('collections').delete().eq('id', collection.id).eq('owner_id', session.user.id)
+      const { error } = await supabase.from('collections').delete().eq('id', collection.id)
       if (error) throw error
       if (selectedCollection?.id === collection.id) closeCollectionView()
       openNotice('success', 'Collection deleted', `${collection.name} was deleted.`)
@@ -769,7 +825,15 @@ export default function App() {
   if (!isSupabaseConfigured) {
     return (
       <div className="app-shell">
-        <Header onAddWrestler={() => {}} session={null} onBrowseCollections={() => {}} activeCollection={null} />
+        <Header
+          onAddWrestler={() => {}}
+          session={null}
+          onBrowseCollections={() => {}}
+          activeCollection={null}
+          currentProfile={null}
+          canContribute={false}
+          onBrowseAdmin={() => {}}
+        />
         <div className="message error">Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY before running the app.</div>
       </div>
     )
@@ -777,8 +841,18 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header onAddWrestler={openAddWrestler} session={session} onBrowseCollections={browseCollections} activeCollection={selectedCollection} />
-      <AuthPanel session={session} />
+      <Header
+        onAddWrestler={openAddWrestler}
+        session={session}
+        onBrowseCollections={browseCollections}
+        activeCollection={selectedCollection}
+        currentProfile={currentProfile}
+        canContribute={isApproved}
+        onBrowseAdmin={() => {
+          document.getElementById('admin-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }}
+      />
+      <AuthPanel session={session} currentProfile={currentProfile} />
       <StatsGrid stats={stats} />
       {error ? <div className="message error">{error}</div> : null}
 
@@ -819,6 +893,8 @@ export default function App() {
                 onEdit={openEditWrestler}
                 onDelete={deleteWrestler}
                 session={session}
+                currentProfile={currentProfile}
+                canManageContent={canManageContent}
                 viewMode={wrestlerViewMode}
                 setViewMode={setWrestlerViewMode}
               />
@@ -827,6 +903,9 @@ export default function App() {
             <DetailPanel
               wrestler={selectedWrestler}
               session={session}
+              currentProfile={currentProfile}
+              canContribute={isApproved}
+              canManageContent={canManageContent}
               installedIds={installedIds}
               onAddAttire={openAddAttire}
               onEditWrestler={openEditWrestler}
@@ -853,7 +932,13 @@ export default function App() {
           />
         </>
       )}
-
+      <AdminPanel
+        session={session}
+        currentProfile={currentProfile}
+        profiles={profiles}
+        onUpdateProfile={updateProfile}
+        updating={updatingProfile}
+      />
       <WrestlerEditorModal
         open={wrestlerModalOpen}
         form={wrestlerForm}

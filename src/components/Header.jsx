@@ -1,7 +1,13 @@
-
 import { supabase } from '../lib/supabase'
 
-export default function Header({ onAddWrestler, session, onBrowseCollections, activeCollection }) {
+export default function Header({
+  onAddWrestler,
+  onBrowseCollections,
+  onBrowseAdmin,
+  session,
+  currentProfile,
+  canContribute
+}) {
   async function handleSignOut() {
     await supabase.auth.signOut()
   }
@@ -12,30 +18,46 @@ export default function Header({ onAddWrestler, session, onBrowseCollections, ac
         <div className="eyebrow">Public community database</div>
         <h1>WWE 2K25 Mod Database</h1>
         <p className="hero-copy">
-          Browse wrestler pages, compare attire mods in database or gallery views, build personal collections,
-          share public packs with others, and help surface missing or dead links.
+          Browse wrestler pages, compare attire mods, build collections, track missing or dead links,
+          and contribute only after approval.
         </p>
-        {activeCollection ? <div className="hero-collection-pill">Viewing shared collection: <strong>{activeCollection.name}</strong></div> : null}
       </div>
 
       <div className="hero-side-stack">
         <div className="micro-account-bar">
           <span className="user-chip subtle-chip">
-            {session ? 'Contributor mode' : 'Public browse mode'}
+            {session ? `${currentProfile?.role || 'user'} mode` : 'Public browse mode'}
           </span>
+
           {session ? (
             <details className="account-menu">
               <summary>{session.user.email}</summary>
-              <button className="ghost-button small-btn" onClick={handleSignOut}>Sign out</button>
+              <div className="account-menu-inner">
+                <div className="muted-text small-text">
+                  Status: {currentProfile?.approval_status || 'pending'}
+                </div>
+                <button className="ghost-button small-btn" onClick={handleSignOut}>
+                  Sign out
+                </button>
+              </div>
             </details>
           ) : null}
         </div>
 
         <div className="hero-actions">
-          <button className="secondary-button hero-secondary" onClick={onBrowseCollections} disabled={!session}>
-            My collections
-          </button>
-          <button className="primary-button hero-primary" onClick={onAddWrestler} disabled={!session}>
+          {session ? (
+            <button className="secondary-button hero-secondary" onClick={onBrowseCollections}>
+              My collections
+            </button>
+          ) : null}
+
+          {currentProfile?.role === 'admin' ? (
+            <button className="secondary-button hero-secondary" onClick={onBrowseAdmin}>
+              Admin
+            </button>
+          ) : null}
+
+          <button className="primary-button hero-primary" onClick={onAddWrestler} disabled={!canContribute}>
             Add wrestler
           </button>
         </div>
