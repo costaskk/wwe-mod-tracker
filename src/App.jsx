@@ -11,6 +11,7 @@ import Header from './components/Header'
 import ModalNotice from './components/ModalNotice'
 import ProfileCollections from './components/ProfileCollections'
 import RequestModal from './components/RequestModal'
+import ResolveLinkModal from './components/ResolveLinkModal'
 import StatsGrid from './components/StatsGrid'
 import WrestlerEditorModal from './components/WrestlerEditorModal'
 import WrestlerList from './components/WrestlerList'
@@ -48,6 +49,7 @@ export default function App() {
   const [sourceGameFilter, setSourceGameFilter] = useState('all')
   const [installFilter, setInstallFilter] = useState('all')
   const [missingDownloadOnly, setMissingDownloadOnly] = useState(false)
+  const [deadLinkOnly, setDeadLinkOnly] = useState(false)
   const [wrestlerViewMode, setWrestlerViewMode] = useState('cards')
   const [attireViewMode, setAttireViewMode] = useState('gallery')
 
@@ -65,6 +67,8 @@ export default function App() {
   const [notice, setNotice] = useState(null)
   const [requestModal, setRequestModal] = useState({ open: false, context: null })
   const [requestSubmitting, setRequestSubmitting] = useState(false)
+  const [resolveModal, setResolveModal] = useState({ open: false, context: null })
+  const [resolvingLink, setResolvingLink] = useState(false)
 
   function openNotice(type, title, message) {
     setNotice({ type, title, message })
@@ -242,19 +246,22 @@ export default function App() {
             installFilter === 'all' ||
             (installFilter === 'installed' && installedIds.has(attire.id)) ||
             (installFilter === 'not_installed' && !installedIds.has(attire.id))
+          const requestInfo = (wrestler.requests || []).filter((request) => request.attire_id === attire.id && request.status === 'open')
+          const hasDeadLink = requestInfo.some((request) => request.request_type === 'dead_link')
           const missingDownloadOk = !missingDownloadOnly || !attire.download_url?.trim()
-          return queryOk && creatorOk && sourceGameOk && installedOk && missingDownloadOk
+          const deadLinkOk = !deadLinkOnly || hasDeadLink
+          return queryOk && creatorOk && sourceGameOk && installedOk && missingDownloadOk && deadLinkOk
         })
 
         const hasOpenRequests = (wrestler.requests || []).some((request) => request.status === 'open')
-        const missingOnlyOk = !showMissingOnly || wrestler.is_missing_target || filteredAttires.some((attire) => attire.status !== 'complete' || !attire.download_url?.trim()) || hasOpenRequests
+        const missingOnlyOk = !showMissingOnly || filteredAttires.some((attire) => attire.status !== 'complete' || !attire.download_url?.trim()) || hasOpenRequests
         const wrestlerQueryOk = !q || [wrestler.wrestler_name, wrestler.notes, ...(wrestler.tags || [])].join(' ').toLowerCase().includes(q)
         const include = missingOnlyOk && (filteredAttires.length > 0 || wrestlerQueryOk)
 
         return include ? { ...wrestler, attires: filteredAttires } : null
       })
       .filter(Boolean)
-  }, [wrestlers, query, showMissingOnly, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, installedIds])
+  }, [wrestlers, query, showMissingOnly, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, deadLinkOnly, installedIds])
 
   const myCollections = useMemo(() => session ? collections.filter((item) => item.owner_id === session.user.id) : [], [collections, session])
   const selectedWrestler = useMemo(() => filteredWrestlers.find((item) => item.id === selectedId) || filteredWrestlers[0] || null, [filteredWrestlers, selectedId])
@@ -275,8 +282,6 @@ export default function App() {
       if (!wrestlerForm.wrestler_name.trim()) throw new Error('Wrestler name is required.')
       const payload = {
         wrestler_name: wrestlerForm.wrestler_name.trim(),
-        target_attire_count: Number(wrestlerForm.target_attire_count) || 0,
-        is_missing_target: Boolean(wrestlerForm.is_missing_target),
         notes: wrestlerForm.notes.trim(),
         tags: parseTags(wrestlerForm.tags_text),
         headshot_path: wrestlerForm.headshot_path || '',
@@ -568,6 +573,59 @@ export default function App() {
     }
   }
 
+  function openResolveLink(wrestler, attire, issueType) {
+    if (!session) return
+    setResolveModal({
+      open: true,
+      context: {
+        wrestlerId: wrestler.id,
+        wrestlerName: wrestler.wrestler_name,
+        attireId: attire.id,
+        attireName: attire.name,
+        issueType,
+        currentUrl: attire.download_url || ''
+      }
+    })
+  }
+
+  async function submitResolveLink(url, notes) {
+    if (!session || !resolveModal.context) return
+    setResolvingLink(true)
+    try {
+      const cleanUrl = (url || '').trim()
+      if (!cleanUrl) throw new Error('A corrected download URL is required.')
+
+      const { error: attireError } = await supabase
+        .from('attires')
+        .update({ download_url: cleanUrl })
+        .eq('id', resolveModal.context.attireId)
+      if (attireError) throw attireError
+
+      const requestTypes = resolveModal.context.issueType === 'dead_link'
+        ? ['dead_link']
+        : ['missing_link', 'dead_link']
+
+      const { error: requestError } = await supabase
+        .from('mod_requests')
+        .update({
+          status: 'fulfilled',
+          notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
+        })
+        .eq('attire_id', resolveModal.context.attireId)
+        .eq('status', 'open')
+        .in('request_type', requestTypes)
+      if (requestError) throw requestError
+
+      setResolveModal({ open: false, context: null })
+      openNotice('success', 'Link issue resolved', 'The download link was updated and matching open link requests were marked as resolved.')
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not resolve link', err.message || 'Could not resolve this link issue.')
+    } finally {
+      setResolvingLink(false)
+    }
+  }
+
   function openAddWrestler() {
     setWrestlerForm(emptyWrestler())
     setWrestlerModalOpen(true)
@@ -745,6 +803,8 @@ export default function App() {
                 setInstallFilter={setInstallFilter}
                 missingDownloadOnly={missingDownloadOnly}
                 setMissingDownloadOnly={setMissingDownloadOnly}
+                deadLinkOnly={deadLinkOnly}
+                setDeadLinkOnly={setDeadLinkOnly}
                 session={session}
                 newCreatorName={newCreatorName}
                 setNewCreatorName={setNewCreatorName}
@@ -774,6 +834,7 @@ export default function App() {
               onDeleteAttire={deleteAttire}
               onToggleInstalled={toggleInstalled}
               onCreateRequest={createRequest}
+              onResolveLink={openResolveLink}
               attireViewMode={attireViewMode}
               setAttireViewMode={setAttireViewMode}
               onOpenCollectionPicker={openCollectionPicker}
@@ -852,6 +913,14 @@ export default function App() {
         onClose={() => setRequestModal({ open: false, context: null })}
         onSubmit={submitRequest}
         submitting={requestSubmitting}
+      />
+
+      <ResolveLinkModal
+        open={resolveModal.open}
+        context={resolveModal.context}
+        onClose={() => setResolveModal({ open: false, context: null })}
+        onSubmit={submitResolveLink}
+        submitting={resolvingLink}
       />
 
       <ModalNotice notice={notice} onClose={() => setNotice(null)} />

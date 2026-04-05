@@ -82,7 +82,6 @@ export default function WrestlerList({ wrestlers, selectedId, onSelect, onEdit, 
             <div className="empty-state small-empty">No wrestlers match the current filters.</div>
           ) : wrestlers.map((wrestler) => {
             const isSelected = wrestler.id === selectedId
-            const gap = Math.max(0, (wrestler.target_attire_count || 0) - (wrestler.attires?.length || 0))
             const openRequests = (wrestler.requests || []).filter(item => item.status === 'open').length
             const hasHeadshot = Boolean(wrestler.headshot_url)
 
@@ -101,17 +100,12 @@ export default function WrestlerList({ wrestlers, selectedId, onSelect, onEdit, 
                     <div className="list-title">{wrestler.wrestler_name}</div>
                     <div className="small-text muted-text">Updated {formatDate(wrestler.updated_at)}</div>
                   </div>
-                  <div className="tag-cluster">
-                    {wrestler.is_missing_target ? <span className="pill danger-pill">Wanted</span> : null}
-                    {gap > 0 ? <span className="pill">{gap} missing</span> : null}
-                  </div>
+
                 </div>
 
                 <div className="list-meta wrap-meta">
                   <span>{wrestler.attires?.length || 0} attire mods</span>
-                  <span>{openRequests} open requests</span>
-                  <span>Target {wrestler.target_attire_count || 0}</span>
-                </div>
+                  <span>{openRequests} open requests</span>                </div>
 
                 {session && wrestler.owner_id === session.user.id ? (
                   <div className="list-card-actions">
