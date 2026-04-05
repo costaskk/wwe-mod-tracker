@@ -14,8 +14,6 @@ export default function Filters({
   setInstallFilter,
   missingDownloadOnly,
   setMissingDownloadOnly,
-  deadLinkOnly,
-  setDeadLinkOnly,
   session,
   newCreatorName,
   setNewCreatorName,
@@ -27,7 +25,7 @@ export default function Filters({
       <div className="panel-header">
         <div>
           <h2>Search and filters</h2>
-          <p className="subtle-copy">Find mods by wrestler, attire, creator, source game, install state, missing links, or reported dead links.</p>
+          <p className="subtle-copy">Find mods by wrestler, attire, creator, source game, install state, or missing download links.</p>
         </div>
       </div>
 
@@ -75,13 +73,8 @@ export default function Filters({
           </label>
 
           <label className="checkbox-row card-checkbox-row">
-            <input type="checkbox" checked={deadLinkOnly} onChange={(e) => setDeadLinkOnly(e.target.checked)} />
-            Only reported dead links
-          </label>
-
-          <label className="checkbox-row card-checkbox-row">
             <input type="checkbox" checked={showMissingOnly} onChange={(e) => setShowMissingOnly(e.target.checked)} />
-            Only open requests, missing links, or incomplete attires
+            Only missing targets, open requests, or incomplete attires
           </label>
         </div>
 

@@ -29,6 +29,17 @@ export default function WrestlerEditorModal({
                   Wrestler name
                   <input value={form.wrestler_name} onChange={(e) => setForm(current => ({ ...current, wrestler_name: e.target.value }))} />
                 </label>
+
+                <label>
+                  Target attire count
+                  <input type="number" min="0" value={form.target_attire_count} onChange={(e) => setForm(current => ({ ...current, target_attire_count: Number(e.target.value) }))} />
+                </label>
+
+                <label className="checkbox-row soft-check-row">
+                  <input type="checkbox" checked={form.is_missing_target} onChange={(e) => setForm(current => ({ ...current, is_missing_target: e.target.checked }))} />
+                  Wanted / still missing
+                </label>
+
                 <label>
                   Tags
                   <input value={form.tags_text} onChange={(e) => setForm(current => ({ ...current, tags_text: e.target.value }))} placeholder="Legend, WCW, 1997" />
