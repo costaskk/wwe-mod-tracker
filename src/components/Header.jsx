@@ -4,6 +4,8 @@ export default function Header({
   onAddWrestler,
   onBrowseCollections,
   onBrowseAdmin,
+  onGoHome,
+  currentPage = 'mods',
   session,
   currentProfile,
   canContribute
@@ -19,12 +21,18 @@ export default function Header({
         <h1>WWE 2K25 Mod Database</h1>
         <p className="hero-copy">
           Browse wrestler pages, compare attire mods, build collections, track missing or dead links,
-          and contribute only after approval.
+          and contribute after approval.
         </p>
       </div>
 
       <div className="hero-side-stack">
         <div className="micro-account-bar">
+          <div className="page-nav-chips">
+            <button className={`nav-chip ${currentPage === 'mods' ? 'active' : ''}`} onClick={onGoHome}>Mod list</button>
+            {session ? <button className={`nav-chip ${currentPage === 'collections' ? 'active' : ''}`} onClick={onBrowseCollections}>Collections</button> : null}
+            {currentProfile?.role === 'admin' ? <button className={`nav-chip ${currentPage === 'admin' ? 'active' : ''}`} onClick={onBrowseAdmin}>Admin</button> : null}
+          </div>
+
           <span className="user-chip subtle-chip">
             {session ? `${currentProfile?.role || 'user'} mode` : 'Public browse mode'}
           </span>
@@ -45,19 +53,7 @@ export default function Header({
         </div>
 
         <div className="hero-actions">
-          {session ? (
-            <button className="secondary-button hero-secondary" onClick={onBrowseCollections}>
-              My collections
-            </button>
-          ) : null}
-
-          {currentProfile?.role === 'admin' ? (
-            <button className="secondary-button hero-secondary" onClick={onBrowseAdmin}>
-              Admin
-            </button>
-          ) : null}
-
-          <button className="primary-button hero-primary" onClick={onAddWrestler} disabled={!canContribute}>
+          <button className="primary-button hero-primary" onClick={onAddWrestler} disabled={!canContribute || currentPage !== 'mods'}>
             Add wrestler
           </button>
         </div>
