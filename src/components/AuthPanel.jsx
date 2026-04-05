@@ -1,8 +1,7 @@
-
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-export default function AuthPanel({ session }) {
+export default function AuthPanel({ session, currentProfile }) {
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -16,9 +15,10 @@ export default function AuthPanel({ session }) {
     setMessage('')
     setLoading(true)
 
-    const action = mode === 'signin'
-      ? supabase.auth.signInWithPassword({ email, password })
-      : supabase.auth.signUp({ email, password })
+    const action =
+      mode === 'signin'
+        ? supabase.auth.signInWithPassword({ email, password })
+        : supabase.auth.signUp({ email, password })
 
     const { error: authError } = await action
 
@@ -28,24 +28,50 @@ export default function AuthPanel({ session }) {
       return
     }
 
-    setMessage(mode === 'signup' ? 'Account created. Check your email if confirmation is enabled.' : 'Signed in.')
+    setMessage(
+      mode === 'signup'
+        ? 'Account created. An admin must approve it before you can contribute.'
+        : 'Signed in.'
+    )
     setLoading(false)
   }
 
-  if (session) return null
+  if (session) {
+    if (currentProfile && currentProfile.approval_status !== 'approved') {
+      return (
+        <div className="auth-card compact-auth-card">
+          <div className="auth-head compact-auth-head">
+            <div>
+              <h3>Account pending approval</h3>
+              <p>
+                You are signed in as <strong>{session.user.email}</strong>, but an admin must approve your
+                account before you can add or edit content.
+              </p>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    return null
+  }
 
   return (
     <div className="auth-card compact-auth-card">
       <div className="auth-head compact-auth-head">
         <div>
           <h3>Sign in to contribute</h3>
-          <p>Browsing is public. Signing in lets you add wrestlers, add creators, upload files, mark installs, and submit requests.</p>
+          <p>Browsing is public. Contributing requires sign-in and admin approval.</p>
         </div>
       </div>
 
       <div className="segment-control compact-segment">
-        <button className={mode === 'signin' ? 'active' : ''} onClick={() => setMode('signin')}>Sign in</button>
-        <button className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')}>Create account</button>
+        <button className={mode === 'signin' ? 'active' : ''} onClick={() => setMode('signin')}>
+          Sign in
+        </button>
+        <button className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')}>
+          Create account
+        </button>
       </div>
 
       <form onSubmit={handleSubmit} className="form-grid compact-auth-form">
@@ -54,10 +80,18 @@ export default function AuthPanel({ session }) {
             Email
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </label>
+
           <label>
             Password
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
           </label>
+
           <div className="auth-submit-wrap">
             <button className="primary-button" disabled={loading}>
               {loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
