@@ -31,47 +31,38 @@ export default function AuthPanel({ session }) {
     setLoading(false)
   }
 
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-  }
-
-  if (session) {
-    return (
-      <div className="auth-inline">
-        <div className="auth-user">
-          Signed in as <strong>{session.user.email}</strong>
-        </div>
-        <button className="secondary-button" onClick={handleSignOut}>Sign out</button>
-      </div>
-    )
-  }
+  if (session) return null
 
   return (
-    <div className="auth-card">
-      <div className="auth-head">
+    <div className="auth-card compact-auth-card">
+      <div className="auth-head compact-auth-head">
         <div>
-          <h2>Contribute to the database</h2>
-          <p>Browse is public. Sign in to add wrestlers, add attires, mark installs, and create requests.</p>
+          <h3>Sign in to contribute</h3>
+          <p>Browsing is public. Signing in lets you add wrestlers, add creators, upload files, mark installs, and submit requests.</p>
         </div>
       </div>
 
-      <div className="segment-control">
+      <div className="segment-control compact-segment">
         <button className={mode === 'signin' ? 'active' : ''} onClick={() => setMode('signin')}>Sign in</button>
         <button className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')}>Create account</button>
       </div>
 
-      <form onSubmit={handleSubmit} className="form-grid">
-        <label>
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <label>
-          Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
-        </label>
-        <button className="primary-button" disabled={loading}>
-          {loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
-        </button>
+      <form onSubmit={handleSubmit} className="form-grid compact-auth-form">
+        <div className="compact-grid compact-grid-3">
+          <label>
+            Email
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </label>
+          <label>
+            Password
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+          </label>
+          <div className="auth-submit-wrap">
+            <button className="primary-button" disabled={loading}>
+              {loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
+            </button>
+          </div>
+        </div>
       </form>
 
       {message ? <div className="message success">{message}</div> : null}

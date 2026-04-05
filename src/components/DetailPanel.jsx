@@ -1,7 +1,42 @@
+import { useState } from 'react'
 import { formatDate, requestSummary } from '../lib/utils'
 
 function statusClass(status) {
   return `status-pill status-${status || 'complete'}`
+}
+
+function JsonBrowser({ title, value }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="json-browser-card">
+      <div className="json-browser-head">
+        <strong>{title}</strong>
+        <button className="ghost-button small-btn" onClick={() => setOpen((v) => !v)}>
+          {open ? 'Hide code' : 'Browse code'}
+        </button>
+      </div>
+      {open ? <pre className="json-box">{value ? JSON.stringify(value, null, 2) : 'No JSON uploaded.'}</pre> : null}
+    </div>
+  )
+}
+
+function DdsDisplay({ url, name }) {
+  const [failed, setFailed] = useState(false)
+  if (!url) return <div className="render-placeholder">No render uploaded</div>
+
+  return (
+    <div className="dds-display">
+      {!failed ? (
+        <img className="gallery-img dds-inline-preview" src={url} alt={name || 'DDS render'} onError={() => setFailed(true)} />
+      ) : (
+        <div className="render-placeholder">
+          <div className="render-badge">DDS</div>
+          <div className="render-name">Preview not available in this browser.</div>
+        </div>
+      )}
+      <a className="secondary-button inline-btn small-btn" href={url} target="_blank" rel="noreferrer">Open / download DDS</a>
+    </div>
+  )
 }
 
 export default function DetailPanel({
@@ -31,7 +66,7 @@ export default function DetailPanel({
               <div className="eyebrow">Wrestler page</div>
               <h2>{wrestler.wrestler_name}</h2>
               <p className="hero-copy compact-copy">
-                Browse public attire mods for this wrestler, sorted by era or appearance date when the attire name includes one. Users can add mods, screenshots, renders, requests, and install markers.
+                Browse public attire mods for this wrestler, sorted by era or appearance date when the attire name includes one. Users can add mods, screenshots, renders, JSON profiles, requests, and install markers.
               </p>
             </div>
           </div>
@@ -53,30 +88,14 @@ export default function DetailPanel({
       </section>
 
       <section className="panel soft-panel">
-        <div className="panel-header">
-          <h2>Moveset and profile files</h2>
-        </div>
-        <div className="json-grid">
-          <div>
-            <h4>Moveset / animations</h4>
-            <pre className="json-box">{wrestler.moveset_json ? JSON.stringify(wrestler.moveset_json, null, 2) : 'No JSON uploaded.'}</pre>
-          </div>
-          <div>
-            <h4>Hype / DC profile</h4>
-            <pre className="json-box">{wrestler.profile_json ? JSON.stringify(wrestler.profile_json, null, 2) : 'No JSON uploaded.'}</pre>
-          </div>
-        </div>
-      </section>
-
-      <section className="panel soft-panel">
         <div className="panel-header with-actions">
           <div>
             <h2>Attire mods</h2>
-            <p className="subtle-copy">Download links, screenshots, DDS renders, creator, and install state all live on each attire.</p>
+            <p className="subtle-copy">Creator, download, screenshots, DDS render, and JSON profiles all live on each attire.</p>
           </div>
         </div>
 
-        <div className="attire-grid">
+        <div className="attire-grid single-attire-grid">
           {(wrestler.attires || []).length === 0 ? (
             <div className="empty-state small-empty">No attire mods added yet.</div>
           ) : (wrestler.attires || []).map((attire) => {
@@ -98,12 +117,22 @@ export default function DetailPanel({
                   <span className={statusClass(attire.status)}>{attire.status}</span>
                 </div>
 
-                <div className="gallery-grid">
-                  {screenshots.length ? screenshots.slice(0, 4).map((image) => (
-                    <a key={image.id} href={image.image_url} target="_blank" rel="noreferrer" className="gallery-tile">
-                      <img className="gallery-img" src={image.image_url} alt={image.image_name || attire.name} />
-                    </a>
-                  )) : <div className="visual-placeholder">No screenshots uploaded</div>}
+                <div className="attire-visuals single-column-visuals">
+                  <div className="visual-block">
+                    <div className="visual-label">Screenshots</div>
+                    <div className="gallery-grid detail-gallery-grid">
+                      {screenshots.length ? screenshots.map((image) => (
+                        <a key={image.id} href={image.image_url} target="_blank" rel="noreferrer" className="gallery-tile">
+                          <img className="gallery-img" src={image.image_url} alt={image.image_name || attire.name} />
+                        </a>
+                      )) : <div className="visual-placeholder">No screenshots uploaded</div>}
+                    </div>
+                  </div>
+
+                  <div className="visual-block">
+                    <div className="visual-label">DDS render</div>
+                    <DdsDisplay url={attire.render_dds_url} name={attire.render_dds_name} />
+                  </div>
                 </div>
 
                 <div className="split-meta">
@@ -112,12 +141,17 @@ export default function DetailPanel({
                     <div className="meta-value break-line">{attire.download_url ? <a href={attire.download_url} target="_blank" rel="noreferrer">Open link</a> : 'Missing link'}</div>
                   </div>
                   <div>
-                    <span className="muted-text">DDS render</span>
-                    <div className="meta-value break-line">{attire.render_dds_url ? <a href={attire.render_dds_url} target="_blank" rel="noreferrer">{attire.render_dds_name || 'Download DDS'}</a> : 'No render uploaded'}</div>
+                    <span className="muted-text">Added</span>
+                    <div className="meta-value break-line">{formatDate(attire.created_at)}</div>
                   </div>
                 </div>
 
                 {attire.notes ? <div className="note-box compact-note">{attire.notes}</div> : null}
+
+                <div className="json-grid attire-json-grid">
+                  <JsonBrowser title="Moveset / animations" value={attire.moveset_json} />
+                  <JsonBrowser title="Hype / DC profile" value={attire.profile_json} />
+                </div>
 
                 <div className="request-summary-row">
                   <span className="pill">{requestInfo.total} open requests</span>
