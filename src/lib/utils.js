@@ -26,6 +26,8 @@ export function emptyWrestler() {
   return {
     id: null,
     wrestler_name: '',
+    target_attire_count: 1,
+    is_missing_target: false,
     notes: '',
     tags_text: '',
     headshot_path: '',
@@ -77,6 +79,8 @@ export function normalizeWrestlerForEditor(wrestler) {
   return {
     id: wrestler.id,
     wrestler_name: wrestler.wrestler_name || '',
+    target_attire_count: wrestler.target_attire_count || 0,
+    is_missing_target: Boolean(wrestler.is_missing_target),
     notes: wrestler.notes || '',
     tags_text: (wrestler.tags || []).join(', '),
     headshot_path: wrestler.headshot_path || '',
