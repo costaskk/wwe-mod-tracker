@@ -18,23 +18,17 @@ export default function Filters({
       </div>
 
       <div className="form-grid compact-grid">
-        <label>
+        <label className="wide">
           <span>Search</span>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Wrestler, creator, attire, tag..."
-          />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Wrestler, attire, creator, tag, notes..." />
         </label>
 
         <label>
-          <span>Creator</span>
+          <span>Attire creator</span>
           <select value={creatorFilter} onChange={(e) => setCreatorFilter(e.target.value)}>
             <option value="all">All creators</option>
             {creators.map((creator) => (
-              <option key={creator} value={creator}>
-                {creator}
-              </option>
+              <option key={creator} value={creator}>{creator}</option>
             ))}
           </select>
         </label>
@@ -65,11 +59,7 @@ export default function Filters({
         </label>
 
         <label className="checkbox-row wide">
-          <input
-            type="checkbox"
-            checked={showMissingOnly}
-            onChange={(e) => setShowMissingOnly(e.target.checked)}
-          />
+          <input type="checkbox" checked={showMissingOnly} onChange={(e) => setShowMissingOnly(e.target.checked)} />
           <span>Only show missing or incomplete entries</span>
         </label>
       </div>
