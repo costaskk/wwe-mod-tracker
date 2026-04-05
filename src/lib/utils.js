@@ -184,17 +184,15 @@ export function sortAttires(attires = []) {
 }
 
 export function computeStats(wrestlers, collections = []) {
-  const attireCount = wrestlers.reduce((sum, wrestler) => sum + (wrestler.attires?.length || 0), 0)
-  const requestCount = wrestlers.reduce((sum, wrestler) => sum + (wrestler.requests?.length || 0), 0)
-  const missingTargets = wrestlers.filter(item => item.is_missing_target).length
-  const gapCount = wrestlers.reduce((sum, item) => sum + Math.max(0, (item.target_attire_count || 0) - (item.attires?.length || 0)), 0)
+  const attires = wrestlers.flatMap((wrestler) => wrestler.attires || [])
+  const requests = wrestlers.flatMap((wrestler) => wrestler.requests || []).filter((item) => item.status === 'open')
+
   return {
-    wrestlerCount: wrestlers.length,
-    attireCount,
-    requestCount,
-    missingTargets,
-    gapCount,
-    collectionCount: collections.length
+    wrestlers: wrestlers.length,
+    attires: attires.length,
+    requests: requests.length,
+    missingDownloads: attires.filter((attire) => !attire.download_url || !attire.download_url.trim()).length,
+    collections: collections.length
   }
 }
 
