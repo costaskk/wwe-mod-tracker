@@ -16,6 +16,7 @@ import {
   computeStats,
   emptyAttire,
   emptyWrestler,
+  SOURCE_GAMES,
   normalizeAttireForEditor,
   normalizeWrestlerForEditor,
   parseJsonOrNull,
@@ -35,6 +36,7 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [showMissingOnly, setShowMissingOnly] = useState(false)
   const [creatorFilter, setCreatorFilter] = useState('all')
+  const [sourceGameFilter, setSourceGameFilter] = useState('all')
   const [installFilter, setInstallFilter] = useState('all')
   const [missingDownloadOnly, setMissingDownloadOnly] = useState(false)
 
@@ -153,12 +155,13 @@ export default function App() {
 
           const queryOk = !q || haystack.includes(q)
           const creatorOk = creatorFilter === 'all' || attire.creator_name === creatorFilter
+          const sourceGameOk = sourceGameFilter === 'all' || attire.source_game === sourceGameFilter
           const installedOk =
             installFilter === 'all' ||
             (installFilter === 'installed' && installedIds.has(attire.id)) ||
             (installFilter === 'not_installed' && !installedIds.has(attire.id))
           const missingDownloadOk = !missingDownloadOnly || !attire.download_url?.trim()
-          return queryOk && creatorOk && installedOk && missingDownloadOk
+          return queryOk && creatorOk && sourceGameOk && installedOk && missingDownloadOk
         })
 
         const hasOpenRequests = (wrestler.requests || []).some((request) => request.status === 'open')
@@ -169,7 +172,7 @@ export default function App() {
         return include ? { ...wrestler, attires: filteredAttires } : null
       })
       .filter(Boolean)
-  }, [wrestlers, query, showMissingOnly, creatorFilter, installFilter, missingDownloadOnly, installedIds])
+  }, [wrestlers, query, showMissingOnly, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, installedIds])
 
   useEffect(() => {
     if (!selectedId && filteredWrestlers[0]) setSelectedId(filteredWrestlers[0].id)
@@ -569,6 +572,9 @@ export default function App() {
             creatorFilter={creatorFilter}
             setCreatorFilter={setCreatorFilter}
             creators={creators}
+            sourceGameFilter={sourceGameFilter}
+            setSourceGameFilter={setSourceGameFilter}
+            sourceGames={SOURCE_GAMES}
             installFilter={installFilter}
             setInstallFilter={setInstallFilter}
             missingDownloadOnly={missingDownloadOnly}

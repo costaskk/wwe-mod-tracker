@@ -7,6 +7,9 @@ export default function Filters({
   creatorFilter,
   setCreatorFilter,
   creators,
+  sourceGameFilter,
+  setSourceGameFilter,
+  sourceGames,
   installFilter,
   setInstallFilter,
   missingDownloadOnly,
@@ -22,7 +25,7 @@ export default function Filters({
       <div className="panel-header">
         <div>
           <h2>Search and filters</h2>
-          <p className="subtle-copy">Find mods by wrestler, attire, creator, install state, or missing download links.</p>
+          <p className="subtle-copy">Find mods by wrestler, attire, creator, source game, install state, or missing download links.</p>
         </div>
       </div>
 
@@ -36,12 +39,20 @@ export default function Filters({
           />
         </label>
 
-        <div className="filter-row-grid">
+        <div className="filter-row-grid filter-row-grid-three">
           <label>
             Creator
             <select value={creatorFilter} onChange={(e) => setCreatorFilter(e.target.value)}>
               <option value="all">All creators</option>
               {creators.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+            </select>
+          </label>
+
+          <label>
+            Source game
+            <select value={sourceGameFilter} onChange={(e) => setSourceGameFilter(e.target.value)}>
+              <option value="all">All games</option>
+              {sourceGames.map((game) => <option key={game} value={game}>{game}</option>)}
             </select>
           </label>
 
