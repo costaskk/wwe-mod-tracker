@@ -612,3 +612,49 @@ body { background-attachment: fixed; }
     grid-template-columns: 1fr;
   }
 }
+
+
+.filter-row-grid-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.attire-title-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.creator-highlight-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.creator-label {
+  font-size: .78rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.creator-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: .5rem .9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(125,123,255,.28);
+  background: linear-gradient(135deg, rgba(63,166,255,.16), rgba(125,123,255,.16));
+  color: #eef5ff;
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+.prominent-creator-badge {
+  font-size: .95rem;
+}
+
+@media (max-width: 980px) {
+  .filter-row-grid-three {
+    grid-template-columns: 1fr;
+  }
+}

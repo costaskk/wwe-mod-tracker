@@ -107,13 +107,18 @@ export default function DetailPanel({
             return (
               <article className="attire-card improved-attire-card elevated-card" key={attire.id}>
                 <div className="attire-card-top">
-                  <div>
+                  <div className="attire-title-stack">
                     <h3>{attire.name}</h3>
+                    {attire.creator_name ? (
+                      <div className="creator-highlight-row">
+                        <span className="creator-label">Mod creator</span>
+                        <span className="creator-badge prominent-creator-badge">{attire.creator_name}</span>
+                      </div>
+                    ) : null}
                     <div className="list-meta wrap-meta">
                       <span>{attire.era || 'No era given'}</span>
                       <span>{attire.source_game}</span>
                       <span>{titleCase(attire.mod_type)}</span>
-                      {attire.creator_name ? <span>by {attire.creator_name}</span> : null}
                     </div>
                   </div>
                   <span className={statusClass(attire.status)}>{titleCase(attire.status)}</span>
