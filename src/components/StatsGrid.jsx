@@ -1,30 +1,20 @@
-import { AlertCircle, Database, Shirt, Star, Users } from 'lucide-react'
-
-const statIcons = {
-  Wrestlers: Users,
-  Attires: Shirt,
-  'Incomplete Attires': AlertCircle,
-  'Missing Targets': Star,
-  'Attire Gap': Database,
-}
-
 export default function StatsGrid({ stats }) {
+  const items = [
+    ['Wrestlers', stats.totalMods],
+    ['Attires', stats.totalAttires],
+    ['Incomplete Attires', stats.incompleteAttires],
+    ['Missing Targets', stats.missingTargets],
+    ['Attire Gap', stats.attireGap]
+  ]
+
   return (
     <section className="stats-grid">
-      {stats.map((stat) => {
-        const Icon = statIcons[stat.label]
-        return (
-          <article className="panel stat-card" key={stat.label}>
-            <div>
-              <p className="stat-label">{stat.label}</p>
-              <h3>{stat.value}</h3>
-            </div>
-            <div className="icon-shell">
-              <Icon size={20} />
-            </div>
-          </article>
-        )
-      })}
+      {items.map(([label, value]) => (
+        <article key={label} className="stat-card">
+          <div className="stat-label">{label}</div>
+          <div className="stat-value">{value}</div>
+        </article>
+      ))}
     </section>
   )
 }

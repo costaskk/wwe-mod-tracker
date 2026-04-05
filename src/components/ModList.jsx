@@ -1,117 +1,65 @@
-import { ChevronDown, ChevronUp, Edit3, Trash2 } from 'lucide-react'
-
-export default function ModList({
-  filteredMods,
-  selectedId,
-  setSelectedId,
-  expandedCards,
-  toggleExpanded,
-  onEdit,
-  onDelete,
-}) {
+export default function ModList({ mods, selectedId, onSelect, onEdit, onDelete }) {
   return (
-    <section className="panel mod-list-panel">
-      <div className="section-heading">
-        <div>
-          <h2>Mod list</h2>
-          <p className="muted">
-            {filteredMods.length} result{filteredMods.length === 1 ? '' : 's'}
-          </p>
-        </div>
+    <section className="panel list-panel">
+      <div className="panel-header">
+        <h2>Mods</h2>
+        <span className="pill">{mods.length} results</span>
       </div>
 
-      <div className="mod-list-scroll">
-        {filteredMods.length === 0 ? (
-          <div className="empty-box">No entries match your filters.</div>
+      <div className="list-scroll">
+        {mods.length === 0 ? (
+          <div className="empty-state small-empty">No mods found for the current filters.</div>
         ) : (
-          filteredMods.map((mod) => {
-            const isSelected = selectedId === mod.id
-            const expanded = expandedCards[mod.id]
-            const missingCount = Math.max(0, mod.targetAttireCount - mod.attires.length)
-
+          mods.map((mod) => {
+            const gap = Math.max(0, (mod.target_attire_count || 0) - (mod.attires?.length || 0))
             return (
-              <article
-                className={`mod-list-card ${isSelected ? 'selected' : ''}`}
+              <button
                 key={mod.id}
-                onClick={() => setSelectedId(mod.id)}
+                type="button"
+                className={`list-card ${selectedId === mod.id ? 'selected' : ''}`}
+                onClick={() => onSelect(mod.id)}
               >
-                <div className="mod-list-card-top">
+                <div className="list-card-top">
                   <div>
-                    <h3>{mod.wrestlerName}</h3>
-                    <p className="muted small-text">{mod.modCreator || 'Unknown creator'}</p>
+                    <div className="list-title">{mod.wrestler_name}</div>
+                    <div className="muted small-text">{mod.mod_creator_name || 'Unknown creator'}</div>
                   </div>
-                  <div className="badge-stack right">
-                    <span className="badge badge-bright">{mod.modType}</span>
-                    <span className="badge">{mod.sourceGame}</span>
+                  <div className="tag-cluster">
+                    <span className="pill dark">{mod.mod_type}</span>
+                    <span className="pill dark">{mod.source_game}</span>
                   </div>
                 </div>
 
-                <div className="meta-row small-text">
-                  <span>{mod.attires.length} attire{mod.attires.length === 1 ? '' : 's'}</span>
-                  <span>•</span>
-                  <span>v{mod.gameVersion}</span>
-                  <span>•</span>
-                  <span>{mod.isMissingTarget ? 'Missing target' : 'Tracked'}</span>
-                  {missingCount > 0 && (
-                    <>
-                      <span>•</span>
-                      <span>{missingCount} attire gap</span>
-                    </>
-                  )}
+                <div className="list-meta">
+                  <span>{mod.attires?.length || 0} attires</span>
+                  <span>v{mod.game_version}</span>
+                  {mod.is_missing_target ? <span className="warning-text">Missing target</span> : null}
+                  {gap > 0 ? <span className="warning-text">Gap: {gap}</span> : null}
                 </div>
 
-                {expanded && (
-                  <div className="expanded-box">
-                    {mod.tags.length > 0 && (
-                      <div className="badge-stack">
-                        {mod.tags.map((tag) => (
-                          <span className="badge" key={tag}>
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {mod.notes && <p className="muted small-text">{mod.notes}</p>}
-                  </div>
-                )}
-
-                <div className="card-actions-row">
+                <div className="list-card-actions">
                   <button
-                    className="text-button"
                     type="button"
+                    className="secondary-button small-btn"
                     onClick={(event) => {
                       event.stopPropagation()
-                      toggleExpanded(mod.id)
+                      onEdit(mod)
                     }}
                   >
-                    {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    {expanded ? 'Less' : 'More'}
+                    Edit
                   </button>
-
-                  <div className="button-row compact">
-                    <button
-                      className="icon-button"
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onEdit(mod)
-                      }}
-                    >
-                      <Edit3 size={16} />
-                    </button>
-                    <button
-                      className="icon-button danger"
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onDelete(mod.id)
-                      }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="danger-button small-btn"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onDelete(mod.id)
+                    }}
+                  >
+                    Delete
+                  </button>
                 </div>
-              </article>
+              </button>
             )
           })
         )}

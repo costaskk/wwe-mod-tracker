@@ -1,298 +1,273 @@
 import { useEffect, useMemo, useState } from 'react'
-import Header from './components/Header'
-import StatsGrid from './components/StatsGrid'
-import Filters from './components/Filters'
-import ModList from './components/ModList'
+import AuthPanel from './components/AuthPanel'
 import DetailPanel from './components/DetailPanel'
+import Filters from './components/Filters'
+import Header from './components/Header'
 import ModEditor from './components/ModEditor'
-import { demoData } from './data/demoData'
-
-const STORAGE_KEY = 'wwe2k25_mod_tracker_v1'
-
-const createId = () => Math.random().toString(36).slice(2) + Date.now().toString(36)
-
-const createEmptyAttire = () => ({
-  id: createId(),
-  name: '',
-  slot: '',
-  era: '',
-  creator: '',
-  imageUrl: '',
-  downloadUrl: '',
-  notes: '',
-  status: 'Complete',
-})
-
-const createDefaultForm = () => ({
-  wrestlerName: '',
-  modCreator: '',
-  gameVersion: '1.00',
-  sourceGame: 'WWE 2K25',
-  modType: 'Original',
-  isMissingTarget: false,
-  targetAttireCount: 1,
-  imagesText: '',
-  downloadLinksText: '',
-  notes: '',
-  tagsText: '',
-  attires: [createEmptyAttire()],
-  movesetJson: null,
-  hypeProfileJson: null,
-  dcProfileJson: null,
-})
-
-function parseLines(text) {
-  return text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-}
+import ModList from './components/ModList'
+import StatsGrid from './components/StatsGrid'
+import { isSupabaseConfigured, supabase } from './lib/supabase'
+import {
+  computeDashboardStats,
+  emptyMod,
+  normalizeModForEditor,
+  parseTags,
+  splitLines,
+  tryParseJson
+} from './lib/utils'
 
 export default function App() {
+  const [session, setSession] = useState(null)
   const [mods, setMods] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [query, setQuery] = useState('')
   const [creatorFilter, setCreatorFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [showMissingOnly, setShowMissingOnly] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
-  const [expandedCards, setExpandedCards] = useState({})
-  const [isEditorOpen, setIsEditorOpen] = useState(false)
-  const [editingId, setEditingId] = useState(null)
-  const [form, setForm] = useState(createDefaultForm())
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [form, setForm] = useState(emptyMod())
+  const [saveError, setSaveError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY)
-
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw)
-        setMods(parsed)
-        return
-      } catch (error) {
-        console.error('Could not parse saved tracker data.', error)
-      }
+    if (!isSupabaseConfigured) {
+      setLoading(false)
+      return
     }
 
-    setMods(demoData)
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setLoading(false)
+    })
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(mods))
-  }, [mods])
+    if (!session) {
+      setMods([])
+      return
+    }
+    fetchMods()
+  }, [session])
 
-  const creators = useMemo(() => {
-    return [...new Set(mods.map((mod) => mod.modCreator).filter(Boolean))].sort()
-  }, [mods])
+  async function fetchMods() {
+    setLoading(true)
+    setLoadError('')
+
+    const { data, error } = await supabase
+      .from('mods')
+      .select('*, attires(*)')
+      .order('updated_at', { ascending: false })
+
+    if (error) {
+      setLoadError(error.message)
+      setLoading(false)
+      return
+    }
+
+    const normalized = (data || []).map((mod) => ({
+      ...mod,
+      attires: [...(mod.attires || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+    }))
+
+    setMods(normalized)
+    setSelectedId((current) => current || data?.[0]?.id || null)
+    setLoading(false)
+  }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+  }
+
+  function openCreate() {
+    setForm(emptyMod())
+    setSaveError('')
+    setEditorOpen(true)
+  }
+
+  function openEdit(mod) {
+    setForm({ id: mod.id, ...normalizeModForEditor(mod) })
+    setSaveError('')
+    setEditorOpen(true)
+  }
+
+  async function handleSave() {
+    setSaveError('')
+    setSaving(true)
+
+    try {
+      if (!form.wrestler_name.trim()) {
+        throw new Error('Wrestler name is required.')
+      }
+
+      const modPayload = {
+        wrestler_name: form.wrestler_name.trim(),
+        mod_creator_name: form.mod_creator_name.trim(),
+        game_version: form.game_version.trim(),
+        source_game: form.source_game,
+        mod_type: form.mod_type,
+        is_missing_target: Boolean(form.is_missing_target),
+        target_attire_count: Number(form.target_attire_count) || 0,
+        notes: form.notes.trim(),
+        tags: parseTags(form.tags_text),
+        image_urls: splitLines(form.image_urls_text),
+        download_links: splitLines(form.download_links_text),
+        moveset_json: tryParseJson(form.moveset_json_text),
+        hype_profile_json: tryParseJson(form.hype_profile_json_text),
+        dc_profile_json: tryParseJson(form.dc_profile_json_text)
+      }
+
+      let modId = form.id
+
+      if (modId) {
+        const { error } = await supabase.from('mods').update(modPayload).eq('id', modId)
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase.from('mods').insert(modPayload).select('id').single()
+        if (error) throw error
+        modId = data.id
+      }
+
+      const cleanedAttires = form.attires
+        .filter((attire) => attire.name.trim())
+        .map((attire, index) => ({
+          id: attire.id,
+          mod_id: modId,
+          name: attire.name.trim(),
+          slot_name: attire.slot_name.trim(),
+          era: attire.era.trim(),
+          creator_name: attire.creator_name.trim(),
+          image_url: attire.image_url.trim(),
+          download_url: attire.download_url.trim(),
+          notes: attire.notes.trim(),
+          status: attire.status,
+          sort_order: index
+        }))
+
+      const { data: existingAttires, error: existingError } = await supabase
+        .from('attires')
+        .select('id')
+        .eq('mod_id', modId)
+
+      if (existingError) throw existingError
+
+      const existingIds = new Set((existingAttires || []).map((item) => item.id))
+      const nextIds = new Set(cleanedAttires.map((item) => item.id))
+      const idsToDelete = [...existingIds].filter((id) => !nextIds.has(id))
+
+      if (idsToDelete.length) {
+        const { error } = await supabase.from('attires').delete().in('id', idsToDelete)
+        if (error) throw error
+      }
+
+      if (cleanedAttires.length) {
+        const { error } = await supabase.from('attires').upsert(cleanedAttires)
+        if (error) throw error
+      }
+
+      setEditorOpen(false)
+      await fetchMods()
+      setSelectedId(modId)
+    } catch (error) {
+      setSaveError(error.message || 'Something went wrong while saving.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete(modId) {
+    const confirmed = window.confirm('Delete this mod entry and all of its attires?')
+    if (!confirmed) return
+
+    const { error } = await supabase.from('mods').delete().eq('id', modId)
+    if (error) {
+      window.alert(error.message)
+      return
+    }
+
+    if (selectedId === modId) setSelectedId(null)
+    await fetchMods()
+  }
+
+  const creators = useMemo(
+    () => [...new Set(mods.map((mod) => mod.mod_creator_name).filter(Boolean))].sort(),
+    [mods]
+  )
 
   const filteredMods = useMemo(() => {
     return mods.filter((mod) => {
       const haystack = [
-        mod.wrestlerName,
-        mod.modCreator,
-        mod.gameVersion,
-        mod.sourceGame,
-        mod.modType,
+        mod.wrestler_name,
+        mod.mod_creator_name,
+        mod.game_version,
+        mod.source_game,
+        mod.mod_type,
         mod.notes,
         ...(mod.tags || []),
-        ...mod.attires.map((attire) => `${attire.name} ${attire.era || ''} ${attire.status}`),
+        ...(mod.attires || []).map((attire) => `${attire.name} ${attire.era || ''} ${attire.status || ''}`)
       ]
         .join(' ')
         .toLowerCase()
 
       const matchesQuery = haystack.includes(query.toLowerCase())
-      const matchesCreator = creatorFilter === 'all' || mod.modCreator === creatorFilter
-      const matchesType = typeFilter === 'all' || mod.modType === typeFilter
-      const matchesSource = sourceFilter === 'all' || mod.sourceGame === sourceFilter
-      const matchesMissing = !showMissingOnly || mod.isMissingTarget || mod.attires.some((attire) => attire.status !== 'Complete')
+      const matchesCreator = creatorFilter === 'all' || mod.mod_creator_name === creatorFilter
+      const matchesType = typeFilter === 'all' || mod.mod_type === typeFilter
+      const matchesSource = sourceFilter === 'all' || mod.source_game === sourceFilter
+      const matchesMissing =
+        !showMissingOnly || mod.is_missing_target || mod.attires?.some((attire) => attire.status !== 'complete')
 
       return matchesQuery && matchesCreator && matchesType && matchesSource && matchesMissing
     })
   }, [mods, query, creatorFilter, typeFilter, sourceFilter, showMissingOnly])
 
-  const selectedMod = useMemo(() => {
-    return mods.find((mod) => mod.id === selectedId) || filteredMods[0] || null
-  }, [mods, selectedId, filteredMods])
+  const selectedMod = useMemo(
+    () => mods.find((mod) => mod.id === selectedId) || filteredMods[0] || null,
+    [mods, selectedId, filteredMods]
+  )
 
-  useEffect(() => {
-    if (!selectedId && filteredMods[0]) {
-      setSelectedId(filteredMods[0].id)
-      return
-    }
+  const stats = useMemo(() => computeDashboardStats(mods), [mods])
 
-    if (selectedId && !filteredMods.some((mod) => mod.id === selectedId)) {
-      setSelectedId(filteredMods[0]?.id || null)
-    }
-  }, [filteredMods, selectedId])
-
-  const stats = useMemo(() => {
-    const totalAttires = mods.reduce((sum, mod) => sum + mod.attires.length, 0)
-    const incompleteAttires = mods.reduce(
-      (sum, mod) => sum + mod.attires.filter((attire) => attire.status !== 'Complete').length,
-      0,
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="auth-shell">
+        <div className="auth-card">
+          <h1>Supabase not configured</h1>
+          <p className="muted">
+            Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_PUBLISHABLE_KEY</code> to your
+            <code>.env.local</code> file first.
+          </p>
+        </div>
+      </div>
     )
-    const missingWrestlers = mods.filter((mod) => mod.isMissingTarget).length
-    const totalTargetsGap = mods.reduce((sum, mod) => sum + Math.max(0, mod.targetAttireCount - mod.attires.length), 0)
-
-    return [
-      { label: 'Wrestlers', value: mods.length },
-      { label: 'Attires', value: totalAttires },
-      { label: 'Incomplete Attires', value: incompleteAttires },
-      { label: 'Missing Targets', value: missingWrestlers },
-      { label: 'Attire Gap', value: totalTargetsGap },
-    ]
-  }, [mods])
-
-  function openCreate() {
-    setEditingId(null)
-    setForm(createDefaultForm())
-    setIsEditorOpen(true)
   }
 
-  function openEdit(mod) {
-    setEditingId(mod.id)
-    setForm({
-      wrestlerName: mod.wrestlerName,
-      modCreator: mod.modCreator,
-      gameVersion: mod.gameVersion,
-      sourceGame: mod.sourceGame,
-      modType: mod.modType,
-      isMissingTarget: mod.isMissingTarget,
-      targetAttireCount: mod.targetAttireCount,
-      imagesText: (mod.images || []).join('\n'),
-      downloadLinksText: (mod.downloadLinks || []).join('\n'),
-      notes: mod.notes || '',
-      tagsText: (mod.tags || []).join(', '),
-      attires: mod.attires.length ? mod.attires : [createEmptyAttire()],
-      movesetJson: mod.movesetJson || null,
-      hypeProfileJson: mod.hypeProfileJson || null,
-      dcProfileJson: mod.dcProfileJson || null,
-    })
-    setIsEditorOpen(true)
+  if (loading && !session) {
+    return <div className="app-loader">Loading…</div>
   }
 
-  function saveForm() {
-    if (!form.wrestlerName.trim()) return
-
-    const now = new Date().toISOString()
-    const payload = {
-      id: editingId || createId(),
-      wrestlerName: form.wrestlerName.trim(),
-      modCreator: form.modCreator.trim(),
-      gameVersion: form.gameVersion.trim(),
-      sourceGame: form.sourceGame,
-      modType: form.modType,
-      isMissingTarget: form.isMissingTarget,
-      targetAttireCount: Number(form.targetAttireCount) || 0,
-      images: parseLines(form.imagesText),
-      downloadLinks: parseLines(form.downloadLinksText),
-      notes: form.notes.trim(),
-      tags: form.tagsText
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-      attires: form.attires.filter((attire) => attire.name.trim()),
-      movesetJson: form.movesetJson || null,
-      hypeProfileJson: form.hypeProfileJson || null,
-      dcProfileJson: form.dcProfileJson || null,
-      createdAt: editingId ? mods.find((mod) => mod.id === editingId)?.createdAt || now : now,
-      updatedAt: now,
-    }
-
-    setMods((currentMods) => {
-      const exists = currentMods.some((mod) => mod.id === payload.id)
-      return exists ? currentMods.map((mod) => (mod.id === payload.id ? payload : mod)) : [payload, ...currentMods]
-    })
-
-    setSelectedId(payload.id)
-    setIsEditorOpen(false)
-  }
-
-  function deleteMod(id) {
-    setMods((currentMods) => currentMods.filter((mod) => mod.id !== id))
-    if (selectedId === id) setSelectedId(null)
-  }
-
-  function updateAttire(attireId, patch) {
-    setForm((currentForm) => ({
-      ...currentForm,
-      attires: currentForm.attires.map((attire) => (attire.id === attireId ? { ...attire, ...patch } : attire)),
-    }))
-  }
-
-  function addAttire() {
-    setForm((currentForm) => ({
-      ...currentForm,
-      attires: [...currentForm.attires, createEmptyAttire()],
-    }))
-  }
-
-  function removeAttire(attireId) {
-    setForm((currentForm) => ({
-      ...currentForm,
-      attires: currentForm.attires.filter((attire) => attire.id !== attireId),
-    }))
-  }
-
-  function handleJsonUpload(event, key) {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      const content = String(reader.result || '')
-      setForm((currentForm) => ({
-        ...currentForm,
-        [key]: {
-          filename: file.name,
-          content,
-        },
-      }))
-    }
-    reader.readAsText(file)
-  }
-
-  function exportDatabase() {
-    const blob = new Blob([JSON.stringify(mods, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'wwe-2k25-mod-database.json'
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
-  function importDatabase(event) {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result || '[]'))
-        if (Array.isArray(parsed)) {
-          setMods(parsed)
-        }
-      } catch (error) {
-        console.error('Invalid import file.', error)
-        alert('That JSON file could not be imported. Please use a valid exported database file.')
-      }
-    }
-    reader.readAsText(file)
-    event.target.value = ''
-  }
-
-  function toggleExpanded(id) {
-    setExpandedCards((current) => ({ ...current, [id]: !current[id] }))
+  if (!session) {
+    return <AuthPanel />
   }
 
   return (
     <div className="app-shell">
       <div className="app-container">
-        <Header onCreate={openCreate} onExport={exportDatabase} onImport={importDatabase} />
+        <Header user={session.user} onOpenCreate={openCreate} onSignOut={handleSignOut} onRefresh={fetchMods} />
         <StatsGrid stats={stats} />
 
-        <main className="main-grid">
+        {loadError ? <div className="message error page-message">{loadError}</div> : null}
+
+        <div className="layout-grid">
           <div className="left-column">
             <Filters
               query={query}
@@ -309,53 +284,27 @@ export default function App() {
             />
 
             <ModList
-              filteredMods={filteredMods}
+              mods={filteredMods}
               selectedId={selectedMod?.id}
-              setSelectedId={setSelectedId}
-              expandedCards={expandedCards}
-              toggleExpanded={toggleExpanded}
+              onSelect={setSelectedId}
               onEdit={openEdit}
-              onDelete={deleteMod}
+              onDelete={handleDelete}
             />
           </div>
 
-          <DetailPanel selectedMod={selectedMod} />
-        </main>
-
-        <div className="footer-actions">
-          <button className="button button-secondary" onClick={openCreate}>
-            Add another mod
-          </button>
-          <button className="button button-secondary" onClick={exportDatabase}>
-            Backup database
-          </button>
-          <button
-            className="button button-danger"
-            onClick={() => {
-              if (window.confirm('Clear all local data from this browser?')) {
-                setMods([])
-                setSelectedId(null)
-                localStorage.removeItem(STORAGE_KEY)
-              }
-            }}
-          >
-            Clear all local data
-          </button>
+          <DetailPanel mod={selectedMod} />
         </div>
-      </div>
 
-      <ModEditor
-        isOpen={isEditorOpen}
-        onClose={() => setIsEditorOpen(false)}
-        onSave={saveForm}
-        form={form}
-        setForm={setForm}
-        updateAttire={updateAttire}
-        addAttire={addAttire}
-        removeAttire={removeAttire}
-        handleJsonUpload={handleJsonUpload}
-        editingId={editingId}
-      />
+        <ModEditor
+          open={editorOpen}
+          form={form}
+          setForm={setForm}
+          onClose={() => setEditorOpen(false)}
+          onSave={handleSave}
+          saving={saving}
+          error={saveError}
+        />
+      </div>
     </div>
   )
 }
