@@ -1,7 +1,7 @@
 
 import { supabase } from '../lib/supabase'
 
-export default function Header({ onAddWrestler, session, onOpenCollectionManager, activeCollection }) {
+export default function Header({ onAddWrestler, session, onBrowseCollections, activeCollection }) {
   async function handleSignOut() {
     await supabase.auth.signOut()
   }
@@ -32,7 +32,7 @@ export default function Header({ onAddWrestler, session, onOpenCollectionManager
         </div>
 
         <div className="hero-actions">
-          <button className="secondary-button hero-secondary" onClick={onOpenCollectionManager} disabled={!session}>
+          <button className="secondary-button hero-secondary" onClick={onBrowseCollections} disabled={!session}>
             My collections
           </button>
           <button className="primary-button hero-primary" onClick={onAddWrestler} disabled={!session}>

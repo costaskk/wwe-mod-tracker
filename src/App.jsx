@@ -609,6 +609,18 @@ export default function App() {
     window.history.replaceState({}, '', window.location.pathname)
   }
 
+  function browseCollections() {
+    if (selectedCollection) {
+      closeCollectionView()
+      requestAnimationFrame(() => {
+        document.getElementById('my-collections-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+      return
+    }
+
+    document.getElementById('my-collections-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   async function shareCollection(collection) {
     const url = `${window.location.origin}${window.location.pathname}?collection=${collection.slug}`
     try {
@@ -699,7 +711,7 @@ export default function App() {
   if (!isSupabaseConfigured) {
     return (
       <div className="app-shell">
-        <Header onAddWrestler={() => {}} session={null} onOpenCollectionManager={() => {}} activeCollection={null} />
+        <Header onAddWrestler={() => {}} session={null} onBrowseCollections={() => {}} activeCollection={null} />
         <div className="message error">Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY before running the app.</div>
       </div>
     )
@@ -707,7 +719,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header onAddWrestler={openAddWrestler} session={session} onOpenCollectionManager={openCreateCollection} activeCollection={selectedCollection} />
+      <Header onAddWrestler={openAddWrestler} session={session} onBrowseCollections={browseCollections} activeCollection={selectedCollection} />
       <AuthPanel session={session} />
       <StatsGrid stats={stats} />
       {error ? <div className="message error">{error}</div> : null}
@@ -769,6 +781,7 @@ export default function App() {
           </div>
 
           <ProfileCollections
+            sectionId="my-collections-section"
             session={session}
             collections={myCollections}
             onCreate={openCreateCollection}
