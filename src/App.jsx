@@ -293,8 +293,19 @@ export default function App() {
     })
 
     const mergedCollections = [...collectionMap.values()].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+    const seenSlugs = new Set()
+    const repairedCollections = mergedCollections.map((collection) => {
+      if (!collection.slug || seenSlugs.has(collection.slug)) {
+        return {
+          ...collection,
+          slug: uniqueCollectionSlug(collection.name, collection.owner_id)
+        }
+      }
+      seenSlugs.add(collection.slug)
+      return collection
+    })
     const slug = new URLSearchParams(window.location.search).get('collection')
-    const collectionFromUrl = slug ? mergedCollections.find((item) => item.slug === slug) : null
+    const collectionFromUrl = slug ? repairedCollections.find((item) => item.slug === slug) : null
 
     const loadedProfiles = profilesResult.data || []
     const myProfile = session
@@ -305,7 +316,7 @@ export default function App() {
     setCurrentProfile(myProfile)
     setWrestlers(normalizedWrestlers)
     setCreators(creatorResult.data || [])
-    setCollections(mergedCollections)
+    setCollections(repairedCollections)
     setSelectedCollection(collectionFromUrl || null)
     setSelectedId((current) => current || normalizedWrestlers[0]?.id || null)
     setInstalledIds(new Set((installsResult.data || []).map((item) => item.attire_id)))
@@ -375,8 +386,8 @@ export default function App() {
     )
 
     const selectedWrestler = useMemo(
-      () => visibleWrestlers.find((item) => item.id === selectedId) || visibleWrestlers[0] || null,
-      [visibleWrestlers, selectedId]
+      () => filteredWrestlers.find((item) => item.id === selectedId) || visibleWrestlers[0] || null,
+      [filteredWrestlers, visibleWrestlers, selectedId]
     )
 
     const collectionMemberships = useMemo(() => {
@@ -504,10 +515,15 @@ export default function App() {
     try {
       const cleanName = collectionForm.name.trim()
       if (!cleanName) throw new Error('Collection name is required.')
-            const cleanSlug =
-        collectionForm.id && collectionForm.slug
-          ? collectionForm.slug
-          : uniqueCollectionSlug(collectionForm.slug || cleanName, session.user.id)
+        const shouldRegenerateSlug =
+          !collectionForm.slug ||
+          !collectionForm.slug.includes('-') ||
+          collectionForm.slug === slugify(cleanName)
+
+        const cleanSlug =
+          shouldRegenerateSlug
+            ? uniqueCollectionSlug(collectionForm.slug || cleanName, session.user.id)
+            : collectionForm.slug
       if (!cleanSlug) throw new Error('Please enter a valid slug using letters and numbers.')
       const payload = {
         name: cleanName,
@@ -995,6 +1011,11 @@ export default function App() {
               canContribute={isApproved}
               onClose={goCollectionsPage}
               onSelectWrestler={(id) => {
+                const index = filteredWrestlers.findIndex((item) => item.id === id)
+                if (index >= 0) {
+                  const nextPage = Math.floor(index / modsPerPage) + 1
+                  setModsPage(nextPage)
+                }
                 setSelectedId(id)
                 goHome()
               }}
