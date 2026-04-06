@@ -545,8 +545,8 @@ export default function DetailPanel({
         )}
       </section>
       {previewImage ? (
-        <div className="image-modal-backdrop" onClick={() => setPreviewImage(null)}>
-          <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="image-modal-backdrop image-modal-backdrop-open" onClick={() => setPreviewImage(null)}>
+          <div className="image-modal-content image-modal-content-open" onClick={(e) => e.stopPropagation()}>
             <img src={previewImage} alt="Preview" />
           </div>
         </div>
