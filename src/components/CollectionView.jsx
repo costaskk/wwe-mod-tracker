@@ -1,7 +1,7 @@
 
 import { formatDate, titleCase, parseDownloadLinks } from '../lib/utils'
 
-export default function CollectionView({ collection, session, canContribute, onClose, onSelectWrestler }) {
+export default function CollectionView({ collection, canContribute, onClose, onSelectWrestler }) {
   if (!collection) return null
 
   return (
