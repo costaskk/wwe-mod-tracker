@@ -3,10 +3,10 @@ import { useEffect, useMemo, useState } from 'react'
 import AdminPanel from './components/AdminPanel'
 import AuthPanel from './components/AuthPanel'
 import AttireEditorModal from './components/AttireEditorModal'
-import ConfirmActionModal from './components/ConfirmActionModal'
 import CollectionModal from './components/CollectionModal'
 import CollectionPickerModal from './components/CollectionPickerModal'
 import CollectionView from './components/CollectionView'
+import ConfirmActionModal from './components/ConfirmActionModal'
 import DetailPanel from './components/DetailPanel'
 import Filters from './components/Filters'
 import Header from './components/Header'
@@ -81,28 +81,23 @@ export default function App() {
   const [requestSubmitting, setRequestSubmitting] = useState(false)
   const [resolveModal, setResolveModal] = useState({ open: false, context: null })
   const [resolvingLink, setResolvingLink] = useState(false)
+  const [confirmAction, setConfirmAction] = useState({ open: false, title: '', message: '', confirmLabel: 'Confirm', tone: 'danger', busy: false, onConfirm: null })
 
   const isApproved = Boolean(session && currentProfile?.approval_status === 'approved')
   const isModerator = currentProfile?.role === 'moderator'
   const isAdmin = currentProfile?.role === 'admin'
   const isStaff = isModerator || isAdmin
 
-  const [confirmAction, setConfirmAction] = useState({
-    open: false,
-    title: '',
-    message: '',
-    confirmLabel: 'Confirm',
-    tone: 'danger',
-    busy: false,
-    onConfirm: null
-  })
-
   function canManageContent(ownerId) {
     if (!session) return false
     return session.user.id === ownerId || isStaff
   }
 
-    function openConfirmAction(config) {
+  function openNotice(type, title, message) {
+    setNotice({ type, title, message })
+  }
+
+  function openConfirmAction(config) {
     setConfirmAction({
       open: true,
       title: config.title || 'Are you sure?',
@@ -128,11 +123,6 @@ export default function App() {
       closeConfirmAction()
       openNotice('error', 'Action failed', err.message || 'Something went wrong.')
     }
-  }
-
-
-  function openNotice(type, title, message) {
-    setNotice({ type, title, message })
   }
 
   useEffect(() => {
@@ -886,7 +876,7 @@ export default function App() {
     }
   }
 
-  async function deleteAttire(attire) {
+  function deleteAttire(attire) {
     if (!canManageContent(attire.owner_id)) return
 
     openConfirmAction({
@@ -905,26 +895,26 @@ export default function App() {
     })
   }
 
-  async function deleteAttire(attire) {
-    if (!canManageContent(attire.owner_id)) return
-
-    openConfirmAction({
-      title: 'Delete attire mod?',
-      message: `This will permanently delete ${attire.name}.`,
-      confirmLabel: 'Delete attire',
-      tone: 'danger',
-      onConfirm: async () => {
-        const paths = [attire.render_dds_path, ...(attire.attire_images || []).map((img) => img.image_path)]
-        await removeAssets(paths)
-        const { error } = await supabase.from('attires').delete().eq('id', attire.id)
-        if (error) throw error
-        openNotice('success', 'Attire deleted', `${attire.name} was deleted.`)
-        await fetchAll()
+  function deleteWrestler(wrestler) {
+    if (!canManageContent(wrestler.owner_id)) return
+    if (!window.confirm(`Delete ${wrestler.wrestler_name} and all attire mods?`)) return
+    try {
+      const assetPaths = [wrestler.headshot_path]
+      for (const attire of wrestler.attires || []) {
+        if (attire.render_dds_path) assetPaths.push(attire.render_dds_path)
+        for (const img of attire.attire_images || []) assetPaths.push(img.image_path)
       }
-    })
+      await removeAssets(assetPaths)
+      const { error } = await supabase.from('wrestlers').delete().eq('id', wrestler.id)
+      if (error) throw error
+      openNotice('success', 'Wrestler deleted', `${wrestler.wrestler_name} and related attire mods were deleted.`)
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not delete wrestler', err.message || 'Could not delete wrestler.')
+    }
   }
 
-  async function deleteCollection(collection) {
+  function deleteCollection(collection) {
     if (!canManageContent(collection.owner_id)) return
 
     openConfirmAction({
@@ -1119,6 +1109,7 @@ export default function App() {
         onRemoveCover={removeCollectionCover}
         saving={saving}
         uploading={uploading}
+        wrestlers={wrestlers}
       />
 
       <CollectionPickerModal
@@ -1146,6 +1137,7 @@ export default function App() {
         onSubmit={submitResolveLink}
         submitting={resolvingLink}
       />
+
       <ConfirmActionModal
         open={confirmAction.open}
         title={confirmAction.title}
@@ -1156,6 +1148,7 @@ export default function App() {
         onConfirm={runConfirmAction}
         onClose={closeConfirmAction}
       />
+
       <ModalNotice notice={notice} onClose={() => setNotice(null)} />
       {loading ? <div className="loading-overlay">Loading database…</div> : null}
     </div>

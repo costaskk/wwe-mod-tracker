@@ -1,3 +1,4 @@
+
 import { formatDate, titleCase } from '../lib/utils'
 
 export default function CollectionView({ collection, session, canContribute, onClose, onSelectWrestler }) {
