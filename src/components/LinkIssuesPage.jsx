@@ -62,7 +62,7 @@ export default function LinkIssuesPage({
                 )}
               </div>
 
-              <div className="actions">
+              <div className="link-issue-actions">
                 <button className="secondary-button small-btn"
                   onClick={() =>
                     onResolveLink(item.wrestler, item.attire, item.issueType)

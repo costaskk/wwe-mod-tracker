@@ -515,10 +515,13 @@ export default function App() {
     try {
       const cleanName = collectionForm.name.trim()
       if (!cleanName) throw new Error('Collection name is required.')
+        const baseSlug = slugify(cleanName)
+        const ownerIdFragment = (session.user.id || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toLowerCase()
+
         const shouldRegenerateSlug =
           !collectionForm.slug ||
-          !collectionForm.slug.includes('-') ||
-          collectionForm.slug === slugify(cleanName)
+          collectionForm.slug === baseSlug ||
+          !collectionForm.slug.includes(ownerIdFragment)
 
         const cleanSlug =
           shouldRegenerateSlug
@@ -1007,7 +1010,6 @@ export default function App() {
           selectedCollection ? (
             <CollectionView
               collection={selectedCollection}
-              session={session}
               canContribute={isApproved}
               onClose={goCollectionsPage}
               onSelectWrestler={(id) => {
