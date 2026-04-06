@@ -876,7 +876,7 @@ export default function App() {
     }
   }
 
-  function deleteAttire(attire) {
+  async function deleteAttire(attire) {
     if (!canManageContent(attire.owner_id)) return
 
     openConfirmAction({
@@ -895,7 +895,7 @@ export default function App() {
     })
   }
 
-  function deleteWrestler(wrestler) {
+  async function deleteWrestler(wrestler) {
     if (!canManageContent(wrestler.owner_id)) return
     if (!window.confirm(`Delete ${wrestler.wrestler_name} and all attire mods?`)) return
     try {
@@ -914,7 +914,7 @@ export default function App() {
     }
   }
 
-  function deleteCollection(collection) {
+  async function deleteCollection(collection) {
     if (!canManageContent(collection.owner_id)) return
 
     openConfirmAction({
