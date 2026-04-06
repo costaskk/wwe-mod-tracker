@@ -205,7 +205,8 @@ export function requestSummary(requests = [], attireId) {
 export function uniqueCollectionSlug(name, ownerId = '') {
   const base = slugify(name || 'collection') || 'collection'
   const shortOwner = (ownerId || 'public').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toLowerCase() || 'public'
-  return `${base}-${shortOwner}`
+  const random = Math.random().toString(36).slice(2, 6)
+  return `${base}-${shortOwner}-${random}`
 }
 
 export function paginateItems(items = [], page = 1, perPage = 16) {

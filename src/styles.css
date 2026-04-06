@@ -1598,6 +1598,78 @@ select:focus {
   }
 }
 
+.autocomplete-box {
+  display: grid;
+  gap: 6px;
+  margin-top: -4px;
+  margin-bottom: 4px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.04);
+  border-radius: 16px;
+  padding: 8px;
+}
+
+.autocomplete-item {
+  text-align: left;
+  border: 0;
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+}
+
+.autocomplete-item:hover {
+  background: rgba(63,166,255,0.14);
+}
+
+.duplicate-hint {
+  border: 1px solid rgba(255,176,86,0.28);
+  background: rgba(255,176,86,0.12);
+  color: #ffe0b2;
+  border-radius: 14px;
+  padding: 0.8rem 0.95rem;
+  line-height: 1.45;
+}
+
+.confirm-modal {
+  width: min(560px, 100%);
+}
+
+.danger-button {
+  background: linear-gradient(135deg, #ff6b86, #ff4e6f);
+}
+
+.live-check-row {
+  margin-top: -4px;
+}
+
+.live-ok-hint {
+  border: 1px solid rgba(111, 227, 173, 0.26);
+  background: rgba(111, 227, 173, 0.12);
+  color: #d8ffec;
+  border-radius: 14px;
+  padding: 0.8rem 0.95rem;
+  line-height: 1.45;
+}
+
+.pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.page-number-btn.active-page {
+  background: rgba(63, 166, 255, 0.16);
+  border-color: rgba(63, 166, 255, 0.34);
+  color: var(--text);
+}
+
+.pagination-ellipsis {
+  color: var(--muted);
+  padding: 0 2px;
+}
+
 @media (max-width: 760px) {
   .hero-card {
     padding: 22px;

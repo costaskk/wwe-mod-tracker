@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import AdminPanel from './components/AdminPanel'
 import AuthPanel from './components/AuthPanel'
 import AttireEditorModal from './components/AttireEditorModal'
+import ConfirmActionModal from './components/ConfirmActionModal'
 import CollectionModal from './components/CollectionModal'
 import CollectionPickerModal from './components/CollectionPickerModal'
 import CollectionView from './components/CollectionView'
@@ -86,10 +87,49 @@ export default function App() {
   const isAdmin = currentProfile?.role === 'admin'
   const isStaff = isModerator || isAdmin
 
+  const [confirmAction, setConfirmAction] = useState({
+    open: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    tone: 'danger',
+    busy: false,
+    onConfirm: null
+  })
+
   function canManageContent(ownerId) {
     if (!session) return false
     return session.user.id === ownerId || isStaff
   }
+
+    function openConfirmAction(config) {
+    setConfirmAction({
+      open: true,
+      title: config.title || 'Are you sure?',
+      message: config.message || '',
+      confirmLabel: config.confirmLabel || 'Confirm',
+      tone: config.tone || 'danger',
+      busy: false,
+      onConfirm: config.onConfirm || null
+    })
+  }
+
+  function closeConfirmAction() {
+    setConfirmAction((current) => ({ ...current, open: false, busy: false, onConfirm: null }))
+  }
+
+  async function runConfirmAction() {
+    if (!confirmAction.onConfirm) return
+    try {
+      setConfirmAction((current) => ({ ...current, busy: true }))
+      await confirmAction.onConfirm()
+      closeConfirmAction()
+    } catch (err) {
+      closeConfirmAction()
+      openNotice('error', 'Action failed', err.message || 'Something went wrong.')
+    }
+  }
+
 
   function openNotice(type, title, message) {
     setNotice({ type, title, message })
@@ -118,17 +158,35 @@ export default function App() {
     fetchAll()
   }, [session])
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const slug = params.get('collection')
-    const page = params.get('page')
-    if (page === 'collections') setCurrentPage('collections')
-    else if (page === 'admin') setCurrentPage('admin')
-    else setCurrentPage('mods')
-    if (!slug) return
-    const found = collections.find((item) => item.slug === slug)
-    if (found) setSelectedCollection(found)
-  }, [collections])
+    useEffect(() => {
+      function syncFromUrl() {
+        const params = new URLSearchParams(window.location.search)
+        const slug = params.get('collection')
+        const page = params.get('page')
+
+        if (slug) {
+          setCurrentPage('collections')
+        } else if (page === 'collections') {
+          setCurrentPage('collections')
+        } else if (page === 'admin') {
+          setCurrentPage('admin')
+        } else {
+          setCurrentPage('mods')
+        }
+
+        if (!slug) {
+          setSelectedCollection(null)
+          return
+        }
+
+        const found = collections.find((item) => item.slug === slug)
+        setSelectedCollection(found || null)
+      }
+
+      syncFromUrl()
+      window.addEventListener('popstate', syncFromUrl)
+      return () => window.removeEventListener('popstate', syncFromUrl)
+    }, [collections])
 
   async function fetchAll() {
     setLoading(true)
@@ -305,24 +363,42 @@ export default function App() {
   }, [wrestlers, query, showMissingOnly, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, deadLinkOnly, installedIds])
 
 
-  const paginatedMods = useMemo(() => paginateItems(filteredWrestlers, modsPage, modsPerPage), [filteredWrestlers, modsPage])
-  const visibleWrestlers = paginatedMods.items
+    const paginatedMods = useMemo(() => paginateItems(filteredWrestlers, modsPage, modsPerPage), [filteredWrestlers, modsPage])
+    const visibleWrestlers = paginatedMods.items
 
-  useEffect(() => {
-    setModsPage(1)
-  }, [query, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, deadLinkOnly, showMissingOnly])
+    useEffect(() => {
+      setModsPage(1)
+    }, [query, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, deadLinkOnly, showMissingOnly])
 
-  const myCollections = useMemo(() => session ? collections.filter((item) => item.owner_id === session.user.id) : [], [collections, session])
-  const selectedWrestler = useMemo(() => filteredWrestlers.find((item) => item.id === selectedId) || filteredWrestlers[0] || null, [filteredWrestlers, selectedId])
-  const collectionMemberships = useMemo(() => {
-    if (!collectionPicker.attire || !session) return []
-    return myCollections.filter((collection) => (collection.items || []).some((item) => item.attire_id === collectionPicker.attire.id)).map((item) => item.id)
-  }, [myCollections, collectionPicker, session])
+    useEffect(() => {
+      if (modsPage > paginatedMods.totalPages) {
+        setModsPage(paginatedMods.totalPages)
+      }
+    }, [modsPage, paginatedMods.totalPages])
 
-  useEffect(() => {
-    if (!selectedId && filteredWrestlers[0]) setSelectedId(filteredWrestlers[0].id)
-    if (selectedId && !filteredWrestlers.some((item) => item.id === selectedId)) setSelectedId(filteredWrestlers[0]?.id || null)
-  }, [filteredWrestlers, selectedId])
+    const myCollections = useMemo(
+      () => session ? collections.filter((item) => item.owner_id === session.user.id) : [],
+      [collections, session]
+    )
+
+    const selectedWrestler = useMemo(
+      () => visibleWrestlers.find((item) => item.id === selectedId) || visibleWrestlers[0] || null,
+      [visibleWrestlers, selectedId]
+    )
+
+    const collectionMemberships = useMemo(() => {
+      if (!collectionPicker.attire || !session) return []
+      return myCollections
+        .filter((collection) => (collection.items || []).some((item) => item.attire_id === collectionPicker.attire.id))
+        .map((item) => item.id)
+    }, [myCollections, collectionPicker, session])
+
+    useEffect(() => {
+      if (!selectedId && visibleWrestlers[0]) setSelectedId(visibleWrestlers[0].id)
+      if (selectedId && !visibleWrestlers.some((item) => item.id === selectedId)) {
+        setSelectedId(visibleWrestlers[0]?.id || null)
+      }
+    }, [visibleWrestlers, selectedId])
 
   async function updateProfile(userId, changes) {
     if (!isAdmin) return
@@ -435,7 +511,10 @@ export default function App() {
     try {
       const cleanName = collectionForm.name.trim()
       if (!cleanName) throw new Error('Collection name is required.')
-      const cleanSlug = uniqueCollectionSlug(collectionForm.slug || cleanName, session.user.id)
+            const cleanSlug =
+        collectionForm.id && collectionForm.slug
+          ? collectionForm.slug
+          : uniqueCollectionSlug(collectionForm.slug || cleanName, session.user.id)
       if (!cleanSlug) throw new Error('Please enter a valid slug using letters and numbers.')
       const payload = {
         name: cleanName,
@@ -772,7 +851,7 @@ export default function App() {
   }
 
   async function shareCollection(collection) {
-    const url = `${window.location.origin}${window.location.pathname}?collection=${collection.slug}`
+    const url = `${window.location.origin}${window.location.pathname}?page=collections&collection=${collection.slug}`
     try {
       await navigator.clipboard.writeText(url)
       openNotice('success', 'Share link copied', 'The public collection link was copied to your clipboard.')
@@ -809,51 +888,59 @@ export default function App() {
 
   async function deleteAttire(attire) {
     if (!canManageContent(attire.owner_id)) return
-    if (!window.confirm(`Delete ${attire.name}?`)) return
-    try {
-      const paths = [attire.render_dds_path, ...(attire.attire_images || []).map((img) => img.image_path)]
-      await removeAssets(paths)
-      const { error } = await supabase.from('attires').delete().eq('id', attire.id)
-      if (error) throw error
-      openNotice('success', 'Attire deleted', `${attire.name} was deleted.`)
-      await fetchAll()
-    } catch (err) {
-      openNotice('error', 'Could not delete attire', err.message || 'Could not delete attire.')
-    }
+
+    openConfirmAction({
+      title: 'Delete attire mod?',
+      message: `This will permanently delete ${attire.name}.`,
+      confirmLabel: 'Delete attire',
+      tone: 'danger',
+      onConfirm: async () => {
+        const paths = [attire.render_dds_path, ...(attire.attire_images || []).map((img) => img.image_path)]
+        await removeAssets(paths)
+        const { error } = await supabase.from('attires').delete().eq('id', attire.id)
+        if (error) throw error
+        openNotice('success', 'Attire deleted', `${attire.name} was deleted.`)
+        await fetchAll()
+      }
+    })
   }
 
-  async function deleteWrestler(wrestler) {
-    if (!canManageContent(wrestler.owner_id)) return
-    if (!window.confirm(`Delete ${wrestler.wrestler_name} and all attire mods?`)) return
-    try {
-      const assetPaths = [wrestler.headshot_path]
-      for (const attire of wrestler.attires || []) {
-        if (attire.render_dds_path) assetPaths.push(attire.render_dds_path)
-        for (const img of attire.attire_images || []) assetPaths.push(img.image_path)
+  async function deleteAttire(attire) {
+    if (!canManageContent(attire.owner_id)) return
+
+    openConfirmAction({
+      title: 'Delete attire mod?',
+      message: `This will permanently delete ${attire.name}.`,
+      confirmLabel: 'Delete attire',
+      tone: 'danger',
+      onConfirm: async () => {
+        const paths = [attire.render_dds_path, ...(attire.attire_images || []).map((img) => img.image_path)]
+        await removeAssets(paths)
+        const { error } = await supabase.from('attires').delete().eq('id', attire.id)
+        if (error) throw error
+        openNotice('success', 'Attire deleted', `${attire.name} was deleted.`)
+        await fetchAll()
       }
-      await removeAssets(assetPaths)
-      const { error } = await supabase.from('wrestlers').delete().eq('id', wrestler.id)
-      if (error) throw error
-      openNotice('success', 'Wrestler deleted', `${wrestler.wrestler_name} and related attire mods were deleted.`)
-      await fetchAll()
-    } catch (err) {
-      openNotice('error', 'Could not delete wrestler', err.message || 'Could not delete wrestler.')
-    }
+    })
   }
 
   async function deleteCollection(collection) {
     if (!canManageContent(collection.owner_id)) return
-    if (!window.confirm(`Delete collection ${collection.name}?`)) return
-    try {
-      if (collection.cover_path) await removeAssets([collection.cover_path])
-      const { error } = await supabase.from('collections').delete().eq('id', collection.id)
-      if (error) throw error
-      if (selectedCollection?.id === collection.id) closeCollectionView()
-      openNotice('success', 'Collection deleted', `${collection.name} was deleted.`)
-      await fetchAll()
-    } catch (err) {
-      openNotice('error', 'Could not delete collection', err.message || 'Could not delete collection.')
-    }
+
+    openConfirmAction({
+      title: 'Delete collection?',
+      message: `This will permanently delete the collection "${collection.name}".`,
+      confirmLabel: 'Delete collection',
+      tone: 'danger',
+      onConfirm: async () => {
+        if (collection.cover_path) await removeAssets([collection.cover_path])
+        const { error } = await supabase.from('collections').delete().eq('id', collection.id)
+        if (error) throw error
+        if (selectedCollection?.id === collection.id) closeCollectionView()
+        openNotice('success', 'Collection deleted', `${collection.name} was deleted.`)
+        await fetchAll()
+      }
+    })
   }
 
   const stats = computeStats(wrestlers, collections)
@@ -896,6 +983,8 @@ export default function App() {
           selectedCollection ? (
             <CollectionView
               collection={selectedCollection}
+              session={session}
+              canContribute={isApproved}
               onClose={goCollectionsPage}
               onSelectWrestler={(id) => {
                 setSelectedId(id)
@@ -998,6 +1087,7 @@ export default function App() {
         onRemoveHeadshot={removeWrestlerHeadshot}
         saving={saving}
         uploading={uploading}
+        wrestlers={wrestlers}
       />
 
       <AttireEditorModal
@@ -1016,6 +1106,7 @@ export default function App() {
         saving={saving}
         uploading={uploading}
         addingCreator={addingCreator}
+        wrestlers={wrestlers}
       />
 
       <CollectionModal
@@ -1055,7 +1146,16 @@ export default function App() {
         onSubmit={submitResolveLink}
         submitting={resolvingLink}
       />
-
+      <ConfirmActionModal
+        open={confirmAction.open}
+        title={confirmAction.title}
+        message={confirmAction.message}
+        confirmLabel={confirmAction.confirmLabel}
+        tone={confirmAction.tone}
+        busy={confirmAction.busy}
+        onConfirm={runConfirmAction}
+        onClose={closeConfirmAction}
+      />
       <ModalNotice notice={notice} onClose={() => setNotice(null)} />
       {loading ? <div className="loading-overlay">Loading database…</div> : null}
     </div>
