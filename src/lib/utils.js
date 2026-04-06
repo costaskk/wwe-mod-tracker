@@ -234,3 +234,66 @@ export function findDuplicateAttire(attires = [], name = '') {
   if (!clean) return null
   return attires.find((a) => (a.name || '').trim().toLowerCase() === clean) || null
 }
+
+export function parseDownloadLinks(value = '') {
+  return String(value)
+    .split('\n')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+export function getDownloadProvider(url = '') {
+  const value = String(url).toLowerCase()
+
+  if (value.includes('mediafire.com')) return 'mediafire'
+  if (value.includes('mega.nz') || value.includes('mega.io')) return 'mega'
+  if (value.includes('drive.google.com') || value.includes('docs.google.com')) return 'google_drive'
+  if (value.includes('discord.com') || value.includes('discordapp.com') || value.includes('cdn.discordapp.com')) return 'discord'
+  if (value.includes('patreon.com')) return 'patreon'
+  if (value.includes('pixeldrain.com')) return 'pixeldrain'
+  if (value.includes('dropbox.com')) return 'dropbox'
+
+  return 'link'
+}
+
+export function getDownloadProviderLabel(provider = '') {
+  switch (provider) {
+    case 'mediafire':
+      return 'MediaFire'
+    case 'mega':
+      return 'MEGA'
+    case 'google_drive':
+      return 'Google Drive'
+    case 'discord':
+      return 'Discord'
+    case 'patreon':
+      return 'Patreon'
+    case 'pixeldrain':
+      return 'PixelDrain'
+    case 'dropbox':
+      return 'Dropbox'
+    default:
+      return 'Link'
+  }
+}
+
+export function getDownloadProviderMark(provider = '') {
+  switch (provider) {
+    case 'mediafire':
+      return 'MF'
+    case 'mega':
+      return 'M'
+    case 'google_drive':
+      return 'GD'
+    case 'discord':
+      return 'DC'
+    case 'patreon':
+      return 'P'
+    case 'pixeldrain':
+      return 'PD'
+    case 'dropbox':
+      return 'DB'
+    default:
+      return '↗'
+  }
+}

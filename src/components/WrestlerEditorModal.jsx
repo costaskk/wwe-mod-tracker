@@ -17,24 +17,22 @@ export default function WrestlerEditorModal({
 
   const duplicateWrestler = useMemo(() => {
     if (!normalizedName) return null
-    return (
-      wrestlers.find(
-        (item) =>
-          (item.wrestler_name || '').trim().toLowerCase() === normalizedName &&
-          item.id !== form.id
-      ) || null
-    )
+    return wrestlers.find(
+      (item) =>
+        (item.wrestler_name || '').trim().toLowerCase() === normalizedName &&
+        item.id !== form.id
+    ) || null
   }, [wrestlers, normalizedName, form.id])
 
   const suggestions = useMemo(() => {
-    if (!normalizedName) return []
+    if (!normalizedName || duplicateWrestler) return []
     return wrestlers
       .filter((item) => {
         const name = (item.wrestler_name || '').trim().toLowerCase()
         return name.includes(normalizedName) && item.id !== form.id
       })
       .slice(0, 6)
-  }, [wrestlers, normalizedName, form.id])
+  }, [wrestlers, normalizedName, form.id, duplicateWrestler])
 
   if (!open) return null
 
@@ -63,8 +61,14 @@ export default function WrestlerEditorModal({
                 {normalizedName ? (
                   <div className="span-2 live-check-row">
                     {duplicateWrestler ? (
-                      <div className="duplicate-hint">
-                        Wrestler already exists: <strong>{duplicateWrestler.wrestler_name}</strong>
+                      <div className="exists-banner">
+                        <div className="exists-banner-mark">!</div>
+                        <div className="exists-banner-copy">
+                          <strong>This wrestler is already in the database.</strong>
+                          <span>
+                            Existing entry: <b>{duplicateWrestler.wrestler_name}</b>. You do not need to create another one.
+                          </span>
+                        </div>
                       </div>
                     ) : (
                       <div className="live-ok-hint">No duplicate wrestler found.</div>
@@ -74,6 +78,7 @@ export default function WrestlerEditorModal({
 
                 {suggestions.length ? (
                   <div className="span-2 autocomplete-box">
+                    <div className="autocomplete-title">Possible matches</div>
                     {suggestions.map((item) => (
                       <button
                         key={item.id}
@@ -148,7 +153,7 @@ export default function WrestlerEditorModal({
         <div className="modal-footer">
           <div className="muted-text">
             {duplicateWrestler
-              ? 'This wrestler already exists.'
+              ? 'Use the existing wrestler entry instead of creating a duplicate.'
               : uploading
                 ? 'Uploading asset…'
                 : ''}
