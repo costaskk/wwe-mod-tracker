@@ -19,7 +19,7 @@ export default function Header({
     <header className="hero-card hero-card-improved">
       <div>
         <div className="eyebrow">Public community database</div>
-        <h1>WWE 2K25 Mod Database</h1>
+        <h1>WWE 2K26 Mod Database</h1>
         <p className="hero-copy">
           Browse wrestler pages, compare attire mods, build collections, track missing or dead links,
           and contribute after approval.
@@ -29,10 +29,10 @@ export default function Header({
       <div className="hero-side-stack">
         <div className="micro-account-bar">
           <div className="page-nav-chips">
-            <button className={`nav-chip ${currentPage === 'mods' ? 'active' : ''}`} onClick={onGoHome}>Mod list</button>
-            <button className={`nav-chip ${currentPage === 'issues' ? 'active' : ''}`} onClick={onBrowseIssues}>Issues</button>
-            {session ? <button className={`nav-chip ${currentPage === 'collections' ? 'active' : ''}`} onClick={onBrowseCollections}>Collections</button> : null}
-            {currentProfile?.role === 'admin' ? <button className={`nav-chip ${currentPage === 'admin' ? 'active' : ''}`} onClick={onBrowseAdmin}>Admin</button> : null}
+            <button type="button" className={`nav-chip ${currentPage === 'mods' ? 'active' : ''}`} onClick={onGoHome}>Mod list</button>
+            <button type="button" className={`nav-chip ${currentPage === 'issues' ? 'active' : ''}`} onClick={onBrowseIssues}>Issues</button>
+            {session ? <button type="button" className={`nav-chip ${currentPage === 'collections' ? 'active' : ''}`} onClick={onBrowseCollections}>Collections</button> : null}
+            {currentProfile?.role === 'admin' ? <button type="button" className={`nav-chip ${currentPage === 'admin' ? 'active' : ''}`} onClick={onBrowseAdmin}>Admin</button> : null}
           </div>
 
           <span className="user-chip subtle-chip">
@@ -46,7 +46,7 @@ export default function Header({
                 <div className="muted-text small-text">
                   Status: {currentProfile?.approval_status || 'pending'}
                 </div>
-                <button className="ghost-button small-btn" onClick={handleSignOut}>
+                <button className="ghost-button small-btn" onClick={handleSignOut} type="button">
                   Sign out
                 </button>
               </div>
@@ -55,7 +55,12 @@ export default function Header({
         </div>
 
         <div className="hero-actions">
-          <button className="primary-button hero-primary" onClick={onAddWrestler} disabled={!canContribute || currentPage !== 'mods'}>
+          <button
+            className="primary-button hero-primary"
+            onClick={onAddWrestler}
+            disabled={!canContribute || currentPage !== 'mods'}
+            type="button"
+          >
             Add wrestler
           </button>
         </div>

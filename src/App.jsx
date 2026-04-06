@@ -21,6 +21,7 @@ import WrestlerList from './components/WrestlerList'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { getAssetUrl, removeAssets, tryAutoMatchHeadshot, uploadAsset } from './lib/storage'
 import {
+  uid,
   computeStats,
   emptyAttire,
   emptyCollection,
@@ -149,37 +150,37 @@ export default function App() {
     fetchAll()
   }, [session])
 
-    useEffect(() => {
-      function syncFromUrl() {
-        const params = new URLSearchParams(window.location.search)
-        const slug = params.get('collection')
-        const page = params.get('page')
+  useEffect(() => {
+    function syncFromUrl() {
+      const params = new URLSearchParams(window.location.search)
+      const slug = params.get('collection')
+      const page = params.get('page')
 
-        if (slug) {
-          setCurrentPage('collections')
-        } else if (page === 'collections') {
-          setCurrentPage('collections')
-        } else if (page === 'admin') {
-          setCurrentPage('admin')
-        } else if (page === 'issues') {
-          setCurrentPage('issues')
-        } else {
-          setCurrentPage('mods')
-        }
-
-        if (!slug) {
-          setSelectedCollection(null)
-          return
-        }
-
-        const found = collections.find((item) => item.slug === slug)
-        setSelectedCollection(found || null)
+      if (slug) {
+        setCurrentPage('collections')
+      } else if (page === 'collections') {
+        setCurrentPage('collections')
+      } else if (page === 'admin') {
+        setCurrentPage('admin')
+      } else if (page === 'issues') {
+        setCurrentPage('issues')
+      } else {
+        setCurrentPage('mods')
       }
 
-      syncFromUrl()
-      window.addEventListener('popstate', syncFromUrl)
-      return () => window.removeEventListener('popstate', syncFromUrl)
-    }, [collections])
+      if (!slug) {
+        setSelectedCollection(null)
+        return
+      }
+
+      const found = collections.find((item) => item.slug === slug)
+      setSelectedCollection(found || null)
+    }
+
+    syncFromUrl()
+    window.addEventListener('popstate', syncFromUrl)
+    return () => window.removeEventListener('popstate', syncFromUrl)
+  }, [collections])
 
   async function fetchAll() {
     setLoading(true)
@@ -224,6 +225,7 @@ export default function App() {
         .from('wrestlers')
         .select(`
           *,
+          wrestler_audio_files (*),
           attires (
             *,
             attire_images (*)
@@ -256,6 +258,10 @@ export default function App() {
     const normalizedWrestlers = (wrestlerResult.data || []).map((wrestler) => ({
       ...wrestler,
       headshot_url: wrestler.headshot_path ? getAssetUrl(wrestler.headshot_path) : (wrestler.headshot_external_url || ''),
+      audio_files: (wrestler.wrestler_audio_files || []).map((file) => ({
+        ...file,
+        file_url: file.file_path ? getAssetUrl(file.file_path) : ''
+      })),
       attires: sortAttires((wrestler.attires || []).map((attire) => ({
         ...attire,
         mod_type: attire.mod_type === 'port' ? 'port' : 'original',
@@ -294,16 +300,26 @@ export default function App() {
 
     const mergedCollections = [...collectionMap.values()].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
     const seenSlugs = new Set()
-    const repairedCollections = mergedCollections.map((collection) => {
-      if (!collection.slug || seenSlugs.has(collection.slug)) {
-        return {
-          ...collection,
-          slug: uniqueCollectionSlug(collection.name, collection.owner_id)
+    const repairedCollections = await Promise.all(
+      mergedCollections.map(async (collection) => {
+        if (!collection.slug || seenSlugs.has(collection.slug)) {
+          const newSlug = uniqueCollectionSlug(collection.name, collection.owner_id)
+
+          const { error: slugUpdateError } = await supabase
+            .from('collections')
+            .update({ slug: newSlug })
+            .eq('id', collection.id)
+
+          if (slugUpdateError) throw slugUpdateError
+
+          seenSlugs.add(newSlug)
+          return { ...collection, slug: newSlug }
         }
-      }
-      seenSlugs.add(collection.slug)
-      return collection
-    })
+
+        seenSlugs.add(collection.slug)
+        return collection
+      })
+    )
     const slug = new URLSearchParams(window.location.search).get('collection')
     const collectionFromUrl = slug ? repairedCollections.find((item) => item.slug === slug) : null
 
@@ -439,6 +455,9 @@ export default function App() {
         headshot_name: wrestlerForm.headshot_name || '',
         headshot_external_url: wrestlerForm.headshot_external_url || ''
       }
+      
+      let wrestlerId = wrestlerForm.id
+
       if (wrestlerForm.id) {
         const { error } = await supabase.from('wrestlers').update(payload).eq('id', wrestlerForm.id)
         if (error) throw error
@@ -446,8 +465,22 @@ export default function App() {
       } else {
         const { data, error } = await supabase.from('wrestlers').insert(payload).select('id').single()
         if (error) throw error
+        wrestlerId = data.id
         setSelectedId(data.id)
         openNotice('success', 'Wrestler added', `${wrestlerForm.wrestler_name} was added to the database.`)
+      }
+
+      if (Array.isArray(wrestlerForm.pendingAudioUploads) && wrestlerForm.pendingAudioUploads.length) {
+        const inserts = wrestlerForm.pendingAudioUploads.map((item) => ({
+          wrestler_id: wrestlerId,
+          owner_id: session.user.id,
+          audio_type: item.audio_type,
+          file_path: item.file_path,
+          file_name: item.file_name
+        }))
+
+        const { error } = await supabase.from('wrestler_audio_files').insert(inserts)
+        if (error) throw error
       }
       setWrestlerModalOpen(false)
       await fetchAll()
@@ -455,6 +488,69 @@ export default function App() {
       openNotice('error', 'Could not save wrestler', err.message || 'Failed to save wrestler.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleWrestlerAudioUpload(files, kind) {
+    if (!files?.length || !isApproved) return
+
+    try {
+      setUploading(true)
+
+      if (!wrestlerForm.id) {
+        throw new Error('Please save the wrestler before uploading audio.')
+      }
+      const entityId = wrestlerForm.id
+      const uploadedRows = []
+
+      for (const file of files) {
+        if (!file.name.toLowerCase().endsWith('.wem')) {
+          throw new Error('Only .wem files are allowed.')
+        }
+
+        const { path, fileName } = await uploadAsset({
+          userId: session.user.id,
+          entityId,
+          file,
+          kind,
+          folder: 'wrestlers'
+        })
+
+        uploadedRows.push({
+          wrestler_id: entityId,
+          owner_id: session.user.id,
+          audio_type: kind,
+          file_path: path,
+          file_name: fileName
+        })
+      }
+
+      if (wrestlerForm.id) {
+        const { error } = await supabase.from('wrestler_audio_files').insert(uploadedRows)
+        if (error) throw error
+        // skip local update if saving to DB
+        await fetchAll()
+      } else {
+        setWrestlerForm((current) => ({
+          ...current,
+          id: current.id || entityId,
+          pendingAudioUploads: [...(current.pendingAudioUploads || []), ...uploadedRows],
+          audio_files: [...(current.audio_files || []), ...uploadedRows.map((row) => ({
+            ...row,
+            file_url: getAssetUrl(row.file_path)
+          }))]
+        }))
+      }
+
+      openNotice(
+        'success',
+        kind === 'entrance_music' ? 'Entrance music uploaded' : 'Callname uploaded',
+        `${uploadedRows.length} file${uploadedRows.length === 1 ? '' : 's'} uploaded successfully.`
+      )
+    } catch (err) {
+      openNotice('error', 'Audio upload failed', err.message || 'Could not upload wrestler audio.')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -525,7 +621,7 @@ export default function App() {
 
         const cleanSlug =
           shouldRegenerateSlug
-            ? uniqueCollectionSlug(collectionForm.slug || cleanName, session.user.id)
+            ? uniqueCollectionSlug(cleanName, session.user.id)
             : collectionForm.slug
       if (!cleanSlug) throw new Error('Please enter a valid slug using letters and numbers.')
       const payload = {
@@ -559,7 +655,10 @@ export default function App() {
     try {
       setUploading(true)
       if (!file.type.startsWith('image/')) throw new Error('Headshot must be an image file.')
-      const entityId = wrestlerForm.id || crypto.randomUUID()
+      if (!wrestlerForm.id) {
+        throw new Error('Please save the wrestler before uploading a headshot.')
+      }
+      const entityId = wrestlerForm.id
       const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file, kind: 'headshot', folder: 'wrestlers' })
       setWrestlerForm((current) => ({ ...current, id: current.id || entityId, headshot_path: path, headshot_name: fileName, headshot_url: getAssetUrl(path), headshot_external_url: '', auto_match_urls: [], auto_match_titles: [] }))
       openNotice('success', 'Headshot uploaded', `${file.name} was uploaded successfully.`)
@@ -575,7 +674,7 @@ export default function App() {
     try {
       setUploading(true)
       if (!file.type.startsWith('image/')) throw new Error('Cover must be an image file.')
-      const entityId = collectionForm.id || crypto.randomUUID()
+      const entityId = collectionForm.id || uid()
       const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file, kind: 'cover', folder: 'collections' })
       setCollectionForm((current) => ({ ...current, id: current.id || entityId, cover_path: path, cover_name: fileName, cover_url: getAssetUrl(path) }))
       openNotice('success', 'Cover uploaded', `${file.name} was uploaded successfully.`)
@@ -620,6 +719,41 @@ export default function App() {
     }
   }
 
+  async function removeWrestlerAudio(audioFile) {
+    if (!isApproved || !audioFile) return
+
+    try {
+      setUploading(true)
+
+      if (audioFile.file_path) {
+        await removeAssets([audioFile.file_path])
+      }
+
+      if (audioFile.id) {
+        const { error } = await supabase
+          .from('wrestler_audio_files')
+          .delete()
+          .eq('id', audioFile.id)
+
+        if (error) throw error
+
+        await fetchAll()
+      } else {
+        setWrestlerForm((current) => ({
+          ...current,
+          audio_files: (current.audio_files || []).filter((item) => item.file_path !== audioFile.file_path),
+          pendingAudioUploads: (current.pendingAudioUploads || []).filter((item) => item.file_path !== audioFile.file_path)
+        }))
+      }
+
+      openNotice('success', 'Audio removed', `${audioFile.file_name || 'Audio file'} was removed.`)
+    } catch (err) {
+      openNotice('error', 'Could not remove audio', err.message || 'Could not remove wrestler audio.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   async function handleAssetUpload(filesOrFile, kind) {
     if (!filesOrFile || !isApproved) return
     try {
@@ -627,14 +761,14 @@ export default function App() {
       if (kind === 'render') {
         const file = filesOrFile
         if (!file.name.toLowerCase().endsWith('.dds')) throw new Error('Render must be a .dds file.')
-        const entityId = attireForm.id || crypto.randomUUID()
+        const entityId = attireForm.id || uid()
         const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file, kind: 'render', folder: 'attires' })
         setAttireForm((current) => ({ ...current, id: current.id || entityId, render_dds_path: path, render_dds_name: fileName, render_dds_url: getAssetUrl(path) }))
         openNotice('success', 'DDS uploaded', `${file.name} was uploaded successfully.`)
       }
       if (kind === 'image') {
         const files = filesOrFile
-        const entityId = attireForm.id || crypto.randomUUID()
+        const entityId = attireForm.id || uid()
         const uploaded = []
         for (const file of files) {
           if (!file.type.startsWith('image/')) throw new Error('All screenshots must be image files.')
@@ -798,9 +932,13 @@ export default function App() {
     }
   }
 
-  function openAddWrestler() {
+    function openAddWrestler() {
     if (!isApproved) return
-    setWrestlerForm(emptyWrestler())
+    setWrestlerForm({
+      ...emptyWrestler(),
+      audio_files: [],
+      pendingAudioUploads: []
+    })
     setWrestlerModalOpen(true)
   }
 
@@ -1012,13 +1150,17 @@ export default function App() {
               collection={selectedCollection}
               canContribute={isApproved}
               onClose={goCollectionsPage}
-              onSelectWrestler={(id) => {
-                const index = filteredWrestlers.findIndex((item) => item.id === id)
+              onSelectWrestler={(payload) => {
+                const wrestlerId = payload?.wrestlerId
+                if (!wrestlerId) return
+
+                const index = filteredWrestlers.findIndex((item) => item.id === wrestlerId)
                 if (index >= 0) {
                   const nextPage = Math.floor(index / modsPerPage) + 1
                   setModsPage(nextPage)
                 }
-                setSelectedId(id)
+
+                setSelectedId(wrestlerId)
                 goHome()
               }}
             />
@@ -1124,6 +1266,8 @@ export default function App() {
         onUploadHeadshot={handleWrestlerHeadshotUpload}
         onAutoMatchHeadshot={handleAutoMatchHeadshot}
         onRemoveHeadshot={removeWrestlerHeadshot}
+        onUploadAudio={handleWrestlerAudioUpload}
+        onRemoveAudio={removeWrestlerAudio}
         saving={saving}
         uploading={uploading}
         wrestlers={wrestlers}

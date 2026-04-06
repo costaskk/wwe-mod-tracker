@@ -1,10 +1,12 @@
-
 export const MOD_TYPES = ['original', 'port']
 export const SOURCE_GAMES = ['WWE 2K26', 'WWE 2K25', 'WWE 2K24', 'WWE 2K23', 'WWE 2K22', 'WWE 2K19', 'WWE 2K18', 'WWE 2K17', 'WWE 2K16', 'WWE 2K15', 'WWE 2K14', 'WWE 13', 'WWE 12', 'Other']
 export const ATTIRE_STATUSES = ['complete', 'partial', 'needs_work', 'missing']
 
 export function uid() {
-  return crypto.randomUUID()
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
 export function slugify(value = '') {
@@ -19,7 +21,7 @@ export function slugify(value = '') {
 export function titleCase(value = '') {
   return value
     .replace(/_/g, ' ')
-    .replace(/\w/g, (m) => m.toUpperCase())
+    .replace(/\b\w/g, (m) => m.toUpperCase())
 }
 
 export function emptyWrestler() {
@@ -33,7 +35,9 @@ export function emptyWrestler() {
     headshot_name: '',
     headshot_external_url: '',
     auto_match_titles: [],
-    auto_match_urls: []
+    auto_match_urls: [],
+    audio_files: [],
+    pendingAudioUploads: []
   }
 }
 
@@ -80,11 +84,21 @@ export function normalizeWrestlerForEditor(wrestler) {
     notes: wrestler.notes || '',
     tags_text: (wrestler.tags || []).join(', '),
     headshot_path: wrestler.headshot_path || '',
-    headshot_url: wrestler.headshot_path ? wrestler.headshot_url || '' : (wrestler.headshot_external_url || ''),
+    headshot_url: wrestler.headshot_path ? (wrestler.headshot_url || '') : (wrestler.headshot_external_url || ''),
     headshot_name: wrestler.headshot_name || '',
     headshot_external_url: wrestler.headshot_external_url || '',
     auto_match_titles: [],
-    auto_match_urls: wrestler.headshot_external_url ? [wrestler.headshot_external_url] : []
+    auto_match_urls: wrestler.headshot_external_url ? [wrestler.headshot_external_url] : [],
+    audio_files: (wrestler.audio_files || wrestler.wrestler_audio_files || []).map((file) => ({
+      id: file.id || null,
+      wrestler_id: file.wrestler_id || wrestler.id,
+      owner_id: file.owner_id || '',
+      audio_type: file.audio_type || '',
+      file_path: file.file_path || '',
+      file_name: file.file_name || '',
+      file_url: file.file_url || ''
+    })),
+    pendingAudioUploads: []
   }
 }
 
@@ -98,7 +112,7 @@ export function normalizeAttireForEditor(attire) {
     creator_name: attire.creator_name || '',
     download_url: attire.download_url || '',
     source_game: attire.source_game || 'WWE 2K25',
-    mod_type: (attire.mod_type === 'port' ? 'port' : 'original'),
+    mod_type: attire.mod_type === 'port' ? 'port' : 'original',
     notes: attire.notes || '',
     status: attire.status || 'complete',
     render_dds_path: attire.render_dds_path || '',
@@ -129,8 +143,8 @@ export function normalizeCollectionForEditor(collection) {
   }
 }
 
-export function parseTags(text) {
-  return text.split(',').map(item => item.trim()).filter(Boolean)
+export function parseTags(text = '') {
+  return text.split(',').map((item) => item.trim()).filter(Boolean)
 }
 
 export function parseJsonOrNull(text) {
@@ -146,12 +160,22 @@ export function formatDate(value) {
 
 export function parseAppearanceDate(name = '') {
   const normalized = name.toLowerCase()
-  const yearMatch = normalized.match(/(19[6-9]\d|20[0-4]\d)/)
+  const yearMatch = normalized.match(/\b(19[6-9]\d|20[0-4]\d)\b/)
   const year = yearMatch ? Number(yearMatch[1]) : null
+
   const months = {
-    january: 1, jan: 1, february: 2, feb: 2, march: 3, mar: 3, april: 4, apr: 4,
-    may: 5, june: 6, jun: 6, july: 7, jul: 7, august: 8, aug: 8, september: 9, sept: 9, sep: 9,
-    october: 10, oct: 10, november: 11, nov: 11, december: 12, dec: 12
+    january: 1, jan: 1,
+    february: 2, feb: 2,
+    march: 3, mar: 3,
+    april: 4, apr: 4,
+    may: 5,
+    june: 6, jun: 6,
+    july: 7, jul: 7,
+    august: 8, aug: 8,
+    september: 9, sept: 9, sep: 9,
+    october: 10, oct: 10,
+    november: 11, nov: 11,
+    december: 12, dec: 12
   }
 
   let month = null
@@ -161,6 +185,7 @@ export function parseAppearanceDate(name = '') {
       break
     }
   }
+
   return { year, month }
 }
 
@@ -201,12 +226,14 @@ export function requestSummary(requests = [], attireId) {
   }
 }
 
-
 export function uniqueCollectionSlug(name, ownerId = '') {
   const base = slugify(name || 'collection') || 'collection'
-  const shortOwner = (ownerId || 'public').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toLowerCase() || 'public'
-  const random = Math.random().toString(36).slice(2, 6)
-  return `${base}-${shortOwner}-${random}`
+  const shortOwner = String(ownerId || 'public')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .slice(0, 8)
+    .toLowerCase() || 'public'
+
+  return `${base}-${shortOwner}`
 }
 
 export function paginateItems(items = [], page = 1, perPage = 16) {
@@ -214,6 +241,7 @@ export function paginateItems(items = [], page = 1, perPage = 16) {
   const totalPages = Math.max(1, Math.ceil(items.length / safePerPage))
   const safePage = Math.min(Math.max(1, page), totalPages)
   const start = (safePage - 1) * safePerPage
+
   return {
     page: safePage,
     perPage: safePerPage,
@@ -237,7 +265,7 @@ export function findDuplicateAttire(attires = [], name = '') {
 
 export function parseDownloadLinks(value = '') {
   return String(value)
-    .split('\n')
+    .split(/\r?\n|,/)
     .map((item) => item.trim())
     .filter(Boolean)
 }

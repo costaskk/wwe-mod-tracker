@@ -1,4 +1,3 @@
-
 import { formatDate } from '../lib/utils'
 
 function Toggle({ value, onChange, options }) {
@@ -90,6 +89,7 @@ export default function WrestlerList({
                 wrestlers.map((wrestler) => {
                   const openRequests = (wrestler.requests || []).filter((item) => item.status === 'open').length
                   const isSelected = wrestler.id === selectedId
+                  const attireCount = wrestler.attires?.length || 0
 
                   return (
                     <tr
@@ -106,21 +106,25 @@ export default function WrestlerList({
                               {wrestler.wrestler_name.slice(0, 2).toUpperCase()}
                             </div>
                           )}
-                          <div>
+
+                          <div className="table-wrestler-copy">
                             <strong>{wrestler.wrestler_name}</strong>
+                            <div className="table-wrestler-sub">
+                              {attireCount} attire mod{attireCount === 1 ? '' : 's'}
+                            </div>
                           </div>
                         </div>
                       </td>
-                      <td>{wrestler.attires?.length || 0}</td>
+                      <td>{attireCount}</td>
                       <td>{openRequests}</td>
                       <td>{formatDate(wrestler.updated_at)}</td>
                       <td>
                         {session && canManageContent(wrestler.owner_id) ? (
                           <div className="list-card-actions compact-actions" onClick={(e) => e.stopPropagation()}>
-                            <button className="ghost-button inline-btn small-btn" onClick={() => onEdit(wrestler)}>
+                            <button className="ghost-button inline-btn small-btn" onClick={() => onEdit(wrestler)} type="button">
                               Edit
                             </button>
-                            <button className="ghost-button inline-btn small-btn" onClick={() => onDelete(wrestler)}>
+                            <button className="ghost-button inline-btn small-btn" onClick={() => onDelete(wrestler)} type="button">
                               Delete
                             </button>
                           </div>
@@ -141,6 +145,7 @@ export default function WrestlerList({
             wrestlers.map((wrestler) => {
               const isSelected = wrestler.id === selectedId
               const openRequests = (wrestler.requests || []).filter((item) => item.status === 'open').length
+              const attireCount = wrestler.attires?.length || 0
               const hasHeadshot = Boolean(wrestler.headshot_url)
 
               return (
@@ -163,21 +168,23 @@ export default function WrestlerList({
 
                     <div className="list-main-copy">
                       <div className="list-title">{wrestler.wrestler_name}</div>
-                      <div className="small-text muted-text">Updated {formatDate(wrestler.updated_at)}</div>
+                      <div className="small-text muted-text">
+                        {attireCount} attire mod{attireCount === 1 ? '' : 's'} · Updated {formatDate(wrestler.updated_at)}
+                      </div>
                     </div>
                   </div>
 
                   <div className="list-meta wrap-meta">
-                    <span>{wrestler.attires?.length || 0} attire mods</span>
+                    <span>{attireCount} attire mods</span>
                     <span>{openRequests} open requests</span>
                   </div>
 
                   {session && canManageContent(wrestler.owner_id) ? (
                     <div className="list-card-actions" onClick={(e) => e.stopPropagation()}>
-                      <button className="ghost-button inline-btn small-btn" onClick={() => onEdit(wrestler)}>
+                      <button className="ghost-button inline-btn small-btn" onClick={() => onEdit(wrestler)} type="button">
                         Edit
                       </button>
-                      <button className="ghost-button inline-btn small-btn" onClick={() => onDelete(wrestler)}>
+                      <button className="ghost-button inline-btn small-btn" onClick={() => onDelete(wrestler)} type="button">
                         Delete
                       </button>
                     </div>

@@ -41,25 +41,31 @@ export default function LinkIssuesPage({
         <div className="link-issues-list">
           {issues.map((item) => (
             <div className="link-issue-card" key={item.attire.id}>
-              <strong>{item.wrestler.wrestler_name}</strong>
-              <h3>{item.attire.name}</h3>
+              <div className="link-issue-main">
+                <div className="link-issue-title-row">
+                  <strong>{item.wrestler.wrestler_name}</strong>
+                  <span className={`pill ${item.issueType === 'dead_link' ? 'danger-pill' : ''}`}>
+                    {item.issueType === 'dead_link' ? 'Dead link' : 'Missing link'}
+                  </span>
+                </div>
 
-              <p>{item.issueType === 'dead_link' ? 'Dead link' : 'Missing link'}</p>
+                <h3>{item.attire.name}</h3>
 
-               <div className="download-links-list">
-                {parseDownloadLinks(item.attire.download_url).length ? (
-                  parseDownloadLinks(item.attire.download_url).map((link, index) => {
-                    const provider = getDownloadProvider(link)
-                    return (
-                      <div className={`download-link-chip provider-${provider}`} key={`${link}-${index}`}>
-                        <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
-                        <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
-                      </div>
-                    )
-                  })
-                ) : (
-                  <span className="muted-text">No link</span>
-                )}
+                <div className="download-links-list">
+                  {parseDownloadLinks(item.attire.download_url).length ? (
+                    parseDownloadLinks(item.attire.download_url).map((link, index) => {
+                      const provider = getDownloadProvider(link)
+                      return (
+                        <div className={`download-link-chip provider-${provider}`} key={`${link}-${index}`}>
+                          <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
+                          <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <span className="muted-text">No link</span>
+                  )}
+                </div>
               </div>
 
               <div className="link-issue-actions">
