@@ -1,5 +1,13 @@
 import { useState } from 'react'
-import { formatDate, requestSummary, titleCase, parseDownloadLinks, getDownloadProvider, getDownloadProviderLabel, getDownloadProviderMark } from '../lib/utils'
+import {
+  formatDate,
+  requestSummary,
+  titleCase,
+  parseDownloadLinks,
+  getDownloadProvider,
+  getDownloadProviderLabel,
+  getDownloadProviderMark
+} from '../lib/utils'
 
 function statusClass(status) {
   return `status-pill status-${status || 'complete'}`
@@ -12,7 +20,7 @@ function JsonBrowser({ title, value }) {
     <div className="json-browser-card elevated-card">
       <div className="json-browser-head">
         <strong>{title}</strong>
-        <button className="ghost-button small-btn" onClick={() => setOpen((v) => !v)}>
+        <button className="ghost-button small-btn" onClick={() => setOpen((v) => !v)} type="button">
           {open ? 'Hide code' : 'Browse code'}
         </button>
       </div>
@@ -81,12 +89,7 @@ function DownloadLinks({ value }) {
         const provider = getDownloadProvider(link)
         return (
           <div className={`download-link-chip provider-${provider}`} key={`${link}-${index}`}>
-            <a
-              className="download-link-main"
-              href={link}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <a className="download-link-main" href={link} target="_blank" rel="noreferrer">
               <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
               <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
             </a>
@@ -103,6 +106,89 @@ function DownloadLinks({ value }) {
         )
       })}
     </div>
+  )
+}
+
+function WrestlerAudioSection({ wrestler }) {
+  const entranceMusicFiles = (wrestler.audio_files || []).filter((item) => item.audio_type === 'entrance_music')
+  const callnameFiles = (wrestler.audio_files || []).filter((item) => item.audio_type === 'callname')
+
+  function AudioGroup({ title, items }) {
+    const [failedIds, setFailedIds] = useState({})
+
+    return (
+      <div className="upload-card premium-upload-card">
+        <div className="upload-card-header">
+          <h5>{title}</h5>
+          <p>Stored on the wrestler page. Browser playback may not work for every WEM file, so a download fallback is shown.</p>
+        </div>
+
+        {items.length ? (
+          <div className="wrestler-audio-list">
+            {items.map((item, index) => {
+              const key = item.id || item.file_path || `${title}-${index}`
+              const failed = failedIds[key]
+
+              return (
+                <div className="wrestler-audio-row" key={key}>
+                  <div className="wrestler-audio-main">
+                    <div className="wrestler-audio-name">{item.file_name || 'Unnamed .wem file'}</div>
+
+                    {!failed && item.file_url ? (
+                      <audio
+                        className="wrestler-audio-player"
+                        controls
+                        preload="none"
+                        onError={() => setFailedIds((current) => ({ ...current, [key]: true }))}
+                      >
+                        <source src={item.file_url} />
+                      </audio>
+                    ) : (
+                      <div className="muted-text small-text">
+                        Browser playback is not available for this WEM file.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="wrestler-audio-actions">
+                    {item.file_url ? (
+                      <a
+                        className="ghost-button small-btn"
+                        href={item.file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open / download
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="upload-placeholder">No files uploaded</div>
+        )}
+      </div>
+    )
+  }
+
+  if (!entranceMusicFiles.length && !callnameFiles.length) return null
+
+  return (
+    <section className="panel soft-panel">
+      <div className="panel-header">
+        <div>
+          <h2>Wrestler audio</h2>
+          <p className="subtle-copy">Entrance music and announce callnames attached directly to this wrestler.</p>
+        </div>
+      </div>
+
+      <div className="upload-grid single-column-upload-grid">
+        <AudioGroup title="Entrance music (.wem)" items={entranceMusicFiles} />
+        <AudioGroup title="Announce callnames (.wem)" items={callnameFiles} />
+      </div>
+    </section>
   )
 }
 
@@ -153,21 +239,22 @@ function CompactRow({
               className={installed ? 'primary-button small-btn' : 'secondary-button small-btn'}
               disabled={!session}
               onClick={() => onToggleInstalled(attire, installed)}
+              type="button"
             >
               {installed ? 'Installed' : 'Install'}
             </button>
           ) : null}
 
           {canContribute ? (
-            <button className="ghost-button small-btn" disabled={!session} onClick={() => onOpenCollectionPicker(attire)}>
+            <button className="ghost-button small-btn" disabled={!session} onClick={() => onOpenCollectionPicker(attire)} type="button">
               Collection
             </button>
           ) : null}
 
           {session && canManageContent(attire.owner_id) ? (
             <>
-              <button className="ghost-button small-btn" onClick={() => onEditAttire(attire)}>Edit</button>
-              <button className="ghost-button small-btn" onClick={() => onDeleteAttire(attire)}>Delete</button>
+              <button className="ghost-button small-btn" onClick={() => onEditAttire(attire)} type="button">Edit</button>
+              <button className="ghost-button small-btn" onClick={() => onDeleteAttire(attire)} type="button">Delete</button>
             </>
           ) : null}
 
@@ -190,6 +277,7 @@ function CompactRow({
                         `Dead link reported: ${link}`
                       )
                     }
+                    type="button"
                   >
                     Report {getDownloadProviderLabel(provider)}
                   </button>
@@ -208,6 +296,7 @@ function CompactRow({
                     attire.name
                   )
                 }
+                type="button"
               >
                 Request link
               </button>
@@ -225,6 +314,7 @@ function CompactRow({
                   requestInfo.deadLinks > 0 ? 'dead_link' : 'missing_link'
                 )
               }
+              type="button"
             >
               Fix link
             </button>
@@ -264,7 +354,13 @@ export default function DetailPanel({
         <div className="detail-heading-row split-on-mobile">
           <div className="hero-id-wrap">
             {wrestler.headshot_url ? (
-              <img className="hero-headshot" src={wrestler.headshot_url} alt={wrestler.wrestler_name} />
+              <button
+                type="button"
+                className="hero-headshot-button"
+                onClick={() => setPreviewImage(wrestler.headshot_url)}
+              >
+                <img className="hero-headshot" src={wrestler.headshot_url} alt={wrestler.wrestler_name} />
+              </button>
             ) : (
               <div className="hero-headshot hero-headshot-placeholder">
                 {wrestler.wrestler_name.slice(0, 2).toUpperCase()}
@@ -282,13 +378,13 @@ export default function DetailPanel({
 
           <div className="hero-actions">
             {canContribute ? (
-              <button className="primary-button" onClick={() => onAddAttire(wrestler)} disabled={!session}>
+              <button className="primary-button" onClick={() => onAddAttire(wrestler)} disabled={!session} type="button">
                 Add attire mod
               </button>
             ) : null}
 
             {session && canManageContent(wrestler.owner_id) ? (
-              <button className="secondary-button" onClick={() => onEditWrestler(wrestler)}>
+              <button className="secondary-button" onClick={() => onEditWrestler(wrestler)} type="button">
                 Edit wrestler
               </button>
             ) : null}
@@ -303,6 +399,8 @@ export default function DetailPanel({
 
         {wrestler.notes ? <div className="note-box">{wrestler.notes}</div> : null}
       </section>
+
+      <WrestlerAudioSection wrestler={wrestler} />
 
       <section className="panel soft-panel">
         <div className="panel-header with-actions">
@@ -395,7 +493,7 @@ export default function DetailPanel({
                           {screenshots.length ? (
                             screenshots.map((image) => (
                               <button
-                                key={image.id}
+                                key={image.id || image.image_path || image.image_url}
                                 type="button"
                                 className="gallery-tile gallery-button-reset"
                                 onClick={() => setPreviewImage(image.image_url)}
@@ -456,23 +554,24 @@ export default function DetailPanel({
                           className={installed ? 'primary-button small-btn' : 'secondary-button small-btn'}
                           disabled={!session}
                           onClick={() => onToggleInstalled(attire, installed)}
+                          type="button"
                         >
                           {installed ? 'Installed in my game' : 'Mark installed'}
                         </button>
                       ) : null}
 
                       {canContribute ? (
-                        <button className="ghost-button small-btn" disabled={!session} onClick={() => onOpenCollectionPicker(attire)}>
+                        <button className="ghost-button small-btn" disabled={!session} onClick={() => onOpenCollectionPicker(attire)} type="button">
                           Save to collection
                         </button>
                       ) : null}
 
                       {session && canManageContent(attire.owner_id) ? (
                         <>
-                          <button className="ghost-button small-btn" onClick={() => onEditAttire(attire)}>
+                          <button className="ghost-button small-btn" onClick={() => onEditAttire(attire)} type="button">
                             Edit
                           </button>
-                          <button className="ghost-button small-btn" onClick={() => onDeleteAttire(attire)}>
+                          <button className="ghost-button small-btn" onClick={() => onDeleteAttire(attire)} type="button">
                             Delete
                           </button>
                         </>
@@ -497,6 +596,7 @@ export default function DetailPanel({
                                     `Dead link reported: ${link}`
                                   )
                                 }
+                                type="button"
                               >
                                 Report {getDownloadProviderLabel(provider)}
                               </button>
@@ -515,6 +615,7 @@ export default function DetailPanel({
                                 attire.name
                               )
                             }
+                            type="button"
                           >
                             Request link
                           </button>
@@ -532,6 +633,7 @@ export default function DetailPanel({
                               requestInfo.deadLinks > 0 ? 'dead_link' : 'missing_link'
                             )
                           }
+                          type="button"
                         >
                           Fix link
                         </button>
@@ -544,6 +646,7 @@ export default function DetailPanel({
           </div>
         )}
       </section>
+
       {previewImage ? (
         <div className="image-modal-backdrop image-modal-backdrop-open" onClick={() => setPreviewImage(null)}>
           <div className="image-modal-content image-modal-content-open" onClick={(e) => e.stopPropagation()}>
@@ -551,6 +654,6 @@ export default function DetailPanel({
           </div>
         </div>
       ) : null}
-</div>
+    </div>
   )
 }

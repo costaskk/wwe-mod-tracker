@@ -64,7 +64,16 @@ export default function CollectionView({ collection, canContribute, onClose, onS
 
                   <div className="collection-actions wrap-actions">
                     {wrestler ? (
-                      <button className="secondary-button small-btn" onClick={() => onSelectWrestler(wrestler.id)} type="button">
+                      <button
+                        className="secondary-button small-btn"
+                        onClick={() =>
+                          onSelectWrestler({
+                            wrestlerId: wrestler.id,
+                            wrestlerName: wrestler.wrestler_name
+                          })
+                        }
+                        type="button"
+                      >
                         Open wrestler
                       </button>
                     ) : null}

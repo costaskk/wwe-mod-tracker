@@ -20,8 +20,15 @@ export default function CollectionModal({ open, form, setForm, onClose, onSave, 
                 </label>
 
                 <label>
-                  Share slug
-                  <input value={form.slug} onChange={(e) => setForm((current) => ({ ...current, slug: e.target.value }))} placeholder="my-aew-pack" />
+                  Share link
+                  <input
+                    value={
+                      form.slug
+                        ? `${window.location.origin}/?page=collections&collection=${form.slug}`
+                        : 'A unique public share link will be generated automatically when you save.'
+                    }
+                    readOnly
+                  />
                 </label>
 
                 <label className="span-2">
@@ -53,7 +60,7 @@ export default function CollectionModal({ open, form, setForm, onClose, onSave, 
                     Upload cover
                     <input type="file" accept="image/*" onChange={(e) => onUploadCover(e.target.files?.[0])} />
                   </label>
-                  {(form.cover_path || form.cover_url) ? <button className="ghost-button" onClick={onRemoveCover}>Remove</button> : null}
+                  {(form.cover_path || form.cover_url) ? <button className="ghost-button" onClick={onRemoveCover} type="button">Remove</button> : null}
                 </div>
               </div>
             </section>
@@ -62,8 +69,10 @@ export default function CollectionModal({ open, form, setForm, onClose, onSave, 
 
         <div className="modal-footer">
           <div className="muted-text">{uploading ? 'Uploading cover…' : ''}</div>
-          <button className="ghost-button" onClick={onClose}>Cancel</button>
-          <button className="primary-button" onClick={onSave} disabled={saving || uploading}>{saving ? 'Saving…' : 'Save collection'}</button>
+          <button className="ghost-button" onClick={onClose} type="button">Cancel</button>
+          <button className="primary-button" onClick={onSave} disabled={saving || uploading} type="button">
+            {saving ? 'Saving…' : 'Save collection'}
+          </button>
         </div>
       </div>
     </div>
