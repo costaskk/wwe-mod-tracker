@@ -1781,7 +1781,28 @@ select:focus {
   border: 0;
   padding: 0;
   background: transparent;
-  cursor: zoom-in;
+  cursor: default;
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+}
+
+.gallery-button-reset:hover {
+  transform: none;
+}
+
+.gallery-button-reset:focus {
+  outline: none;
+}
+
+.gallery-button-reset .gallery-img {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.gallery-button-reset:hover .gallery-img {
+  transform: scale(1.015);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
 }
 
 .image-modal-backdrop {
@@ -1793,11 +1814,24 @@ select:focus {
   justify-content: center;
   z-index: 9999;
   padding: 24px;
+  backdrop-filter: blur(0px);
+  animation: imageBackdropFadeIn 0.22s ease forwards;
+}
+
+.image-modal-backdrop-open {
+  animation: imageBackdropFadeIn 0.22s ease forwards;
 }
 
 .image-modal-content {
   max-width: 92vw;
   max-height: 92vh;
+  transform: scale(0.92);
+  opacity: 0;
+  animation: imageModalPopIn 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.image-modal-content-open {
+  animation: imageModalPopIn 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 .image-modal-content img {
@@ -1806,6 +1840,28 @@ select:focus {
   max-height: 92vh;
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes imageBackdropFadeIn {
+  from {
+    background: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+  }
+  to {
+    background: rgba(0, 0, 0, 0.88);
+    backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes imageModalPopIn {
+  from {
+    transform: scale(0.92) translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
 }
 
 .autocomplete-box {
