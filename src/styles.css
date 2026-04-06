@@ -1713,6 +1713,55 @@ select:focus {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.autocomplete-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.autocomplete-item-rich {
+  display: grid;
+  gap: 4px;
+}
+
+.autocomplete-main {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.autocomplete-subtle {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.download-link-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.3rem 0.35rem 0.3rem 0.35rem;
+}
+
+.download-link-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  padding: 0.25rem 0.35rem;
+}
+
+.download-chip-copy {
+  border: 0;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.38rem 0.65rem;
+  font-size: 0.76rem;
+}
+
+.download-chip-copy:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
 .autocomplete-box {
   display: grid;
   gap: 6px;

@@ -63,6 +63,14 @@ function Toggle({ value, onChange, options }) {
 function DownloadLinks({ value }) {
   const links = parseDownloadLinks(value)
 
+  async function copyLink(link) {
+    try {
+      await navigator.clipboard.writeText(link)
+    } catch (err) {
+      console.error('Could not copy link', err)
+    }
+  }
+
   if (!links.length) {
     return <span className="muted-text">Missing link</span>
   }
@@ -72,16 +80,26 @@ function DownloadLinks({ value }) {
       {links.map((link, index) => {
         const provider = getDownloadProvider(link)
         return (
-          <a
-            key={`${link}-${index}`}
-            className={`download-link-chip provider-${provider}`}
-            href={link}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
-            <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
-          </a>
+          <div className={`download-link-chip provider-${provider}`} key={`${link}-${index}`}>
+            <a
+              className="download-link-main"
+              href={link}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
+              <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
+            </a>
+
+            <button
+              type="button"
+              className="download-chip-copy"
+              onClick={() => copyLink(link)}
+              title="Copy link"
+            >
+              Copy
+            </button>
+          </div>
         )
       })}
     </div>
@@ -149,21 +167,46 @@ function CompactRow({
           ) : null}
 
           {canContribute ? (
-            <button
-              className="ghost-button small-btn"
-              disabled={!session}
-              onClick={() =>
-                onCreateRequest(
-                  wrestler.id,
-                  attire.id,
-                  attire.download_url ? 'dead_link' : 'missing_link',
-                  wrestler.wrestler_name,
-                  attire.name
+            parseDownloadLinks(attire.download_url).length ? (
+              parseDownloadLinks(attire.download_url).map((link, index) => {
+                const provider = getDownloadProvider(link)
+                return (
+                  <button
+                    key={`${link}-${index}`}
+                    className={`ghost-button small-btn provider-${provider}`}
+                    disabled={!session}
+                    onClick={() =>
+                      onCreateRequest(
+                        wrestler.id,
+                        attire.id,
+                        'dead_link',
+                        wrestler.wrestler_name,
+                        `${attire.name} [${getDownloadProviderLabel(provider)}]`,
+                        `Dead link reported: ${link}`
+                      )
+                    }
+                  >
+                    Report {getDownloadProviderLabel(provider)}
+                  </button>
                 )
-              }
-            >
-              {requestInfo.deadLinks || attire.download_url ? 'Dead link' : 'Request link'}
-            </button>
+              })
+            ) : (
+              <button
+                className="ghost-button small-btn"
+                disabled={!session}
+                onClick={() =>
+                  onCreateRequest(
+                    wrestler.id,
+                    attire.id,
+                    'missing_link',
+                    wrestler.wrestler_name,
+                    attire.name
+                  )
+                }
+              >
+                Request link
+              </button>
+            )
           ) : null}
 
           {canContribute && (requestInfo.deadLinks > 0 || !attire.download_url?.trim()) ? (
@@ -419,21 +462,46 @@ export default function DetailPanel({
                       ) : null}
 
                       {canContribute ? (
-                        <button
-                          className="ghost-button small-btn"
-                          disabled={!session}
-                          onClick={() =>
-                            onCreateRequest(
-                              wrestler.id,
-                              attire.id,
-                              attire.download_url ? 'dead_link' : 'missing_link',
-                              wrestler.wrestler_name,
-                              attire.name
+                        parseDownloadLinks(attire.download_url).length ? (
+                          parseDownloadLinks(attire.download_url).map((link, index) => {
+                            const provider = getDownloadProvider(link)
+                            return (
+                              <button
+                                key={`${link}-${index}`}
+                                className={`ghost-button small-btn provider-${provider}`}
+                                disabled={!session}
+                                onClick={() =>
+                                  onCreateRequest(
+                                    wrestler.id,
+                                    attire.id,
+                                    'dead_link',
+                                    wrestler.wrestler_name,
+                                    `${attire.name} [${getDownloadProviderLabel(provider)}]`,
+                                    `Dead link reported: ${link}`
+                                  )
+                                }
+                              >
+                                Report {getDownloadProviderLabel(provider)}
+                              </button>
                             )
-                          }
-                        >
-                          {attire.download_url ? 'Report dead link' : 'Request link'}
-                        </button>
+                          })
+                        ) : (
+                          <button
+                            className="ghost-button small-btn"
+                            disabled={!session}
+                            onClick={() =>
+                              onCreateRequest(
+                                wrestler.id,
+                                attire.id,
+                                'missing_link',
+                                wrestler.wrestler_name,
+                                attire.name
+                              )
+                            }
+                          >
+                            Request link
+                          </button>
+                        )
                       ) : null}
 
                       {canContribute && (requestInfo.deadLinks > 0 || !attire.download_url?.trim()) ? (
@@ -501,7 +569,9 @@ export default function DetailPanel({
                     </div>
 
                     <div className="muted-text break-line">
-                      Current link: {item.attire.download_url ? item.attire.download_url : 'No link saved yet'}
+                      Current links: {parseDownloadLinks(item.attire.download_url).length
+                        ? parseDownloadLinks(item.attire.download_url).join(' | ')
+                        : 'No link saved yet'}
                     </div>
                   </div>
 

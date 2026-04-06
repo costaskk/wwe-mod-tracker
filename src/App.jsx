@@ -699,9 +699,12 @@ export default function App() {
     }
   }
 
-  function createRequest(wrestlerId, attireId, requestType, wrestlerName, attireName) {
+  function createRequest(wrestlerId, attireId, requestType, wrestlerName, attireName, prefillNotes = '') {
     if (!isApproved) return
-    setRequestModal({ open: true, context: { wrestlerId, attireId, requestType, wrestlerName, attireName } })
+    setRequestModal({
+      open: true,
+      context: { wrestlerId, attireId, requestType, wrestlerName, attireName, prefillNotes }
+    })
   }
 
   async function submitRequest(notes) {
