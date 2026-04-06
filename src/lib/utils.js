@@ -1,6 +1,6 @@
 
 export const MOD_TYPES = ['original', 'port']
-export const SOURCE_GAMES = ['WWE 2K25', 'WWE 2K24', 'WWE 2K23', 'WWE 2K22', 'WWE 2K19', 'WWE 2K18', 'Other']
+export const SOURCE_GAMES = ['WWE 2K26', 'WWE 2K25', 'WWE 2K24', 'WWE 2K23', 'WWE 2K22', 'WWE 2K19', 'WWE 2K18', 'WWE 2K17', 'WWE 2K16', 'WWE 2K15', 'WWE 2K14', 'WWE 13', 'WWE 12', 'Other']
 export const ATTIRE_STATUSES = ['complete', 'partial', 'needs_work', 'missing']
 
 export function uid() {

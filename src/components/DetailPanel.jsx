@@ -130,7 +130,12 @@ function CompactRow({
         </div>
 
         <div className="compact-meta-line">
-          <span>{attire.source_game}</span>
+          <span className="game-badge">
+            {attire.source_game}
+            {attire.source_game === 'WWE 2K26' ? (
+              <span className="latest-badge">NEW</span>
+            ) : null}
+          </span>
           <span>{titleCase(attire.mod_type)}</span>
           <span>{attire.era || 'No era given'}</span>
           {attire.creator_name ? <span className="creator-badge small-creator-badge">{attire.creator_name}</span> : null}
@@ -247,6 +252,8 @@ export default function DetailPanel({
   setAttireViewMode,
   onOpenCollectionPicker
 }) {
+  const [previewImage, setPreviewImage] = useState(null)
+
   if (!wrestler) {
     return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
   }
@@ -368,7 +375,12 @@ export default function DetailPanel({
 
                         <div className="list-meta wrap-meta">
                           <span>{attire.era || 'No era given'}</span>
-                          <span>{attire.source_game}</span>
+                          <span className="game-badge">
+                            {attire.source_game}
+                            {attire.source_game === 'WWE 2K26' ? (
+                              <span className="latest-badge">NEW</span>
+                            ) : null}
+                          </span>
                           <span>{titleCase(attire.mod_type)}</span>
                         </div>
                       </div>
@@ -382,9 +394,14 @@ export default function DetailPanel({
                         <div className="gallery-grid detail-gallery-grid">
                           {screenshots.length ? (
                             screenshots.map((image) => (
-                              <a key={image.id} href={image.image_url} target="_blank" rel="noreferrer" className="gallery-tile">
+                              <button
+                                key={image.id}
+                                type="button"
+                                className="gallery-tile gallery-button-reset"
+                                onClick={() => setPreviewImage(image.image_url)}
+                              >
                                 <img className="gallery-img" src={image.image_url} alt={image.image_name || attire.name} />
-                              </a>
+                              </button>
                             ))
                           ) : (
                             <div className="visual-placeholder">No screenshots uploaded</div>
@@ -527,91 +544,13 @@ export default function DetailPanel({
           </div>
         )}
       </section>
-
-      {canContribute ? (
-        <section className="panel soft-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Link issues</h2>
-              <p className="subtle-copy">Browse missing or dead links for this wrestler and resolve them directly from the app.</p>
-            </div>
+      {previewImage ? (
+        <div className="image-modal-backdrop" onClick={() => setPreviewImage(null)}>
+          <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
+            <img src={previewImage} alt="Preview" />
           </div>
-
-          <div className="link-issues-list">
-            {(() => {
-              const issues = (wrestler.attires || []).flatMap((attire) => {
-                const summary = requestSummary(wrestler.requests || [], attire.id)
-                const missingIssue = !attire.download_url?.trim()
-                const deadIssue = summary.deadLinks > 0
-                if (!missingIssue && !deadIssue) return []
-                return [{
-                  attire,
-                  summary,
-                  issueType: deadIssue ? 'dead_link' : 'missing_link'
-                }]
-              })
-
-              return issues.length ? issues.map((item) => (
-                <div className="link-issue-card elevated-card" key={item.attire.id}>
-                  <div className="link-issue-main">
-                    <div className="link-issue-title-row">
-                      <strong>{item.attire.name}</strong>
-                      <span className={`pill ${item.issueType === 'dead_link' ? 'danger-pill' : ''}`}>
-                        {item.issueType === 'dead_link' ? 'Reported dead link' : 'Missing link'}
-                      </span>
-                    </div>
-
-                    <div className="list-meta wrap-meta">
-                      <span>{item.attire.source_game}</span>
-                      <span>{item.attire.era || 'No era given'}</span>
-                      {item.attire.creator_name ? <span>{item.attire.creator_name}</span> : null}
-                      <span>{item.summary.total} open requests</span>
-                    </div>
-
-                    <div className="muted-text break-line">
-                      Current links: {parseDownloadLinks(item.attire.download_url).length
-                        ? parseDownloadLinks(item.attire.download_url).join(' | ')
-                        : 'No link saved yet'}
-                    </div>
-                  </div>
-
-                  <div className="link-issue-actions">
-                    <button
-                      className="secondary-button small-btn"
-                      disabled={!session}
-                      onClick={() => onResolveLink(wrestler, item.attire, item.issueType)}
-                    >
-                      Fix link
-                    </button>
-
-                    <button
-                      className="ghost-button small-btn"
-                      disabled={!session}
-                      onClick={() =>
-                        onCreateRequest(
-                          wrestler.id,
-                          item.attire.id,
-                          item.issueType,
-                          wrestler.wrestler_name,
-                          item.attire.name
-                        )
-                      }
-                    >
-                      Add note
-                    </button>
-
-                    {session && canManageContent(item.attire.owner_id) ? (
-                      <button className="ghost-button small-btn" onClick={() => onEditAttire(item.attire)}>
-                        Edit attire
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              )) : <div className="empty-state small-empty">No open link issues for this wrestler.</div>
-            })()}
-          </div>
-        </section>
+        </div>
       ) : null}
-    </div>
+</div>
   )
 }

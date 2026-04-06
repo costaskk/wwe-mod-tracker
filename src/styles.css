@@ -1762,6 +1762,52 @@ select:focus {
   background: rgba(255, 255, 255, 0.18);
 }
 
+.game-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.latest-badge {
+  background: linear-gradient(135deg, #00ffcc, #00aaff);
+  color: #001;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.gallery-button-reset {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.image-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 24px;
+}
+
+.image-modal-content {
+  max-width: 92vw;
+  max-height: 92vh;
+}
+
+.image-modal-content img {
+  display: block;
+  max-width: 100%;
+  max-height: 92vh;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
 .autocomplete-box {
   display: grid;
   gap: 6px;
