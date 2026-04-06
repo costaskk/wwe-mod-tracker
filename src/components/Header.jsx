@@ -4,6 +4,7 @@ export default function Header({
   onAddWrestler,
   onBrowseCollections,
   onBrowseAdmin,
+  onBrowseIssues,
   onGoHome,
   currentPage = 'mods',
   session,
@@ -29,6 +30,7 @@ export default function Header({
         <div className="micro-account-bar">
           <div className="page-nav-chips">
             <button className={`nav-chip ${currentPage === 'mods' ? 'active' : ''}`} onClick={onGoHome}>Mod list</button>
+            <button className={`nav-chip ${currentPage === 'issues' ? 'active' : ''}`} onClick={onBrowseIssues}>Issues</button>
             {session ? <button className={`nav-chip ${currentPage === 'collections' ? 'active' : ''}`} onClick={onBrowseCollections}>Collections</button> : null}
             {currentProfile?.role === 'admin' ? <button className={`nav-chip ${currentPage === 'admin' ? 'active' : ''}`} onClick={onBrowseAdmin}>Admin</button> : null}
           </div>

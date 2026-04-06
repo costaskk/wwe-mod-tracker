@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import AdminPanel from './components/AdminPanel'
 import AuthPanel from './components/AuthPanel'
+import LinkIssuesPage from './components/LinkIssuesPage'
 import AttireEditorModal from './components/AttireEditorModal'
 import CollectionModal from './components/CollectionModal'
 import CollectionPickerModal from './components/CollectionPickerModal'
@@ -160,6 +161,8 @@ export default function App() {
           setCurrentPage('collections')
         } else if (page === 'admin') {
           setCurrentPage('admin')
+        } else if (page === 'issues') {
+          setCurrentPage('issues')
         } else {
           setCurrentPage('mods')
         }
@@ -833,6 +836,12 @@ export default function App() {
     window.history.replaceState({}, '', `${window.location.pathname}?page=collections`)
   }
 
+  function goIssuesPage() {
+    setSelectedCollection(null)
+    setCurrentPage('issues')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=issues`)
+  }
+
   function goAdminPage() {
     setSelectedCollection(null)
     setCurrentPage('admin')
@@ -878,7 +887,7 @@ export default function App() {
       setSaving(false)
     }
   }
-
+  
   async function deleteAttire(attire) {
     if (!canManageContent(attire.owner_id)) return
 
@@ -898,26 +907,30 @@ export default function App() {
     })
   }
 
-  async function deleteWrestler(wrestler) {
+  function deleteWrestler(wrestler) {
     if (!canManageContent(wrestler.owner_id)) return
-    if (!window.confirm(`Delete ${wrestler.wrestler_name} and all attire mods?`)) return
-    try {
-      const assetPaths = [wrestler.headshot_path]
-      for (const attire of wrestler.attires || []) {
-        if (attire.render_dds_path) assetPaths.push(attire.render_dds_path)
-        for (const img of attire.attire_images || []) assetPaths.push(img.image_path)
+
+    openConfirmAction({
+      title: 'Delete wrestler?',
+      message: `This will permanently delete ${wrestler.wrestler_name} and all related attire mods.`,
+      confirmLabel: 'Delete wrestler',
+      tone: 'danger',
+      onConfirm: async () => {
+        const assetPaths = [wrestler.headshot_path]
+        for (const attire of wrestler.attires || []) {
+          if (attire.render_dds_path) assetPaths.push(attire.render_dds_path)
+          for (const img of attire.attire_images || []) assetPaths.push(img.image_path)
+        }
+        await removeAssets(assetPaths)
+        const { error } = await supabase.from('wrestlers').delete().eq('id', wrestler.id)
+        if (error) throw error
+        openNotice('success', 'Wrestler deleted', `${wrestler.wrestler_name} and related attire mods were deleted.`)
+        await fetchAll()
       }
-      await removeAssets(assetPaths)
-      const { error } = await supabase.from('wrestlers').delete().eq('id', wrestler.id)
-      if (error) throw error
-      openNotice('success', 'Wrestler deleted', `${wrestler.wrestler_name} and related attire mods were deleted.`)
-      await fetchAll()
-    } catch (err) {
-      openNotice('error', 'Could not delete wrestler', err.message || 'Could not delete wrestler.')
-    }
+    })
   }
 
-  async function deleteCollection(collection) {
+  function deleteCollection(collection) {
     if (!canManageContent(collection.owner_id)) return
 
     openConfirmAction({
@@ -945,6 +958,7 @@ export default function App() {
           onAddWrestler={() => {}}
           session={null}
           onBrowseCollections={() => {}}
+          onBrowseIssues={goIssuesPage}
           onGoHome={() => {}}
           currentPage="mods"
           currentProfile={null}
@@ -962,6 +976,7 @@ export default function App() {
         onAddWrestler={openAddWrestler}
         session={session}
         onBrowseCollections={goCollectionsPage}
+        onBrowseIssues={goIssuesPage}
         onGoHome={goHome}
         currentPage={currentPage}
         currentProfile={currentProfile}
@@ -1003,6 +1018,14 @@ export default function App() {
             profiles={profiles}
             onUpdateProfile={updateProfile}
             updating={updatingProfile}
+          />
+        ) : currentPage === 'issues' ? (
+          <LinkIssuesPage
+            wrestlers={wrestlers}
+            onResolveLink={openResolveLink}
+            onCreateRequest={createRequest}
+            canManageContent={canManageContent}
+            onEditAttire={openEditAttire}
           />
         ) : (
         <>
@@ -1112,7 +1135,7 @@ export default function App() {
         onRemoveCover={removeCollectionCover}
         saving={saving}
         uploading={uploading}
-        wrestlers={wrestlers}
+        
       />
 
       <CollectionPickerModal

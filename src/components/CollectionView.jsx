@@ -1,5 +1,5 @@
 
-import { formatDate, titleCase } from '../lib/utils'
+import { formatDate, titleCase, parseDownloadLinks } from '../lib/utils'
 
 export default function CollectionView({ collection, session, canContribute, onClose, onSelectWrestler }) {
   if (!collection) return null
@@ -70,10 +70,8 @@ export default function CollectionView({ collection, session, canContribute, onC
                     ) : null}
 
                     {canContribute ? (
-                      attire?.download_url ? (
-                        <a className="ghost-button small-btn" href={attire.download_url} target="_blank" rel="noreferrer">
-                          Download
-                        </a>
+                      parseDownloadLinks(attire?.download_url).length ? (
+                        <span className="pill">{parseDownloadLinks(attire?.download_url).length} link(s)</span>
                       ) : (
                         <span className="pill danger-pill">No link</span>
                       )
