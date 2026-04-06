@@ -131,9 +131,9 @@ export default function AttireEditorModal({
                       <div className="exists-banner">
                         <div className="exists-banner-mark">!</div>
                         <div className="exists-banner-copy">
-                          <strong>This attire already exists for this wrestler.</strong>
+                          <strong>This attire is already saved for this wrestler.</strong>
                           <span>
-                            Existing attire: <b>{duplicateAttire.name}</b>
+                            Existing entry: <b>{duplicateAttire.name}</b>. Edit the current one instead of creating a duplicate.
                           </span>
                         </div>
                       </div>
@@ -145,17 +145,22 @@ export default function AttireEditorModal({
 
                 {attireSuggestions.length ? (
                   <div className="autocomplete-box">
-                    <div className="autocomplete-title">Possible matches for this wrestler</div>
-                    {attireSuggestions.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className="autocomplete-item"
-                        onClick={() => updateField('name', item.name)}
-                      >
-                        {item.name}
-                      </button>
-                    ))}
+                    <div className="autocomplete-title">Existing attire names for this wrestler</div>
+                    <div className="autocomplete-grid">
+                      {attireSuggestions.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className="autocomplete-item autocomplete-item-rich"
+                          onClick={() => updateField('name', item.name)}
+                        >
+                          <span className="autocomplete-main">{item.name}</span>
+                          <span className="autocomplete-subtle">
+                            {item.era || 'No era'} · {item.source_game || 'Unknown game'}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ) : null}
 
