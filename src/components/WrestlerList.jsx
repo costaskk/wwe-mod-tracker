@@ -17,6 +17,18 @@ function Toggle({ value, onChange, options }) {
   )
 }
 
+function buildPageNumbers(page, totalPages) {
+  const pages = []
+  const start = Math.max(1, page - 2)
+  const end = Math.min(totalPages, page + 2)
+
+  for (let i = start; i <= end; i += 1) {
+    pages.push(i)
+  }
+
+  return pages
+}
+
 export default function WrestlerList({
   wrestlers,
   selectedId,
@@ -26,14 +38,24 @@ export default function WrestlerList({
   session,
   canManageContent,
   viewMode,
-  setViewMode
+  setViewMode,
+  pagination,
+  onPageChange
 }) {
+  const pageStart = pagination ? (pagination.page - 1) * pagination.perPage + 1 : 0
+  const pageEnd = pagination ? Math.min(pagination.page * pagination.perPage, pagination.totalItems) : wrestlers.length
+  const pageNumbers = pagination ? buildPageNumbers(pagination.page, pagination.totalPages) : []
+
   return (
     <section className="panel soft-panel list-panel">
       <div className="panel-header with-actions">
         <div>
           <h2>Wrestlers</h2>
-          <p className="subtle-copy">{wrestlers.length} visible</p>
+          <p className="subtle-copy">
+            {pagination
+              ? `${pagination.totalItems} total · showing ${pagination.totalItems ? pageStart : 0}-${pageEnd}`
+              : `${wrestlers.length} visible`}
+          </p>
         </div>
 
         <Toggle
@@ -165,6 +187,61 @@ export default function WrestlerList({
           )}
         </div>
       )}
+
+      {pagination && pagination.totalPages > 1 ? (
+        <div className="pagination-row">
+          <button
+            className="ghost-button small-btn"
+            disabled={pagination.page <= 1}
+            onClick={() => onPageChange(pagination.page - 1)}
+            type="button"
+          >
+            Previous
+          </button>
+
+          <div className="pagination-pages">
+            {pagination.page > 3 ? (
+              <>
+                <button className="ghost-button small-btn page-number-btn" type="button" onClick={() => onPageChange(1)}>1</button>
+                <span className="pagination-ellipsis">…</span>
+              </>
+            ) : null}
+
+            {pageNumbers.map((pageNumber) => (
+              <button
+                key={pageNumber}
+                type="button"
+                className={`ghost-button small-btn page-number-btn ${pageNumber === pagination.page ? 'active-page' : ''}`}
+                onClick={() => onPageChange(pageNumber)}
+              >
+                {pageNumber}
+              </button>
+            ))}
+
+            {pagination.page < pagination.totalPages - 2 ? (
+              <>
+                <span className="pagination-ellipsis">…</span>
+                <button
+                  className="ghost-button small-btn page-number-btn"
+                  type="button"
+                  onClick={() => onPageChange(pagination.totalPages)}
+                >
+                  {pagination.totalPages}
+                </button>
+              </>
+            ) : null}
+          </div>
+
+          <button
+            className="ghost-button small-btn"
+            disabled={pagination.page >= pagination.totalPages}
+            onClick={() => onPageChange(pagination.page + 1)}
+            type="button"
+          >
+            Next
+          </button>
+        </div>
+      ) : null}
     </section>
   )
 }

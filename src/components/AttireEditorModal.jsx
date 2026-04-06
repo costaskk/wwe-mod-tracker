@@ -1,5 +1,4 @@
-
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ATTIRE_STATUSES, MOD_TYPES, SOURCE_GAMES, titleCase } from '../lib/utils'
 
 function JsonEditor({ title, value, onChange, onUpload, filenameHint }) {
@@ -68,12 +67,38 @@ export default function AttireEditorModal({
   onUploadJson,
   saving,
   uploading,
-  addingCreator
+  addingCreator,
+  wrestlers = []
 }) {
+  const parentWrestler = useMemo(() => {
+    return wrestlers.find((item) => item.id === form.wrestler_id) || null
+  }, [wrestlers, form.wrestler_id])
+
+  const normalizedAttireName = (form.name || '').trim().toLowerCase()
+
+  const duplicateAttire = useMemo(() => {
+    if (!parentWrestler || !normalizedAttireName) return null
+    return (parentWrestler.attires || []).find(
+      (item) =>
+        (item.name || '').trim().toLowerCase() === normalizedAttireName &&
+        item.id !== form.id
+    ) || null
+  }, [parentWrestler, normalizedAttireName, form.id])
+
+  const attireSuggestions = useMemo(() => {
+    if (!parentWrestler || !normalizedAttireName) return []
+    return (parentWrestler.attires || [])
+      .filter((item) => {
+        const name = (item.name || '').trim().toLowerCase()
+        return name.includes(normalizedAttireName) && item.id !== form.id
+      })
+      .slice(0, 6)
+  }, [parentWrestler, normalizedAttireName, form.id])
+
   if (!open) return null
 
   function updateField(field, value) {
-    setForm(current => ({ ...current, [field]: value }))
+    setForm((current) => ({ ...current, [field]: value }))
   }
 
   return (
@@ -90,19 +115,51 @@ export default function AttireEditorModal({
               <div className="form-grid">
                 <label>
                   Attire name
-                  <input value={form.name} onChange={(e) => updateField('name', e.target.value)} />
+                  <input
+                    value={form.name}
+                    onChange={(e) => updateField('name', e.target.value)}
+                    placeholder="Black and Gold 2021"
+                    autoComplete="off"
+                  />
                 </label>
+
+                {attireSuggestions.length ? (
+                  <div className="autocomplete-box">
+                    {attireSuggestions.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="autocomplete-item"
+                        onClick={() => updateField('name', item.name)}
+                      >
+                        {item.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
+                {duplicateAttire ? (
+                  <div className="duplicate-hint">
+                    This attire already exists for <strong>{parentWrestler?.wrestler_name || 'this wrestler'}</strong>: <strong>{duplicateAttire.name}</strong>
+                  </div>
+                ) : null}
 
                 <div className="form-grid compact-grid">
                   <label>
                     Era / appearance date hint
-                    <input value={form.era} onChange={(e) => updateField('era', e.target.value)} placeholder="1997 WCW, March 2001, Ruthless Aggression" />
+                    <input
+                      value={form.era}
+                      onChange={(e) => updateField('era', e.target.value)}
+                      placeholder="1997 WCW, March 2001, Ruthless Aggression"
+                    />
                   </label>
 
                   <label>
                     Status
                     <select value={form.status} onChange={(e) => updateField('status', e.target.value)}>
-                      {ATTIRE_STATUSES.map(item => <option key={item} value={item}>{titleCase(item)}</option>)}
+                      {ATTIRE_STATUSES.map((item) => (
+                        <option key={item} value={item}>{titleCase(item)}</option>
+                      ))}
                     </select>
                   </label>
                 </div>
@@ -112,15 +169,28 @@ export default function AttireEditorModal({
                     Creator
                     <select value={form.creator_name} onChange={(e) => updateField('creator_name', e.target.value)}>
                       <option value="">Select a creator</option>
-                      {creatorOptions.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
+                      {creatorOptions.map((item) => (
+                        <option key={item.id} value={item.name}>{item.name}</option>
+                      ))}
                     </select>
                   </label>
 
                   <label>
                     Add creator
                     <div className="inline-stack creator-inline-stack">
-                      <input value={newCreatorName} onChange={(e) => setNewCreatorName(e.target.value)} placeholder="New creator name" />
-                      <button type="button" className="secondary-button small-btn" onClick={onAddCreator} disabled={addingCreator || !newCreatorName.trim()}>{addingCreator ? 'Adding…' : 'Add'}</button>
+                      <input
+                        value={newCreatorName}
+                        onChange={(e) => setNewCreatorName(e.target.value)}
+                        placeholder="New creator name"
+                      />
+                      <button
+                        type="button"
+                        className="secondary-button small-btn"
+                        onClick={onAddCreator}
+                        disabled={addingCreator || !newCreatorName.trim()}
+                      >
+                        {addingCreator ? 'Adding…' : 'Add'}
+                      </button>
                     </div>
                   </label>
                 </div>
@@ -129,21 +199,29 @@ export default function AttireEditorModal({
                   <label>
                     Source game
                     <select value={form.source_game} onChange={(e) => updateField('source_game', e.target.value)}>
-                      {SOURCE_GAMES.map(item => <option key={item} value={item}>{item}</option>)}
+                      {SOURCE_GAMES.map((item) => (
+                        <option key={item} value={item}>{item}</option>
+                      ))}
                     </select>
                   </label>
 
                   <label>
                     Mod type
                     <select value={form.mod_type} onChange={(e) => updateField('mod_type', e.target.value)}>
-                      {MOD_TYPES.map(item => <option key={item} value={item}>{titleCase(item)}</option>)}
+                      {MOD_TYPES.map((item) => (
+                        <option key={item} value={item}>{titleCase(item)}</option>
+                      ))}
                     </select>
                   </label>
                 </div>
 
                 <label>
                   Download link
-                  <input value={form.download_url} onChange={(e) => updateField('download_url', e.target.value)} placeholder="https://..." />
+                  <input
+                    value={form.download_url}
+                    onChange={(e) => updateField('download_url', e.target.value)}
+                    placeholder="https://..."
+                  />
                 </label>
 
                 <label>
@@ -182,7 +260,13 @@ export default function AttireEditorModal({
                       {form.images.map((image) => (
                         <div className="gallery-tile" key={image.path || image.id}>
                           <img className="gallery-img" src={image.url} alt={image.name || 'Attire screenshot'} />
-                          <button className="ghost-button small-btn gallery-remove" type="button" onClick={() => onRemoveAsset('image', image.path)}>Remove</button>
+                          <button
+                            className="ghost-button small-btn gallery-remove"
+                            type="button"
+                            onClick={() => onRemoveAsset('image', image.path)}
+                          >
+                            Remove
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -193,7 +277,12 @@ export default function AttireEditorModal({
                   <div className="upload-actions">
                     <label className="secondary-button inline-file file-button">
                       Upload image(s)
-                      <input type="file" accept="image/*" multiple onChange={(e) => onUpload(Array.from(e.target.files || []), 'image')} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => onUpload(Array.from(e.target.files || []), 'image')}
+                      />
                     </label>
                   </div>
                 </div>
@@ -211,7 +300,11 @@ export default function AttireEditorModal({
                       Upload DDS
                       <input type="file" accept=".dds" onChange={(e) => onUpload(e.target.files?.[0], 'render')} />
                     </label>
-                    {form.render_dds_path ? <button className="ghost-button" type="button" onClick={() => onRemoveAsset('render', form.render_dds_path)}>Remove</button> : null}
+                    {form.render_dds_path ? (
+                      <button className="ghost-button" type="button" onClick={() => onRemoveAsset('render', form.render_dds_path)}>
+                        Remove
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -220,9 +313,22 @@ export default function AttireEditorModal({
         </div>
 
         <div className="modal-footer">
-          <div className="muted-text">{uploading ? 'Uploading asset…' : ''}</div>
-          <button className="ghost-button" onClick={onClose}>Cancel</button>
-          <button className="primary-button" onClick={onSave} disabled={saving || uploading}>{saving ? 'Saving…' : 'Save attire'}</button>
+          <div className="muted-text">
+            {duplicateAttire
+              ? 'This attire already exists for this wrestler.'
+              : uploading
+                ? 'Uploading asset…'
+                : ''}
+          </div>
+          <button className="ghost-button" onClick={onClose} type="button">Cancel</button>
+          <button
+            className="primary-button"
+            onClick={onSave}
+            disabled={saving || uploading || !!duplicateAttire}
+            type="button"
+          >
+            {saving ? 'Saving…' : 'Save attire'}
+          </button>
         </div>
       </div>
     </div>
