@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { formatDate, requestSummary, titleCase } from '../lib/utils'
+import { formatDate, requestSummary, titleCase, parseDownloadLinks, getDownloadProvider, getDownloadProviderLabel, getDownloadProviderMark } from '../lib/utils'
 
 function statusClass(status) {
   return `status-pill status-${status || 'complete'}`
@@ -60,6 +60,34 @@ function Toggle({ value, onChange, options }) {
   )
 }
 
+function DownloadLinks({ value }) {
+  const links = parseDownloadLinks(value)
+
+  if (!links.length) {
+    return <span className="muted-text">Missing link</span>
+  }
+
+  return (
+    <div className="download-links-list">
+      {links.map((link, index) => {
+        const provider = getDownloadProvider(link)
+        return (
+          <a
+            key={`${link}-${index}`}
+            className={`download-link-chip provider-${provider}`}
+            href={link}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
+            <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
+          </a>
+        )
+      })}
+    </div>
+  )
+}
+
 function CompactRow({
   attire,
   wrestler,
@@ -93,13 +121,7 @@ function CompactRow({
 
       <div className="compact-side">
         <div className="compact-link-wrap">
-          {canContribute ? (
-            attire.download_url ? (
-              <a href={attire.download_url} target="_blank" rel="noreferrer">Download</a>
-            ) : (
-              <span className="muted-text">Missing link</span>
-            )
-          ) : null}
+          {canContribute ? <DownloadLinks value={attire.download_url} /> : null}
         </div>
 
         <div className="compact-actions-row">
@@ -336,13 +358,9 @@ export default function DetailPanel({
                     {canContribute ? (
                       <div className="split-meta">
                         <div>
-                          <span className="muted-text">Download</span>
+                          <span className="muted-text">Download links</span>
                           <div className="meta-value break-line">
-                            {attire.download_url ? (
-                              <a href={attire.download_url} target="_blank" rel="noreferrer">Open link</a>
-                            ) : (
-                              'Missing link'
-                            )}
+                            <DownloadLinks value={attire.download_url} />
                           </div>
                         </div>
                         <div>
