@@ -37,7 +37,12 @@ function DdsDisplay({ url, name }) {
   return (
     <div className="dds-display">
       {!failed ? (
-        <img className="gallery-img dds-inline-preview" src={url} alt={name || 'DDS render'} onError={() => setFailed(true)} />
+        <img
+          className="gallery-img dds-inline-preview"
+          src={url}
+          alt={name || 'DDS render'}
+          onError={() => setFailed(true)}
+        />
       ) : (
         <div className="render-placeholder">
           <div className="render-badge">DDS</div>
@@ -69,7 +74,7 @@ function Toggle({ value, onChange, options }) {
 }
 
 function DownloadLinks({ value }) {
-  const links = parseDownloadLinks(value)
+  const links = parseDownloadLinks(value || '')
 
   async function copyLink(link) {
     try {
@@ -280,8 +285,9 @@ function CompactRow({
   onResolveLink,
   onOpenCollectionPicker
 }) {
+  const downloadLinks = parseDownloadLinks(attire.download_url || '')
+  const canEdit = session && canManageContent(attire.owner_id)
 
-  const downloadLinks = parseDownloadLinks(attire.download_url)
   return (
     <div className="compact-attire-row">
       <div className="compact-main">
@@ -320,16 +326,27 @@ function CompactRow({
             </button>
           ) : null}
 
-          {canContribute ? (
-            <button className="ghost-button small-btn" disabled={!session} onClick={() => onOpenCollectionPicker(attire)} type="button">
+          {canContribute && onOpenCollectionPicker ? (
+            <button
+              className="ghost-button small-btn"
+              disabled={!session}
+              onClick={() => onOpenCollectionPicker?.({ ...attire, modType: 'attire' })}
+              type="button"
+            >
               Collection
             </button>
           ) : null}
 
-          {session && canManageContent(attire.owner_id) ? (
+          {canEdit ? (
             <>
-              <button className="ghost-button small-btn" onClick={() => onEditAttire(attire)} type="button">Edit</button>
-              <button className="ghost-button small-btn" onClick={() => onDeleteAttire(attire)} type="button">Delete</button>
+              <button className="ghost-button small-btn" onClick={() => onEditAttire(attire)} type="button">
+                Edit
+              </button>
+              {onDeleteAttire ? (
+                <button className="ghost-button small-btn" onClick={() => onDeleteAttire(attire)} type="button">
+                  Delete
+                </button>
+              ) : null}
             </>
           ) : null}
 
@@ -403,7 +420,6 @@ function CompactRow({
 export default function DetailPanel({
   wrestler,
   session,
-  currentProfile,
   canContribute,
   canManageContent,
   installedIds,
@@ -423,6 +439,8 @@ export default function DetailPanel({
   if (!wrestler) {
     return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
   }
+
+  const canEditWrestler = session && canManageContent(wrestler.owner_id)
 
   return (
     <div className="detail-stack">
@@ -459,7 +477,7 @@ export default function DetailPanel({
               </button>
             ) : null}
 
-            {session && canManageContent(wrestler.owner_id) ? (
+            {canEditWrestler ? (
               <button className="secondary-button" onClick={() => onEditWrestler(wrestler)} type="button">
                 Edit wrestler
               </button>
@@ -508,7 +526,7 @@ export default function DetailPanel({
             ) : (
               (wrestler.attires || []).map((attire) => {
                 const installed = installedIds.has(attire.id)
-                const requestInfo = requestSummary(wrestler.requests || [], attire.id)
+                const requestInfo = requestSummary(wrestler.requests || [], 'attire_id', attire.id)
 
                 return (
                   <CompactRow
@@ -538,10 +556,11 @@ export default function DetailPanel({
             ) : (
               (wrestler.attires || []).map((attire) => {
                 const installed = installedIds.has(attire.id)
-                const requestInfo = requestSummary(wrestler.requests || [], attire.id)
+                const requestInfo = requestSummary(wrestler.requests || [], 'attire_id', attire.id)
                 const screenshots = attire.attire_images || []
-                const validScreenshots = screenshots.filter((image) => image.image_url)
-                const downloadLinks = parseDownloadLinks(attire.download_url)
+                const validScreenshots = screenshots.filter((image) => image.image_url || image.url)
+                const downloadLinks = parseDownloadLinks(attire.download_url || '')
+                const canEditAttire = session && canManageContent(attire.owner_id)
 
                 return (
                   <article className="attire-card improved-attire-card elevated-card" key={attire.id}>
@@ -577,12 +596,12 @@ export default function DetailPanel({
                           {validScreenshots.length ? (
                             validScreenshots.map((image, index) => (
                               <button
-                                key={image.id || image.image_path || image.image_url || `${attire.id}-${index}`}
+                                key={image.id || image.image_path || image.image_url || image.url || `${attire.id}-${index}`}
                                 type="button"
                                 className="gallery-tile gallery-button-reset"
-                                onClick={() => setPreviewImage(image.image_url)}
+                                onClick={() => setPreviewImage(image.image_url || image.url)}
                               >
-                                <img className="gallery-img" src={image.image_url} alt={image.image_name || attire.name} />
+                                <img className="gallery-img" src={image.image_url || image.url} alt={image.image_name || image.name || attire.name} />
                               </button>
                             ))
                           ) : (
@@ -644,20 +663,27 @@ export default function DetailPanel({
                         </button>
                       ) : null}
 
-                      {canContribute ? (
-                        <button className="ghost-button small-btn" disabled={!session} onClick={() => onOpenCollectionPicker(attire)} type="button">
+                      {canContribute && onOpenCollectionPicker ? (
+                        <button
+                          className="ghost-button small-btn"
+                          disabled={!session}
+                          onClick={() => onOpenCollectionPicker?.({ ...attire, modType: 'attire' })}
+                          type="button"
+                        >
                           Save to collection
                         </button>
                       ) : null}
 
-                      {session && canManageContent(attire.owner_id) ? (
+                      {canEditAttire ? (
                         <>
                           <button className="ghost-button small-btn" onClick={() => onEditAttire(attire)} type="button">
                             Edit
                           </button>
-                          <button className="ghost-button small-btn" onClick={() => onDeleteAttire(attire)} type="button">
-                            Delete
-                          </button>
+                          {onDeleteAttire ? (
+                            <button className="ghost-button small-btn" onClick={() => onDeleteAttire(attire)} type="button">
+                              Delete
+                            </button>
+                          ) : null}
                         </>
                       ) : null}
 

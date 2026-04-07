@@ -1,8 +1,6 @@
-export default function Filters({
+export default function ArenaFilters({
   query,
   setQuery,
-  showMissingOnly,
-  setShowMissingOnly,
   creatorFilter,
   setCreatorFilter,
   creators,
@@ -27,24 +25,29 @@ export default function Filters({
       <div className="panel-header">
         <div>
           <h2>Search and filters</h2>
-          <p className="subtle-copy">Find mods by wrestler, attire, creator, source game, install state, missing links, or dead links.</p>
+          <p className="subtle-copy">
+            Find arena mods by name, creator, notes, source game, install state, missing links, or reported dead links.
+          </p>
         </div>
       </div>
 
       <div className="form-grid">
         <label>
-          Search wrestler, attire, creator, era, notes
+          Search arena, creator, notes
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="e.g. Sting, Adam Cole, Joker, WhatsTheStatus"
+            placeholder="e.g. WrestleMania 23, Raw 2002, WhatsTheStatus"
           />
         </label>
 
         <div className="filter-row-grid filter-row-grid-three">
           <label>
             Creator
-            <select value={creatorFilter} onChange={(e) => setCreatorFilter(e.target.value)}>
+            <select
+              value={creatorFilter}
+              onChange={(e) => setCreatorFilter(e.target.value)}
+            >
               <option value="all">All creators</option>
               {creators.map((item) => (
                 <option key={item.id} value={item.name}>
@@ -56,7 +59,10 @@ export default function Filters({
 
           <label>
             Source game
-            <select value={sourceGameFilter} onChange={(e) => setSourceGameFilter(e.target.value)}>
+            <select
+              value={sourceGameFilter}
+              onChange={(e) => setSourceGameFilter(e.target.value)}
+            >
               <option value="all">All games</option>
               {sourceGames.map((game) => (
                 <option key={game} value={game}>
@@ -68,8 +74,12 @@ export default function Filters({
 
           <label>
             Installed state
-            <select value={installFilter} onChange={(e) => setInstallFilter(e.target.value)} disabled={!session}>
-              <option value="all">All mods</option>
+            <select
+              value={installFilter}
+              onChange={(e) => setInstallFilter(e.target.value)}
+              disabled={!session}
+            >
+              <option value="all">All arenas</option>
               <option value="installed">Installed in my game</option>
               <option value="not_installed">Not installed in my game</option>
             </select>
@@ -78,27 +88,33 @@ export default function Filters({
 
         <div className="filter-checkbox-grid">
           <label className="checkbox-row card-checkbox-row">
-            <input type="checkbox" checked={missingDownloadOnly} onChange={(e) => setMissingDownloadOnly(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={missingDownloadOnly}
+              onChange={(e) => setMissingDownloadOnly(e.target.checked)}
+            />
             Only missing download links
           </label>
 
           <label className="checkbox-row card-checkbox-row">
-            <input type="checkbox" checked={deadLinkOnly} onChange={(e) => setDeadLinkOnly(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={deadLinkOnly}
+              onChange={(e) => setDeadLinkOnly(e.target.checked)}
+            />
             Only dead links
           </label>
-
-          {/* <label className="checkbox-row card-checkbox-row">
-            <input type="checkbox" checked={showMissingOnly} onChange={(e) => setShowMissingOnly(e.target.checked)} />
-            Only open requests, missing links, or incomplete attires
-          </label> */}
         </div>
 
         {canContribute ? (
           <div className="creator-quick-add elevated-card">
             <div>
               <strong>Add a mod creator</strong>
-              <div className="muted-text">Add a creator once so everyone can select them from the dropdown.</div>
+              <div className="muted-text">
+                Add a creator once so everyone can select them from the dropdown.
+              </div>
             </div>
+
             <div className="inline-stack creator-inline-stack">
               <input
                 value={newCreatorName}

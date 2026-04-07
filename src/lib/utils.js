@@ -1,6 +1,21 @@
 export const MOD_TYPES = ['original', 'port']
 export const SOURCE_GAMES = ['WWE 2K26', 'WWE 2K25', 'WWE 2K24', 'WWE 2K23', 'WWE 2K22', 'WWE 2K19', 'WWE 2K18', 'WWE 2K17', 'WWE 2K16', 'WWE 2K15', 'WWE 2K14', 'WWE 13', 'WWE 12', 'Other']
 export const ATTIRE_STATUSES = ['complete', 'partial', 'needs_work', 'missing']
+export const COLLECTION_ITEM_TYPES = ['attire', 'arena', 'title', 'other']
+
+export const OTHER_MOD_SUBTYPES = [
+  'weapons',
+  'moves',
+  'ui',
+  'music',
+  'crowd',
+  'referee',
+  'camera',
+  'lighting',
+  'gameplay',
+  'match_type',
+  'misc'
+]
 
 export function uid() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -19,9 +34,12 @@ export function slugify(value = '') {
 }
 
 export function titleCase(value = '') {
-  return value
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (m) => m.toUpperCase())
+  return String(value)
+    .trim()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (match) => match.toUpperCase())
 }
 
 export function emptyWrestler() {
@@ -81,6 +99,8 @@ export function emptyAttire(wrestlerId = null) {
 export function emptyCollection() {
   return {
     id: null,
+    persisted: false,
+    temp_upload_id: '',
     name: '',
     slug: '',
     description: '',
@@ -88,6 +108,59 @@ export function emptyCollection() {
     cover_path: '',
     cover_url: '',
     cover_name: ''
+  }
+}
+
+export function emptyArena() {
+  return {
+    id: uid(),
+    persisted: false,
+    temp_upload_id: '',
+    name: '',
+    creator_name: '',
+    download_url: '',
+    source_game: 'WWE 2K25',
+    notes: '',
+    profile_json_text: '',
+    images: [],
+    pendingImageUploads: []
+  }
+}
+
+export function emptyTitleBelt() {
+  return {
+    id: uid(),
+    persisted: false,
+    temp_upload_id: '',
+    name: '',
+    creator_name: '',
+    download_url: '',
+    source_game: 'WWE 2K25',
+    notes: '',
+    render_dds_path: '',
+    render_dds_url: '',
+    render_dds_name: '',
+    images: [],
+    pendingImageUploads: [],
+    audio_files: [],
+    pendingAudioUploads: []
+  }
+}
+
+export function emptyOtherMod() {
+  return {
+    id: uid(),
+    persisted: false,
+    temp_upload_id: '',
+    name: '',
+    creator_name: '',
+    subtype: '',
+    download_url: '',
+    source_game: 'WWE 2K25',
+    notes: '',
+    profile_json_text: '',
+    images: [],
+    pendingImageUploads: []
   }
 }
 
@@ -162,6 +235,8 @@ export function normalizeAttireForEditor(attire) {
 export function normalizeCollectionForEditor(collection) {
   return {
     id: collection.id,
+    persisted: true,
+    temp_upload_id: '',
     name: collection.name || '',
     slug: collection.slug || '',
     description: collection.description || '',
@@ -169,6 +244,80 @@ export function normalizeCollectionForEditor(collection) {
     cover_path: collection.cover_path || '',
     cover_url: collection.cover_url || '',
     cover_name: collection.cover_name || ''
+  }
+}
+
+export function normalizeArenaForEditor(arena) {
+  return {
+    id: arena.id,
+    persisted: true,
+    temp_upload_id: '',
+    name: arena.name || '',
+    creator_name: arena.creator_name || '',
+    download_url: arena.download_url || '',
+    source_game: arena.source_game || 'WWE 2K25',
+    notes: arena.notes || '',
+    profile_json_text: arena.profile_json ? JSON.stringify(arena.profile_json, null, 2) : '',
+    images: (arena.arena_images || arena.images || []).map((img) => ({
+      id: img.id || null,
+      path: img.image_path || img.path || '',
+      url: img.image_url || img.url || '',
+      name: img.image_name || img.name || ''
+    })),
+    pendingImageUploads: []
+  }
+}
+
+export function normalizeTitleBeltForEditor(titleBelt) {
+  return {
+    id: titleBelt.id,
+    persisted: true,
+    name: titleBelt.name || '',
+    creator_name: titleBelt.creator_name || '',
+    download_url: titleBelt.download_url || '',
+    source_game: titleBelt.source_game || 'WWE 2K25',
+    notes: titleBelt.notes || '',
+    render_dds_path: titleBelt.render_dds_path || '',
+    render_dds_url: titleBelt.render_dds_url || '',
+    render_dds_name: titleBelt.render_dds_name || '',
+    images: (titleBelt.title_belt_images || titleBelt.images || []).map((img) => ({
+      id: img.id || null,
+      path: img.image_path || img.path || '',
+      url: img.image_url || img.url || '',
+      name: img.image_name || img.name || ''
+    })),
+    pendingImageUploads: [],
+    audio_files: (titleBelt.title_belt_audio_files || titleBelt.audio_files || []).map((file) => ({
+      id: file.id || null,
+      title_belt_id: file.title_belt_id || titleBelt.id,
+      owner_id: file.owner_id || '',
+      audio_type: file.audio_type || 'generic',
+      file_path: file.file_path || '',
+      file_name: file.file_name || '',
+      file_url: file.file_url || ''
+    })),
+    pendingAudioUploads: []
+  }
+}
+
+export function normalizeOtherModForEditor(otherMod) {
+  return {
+    id: otherMod.id,
+    persisted: true,
+    name: otherMod.name || '',
+    creator_name: otherMod.creator_name || '',
+    subtype: otherMod.subtype || '',
+    download_url: otherMod.download_url || '',
+    source_game: otherMod.source_game || 'WWE 2K25',
+    notes: otherMod.notes || '',
+    profile_json_text: otherMod.profile_json ? JSON.stringify(otherMod.profile_json, null, 2) : '',
+    images: (otherMod.other_mod_images || otherMod.images || []).map((img) => ({
+      id: img.id || null,
+      path: img.image_path || img.path || '',
+      url: img.image_url || img.url || '',
+      name: img.image_name || img.name || ''
+    })),
+    pendingImageUploads: []
   }
 }
 
@@ -234,21 +383,45 @@ export function sortAttires(attires = []) {
   })
 }
 
-export function computeStats(wrestlers, collections = []) {
+export function computeStats(
+  wrestlers = [],
+  collections = [],
+  arenas = [],
+  titleBelts = [],
+  otherMods = []
+) {
   const attires = wrestlers.flatMap((wrestler) => wrestler.attires || [])
-  const requests = wrestlers.flatMap((wrestler) => wrestler.requests || []).filter((item) => item.status === 'open')
+  const wrestlerRequests = wrestlers.flatMap((wrestler) => wrestler.requests || [])
+  const arenaRequests = arenas.flatMap((arena) => arena.requests || [])
+  const titleRequests = titleBelts.flatMap((title) => title.requests || [])
+  const otherRequests = otherMods.flatMap((mod) => mod.requests || [])
+
+  const requests = [
+    ...wrestlerRequests,
+    ...arenaRequests,
+    ...titleRequests,
+    ...otherRequests
+  ].filter((item) => item.status === 'open')
 
   return {
     wrestlers: wrestlers.length,
     attires: attires.length,
+    arenas: arenas.length,
+    titleBelts: titleBelts.length,
+    otherMods: otherMods.length,
+    totalMods: attires.length + arenas.length + titleBelts.length + otherMods.length,
     requests: requests.length,
-    missingDownloads: attires.filter((attire) => !attire.download_url || !attire.download_url.trim()).length,
+    missingDownloads:
+      attires.filter((attire) => !attire.download_url || !attire.download_url.trim()).length +
+      arenas.filter((arena) => !arena.download_url || !arena.download_url.trim()).length +
+      titleBelts.filter((title) => !title.download_url || !title.download_url.trim()).length +
+      otherMods.filter((mod) => !mod.download_url || !mod.download_url.trim()).length,
     collections: collections.length
   }
 }
 
-export function requestSummary(requests = [], attireId) {
-  const relevant = requests.filter((item) => item.attire_id === attireId && item.status === 'open')
+export function requestSummary(requests = [], key, id) {
+  const relevant = requests.filter((item) => item[key] === id && item.status === 'open')
   return {
     total: relevant.length,
     missingLinks: relevant.filter((item) => item.request_type === 'missing_link').length,
@@ -294,11 +467,33 @@ export function findDuplicateAttire(attires = [], name = '') {
   return attires.find((a) => (a.name || '').trim().toLowerCase() === clean) || null
 }
 
+export function findDuplicateArena(arenas = [], name = '') {
+  const clean = (name || '').trim().toLowerCase()
+  if (!clean) return null
+  return arenas.find((a) => (a.name || '').trim().toLowerCase() === clean) || null
+}
+
+export function findDuplicateTitleBelt(titleBelts = [], name = '') {
+  const clean = (name || '').trim().toLowerCase()
+  if (!clean) return null
+  return titleBelts.find((item) => (item.name || '').trim().toLowerCase() === clean) || null
+}
+
+export function findDuplicateOtherMod(otherMods = [], name = '') {
+  const clean = (name || '').trim().toLowerCase()
+  if (!clean) return null
+  return otherMods.find((item) => (item.name || '').trim().toLowerCase() === clean) || null
+}
+
 export function parseDownloadLinks(value = '') {
   return String(value)
     .split(/\r?\n|,/)
     .map((item) => item.trim())
     .filter(Boolean)
+}
+
+export function hasMissingDownload(url = '') {
+  return !String(url || '').trim()
 }
 
 export function getDownloadProvider(url = '') {
@@ -355,4 +550,36 @@ export function getDownloadProviderMark(provider = '') {
     default:
       return '↗'
   }
+}
+
+export function getCollectionItemTarget(item = {}) {
+  if (item.attire_id || item.attire) return { mod_type: 'attire', mod_subtype: item.mod_subtype || '' }
+  if (item.arena_id || item.arena) return { mod_type: 'arena', mod_subtype: item.mod_subtype || '' }
+  if (item.title_id || item.title || item.title_belt) return { mod_type: 'title', mod_subtype: item.mod_subtype || '' }
+  if (item.other_mod_id || item.other_mod) return { mod_type: 'other', mod_subtype: item.mod_subtype || '' }
+
+  return {
+    mod_type: item.mod_type || '',
+    mod_subtype: item.mod_subtype || ''
+  }
+}
+
+export function getModTypeLabel(type = '') {
+  switch (type) {
+    case 'attire':
+      return 'Attire'
+    case 'arena':
+      return 'Arena'
+    case 'title':
+      return 'Title Belt'
+    case 'other':
+      return 'Other Mod'
+    default:
+      return 'Mod'
+  }
+}
+
+export function getOtherModSubtypeLabel(subtype = '') {
+  if (!subtype) return 'Other'
+  return titleCase(subtype)
 }

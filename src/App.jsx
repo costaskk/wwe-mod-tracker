@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import AdminPanel from './components/AdminPanel'
 import AuthPanel from './components/AuthPanel'
+import ArenaPage from './components/ArenaPage'
 import LinkIssuesPage from './components/LinkIssuesPage'
 import AttireEditorModal from './components/AttireEditorModal'
 import CollectionModal from './components/CollectionModal'
@@ -49,9 +50,11 @@ export default function App() {
   const [profiles, setProfiles] = useState([])
   const [updatingProfile, setUpdatingProfile] = useState(false)
   const [wrestlers, setWrestlers] = useState([])
+  const [arenas, setArenas] = useState([])
   const [creators, setCreators] = useState([])
   const [collections, setCollections] = useState([])
   const [installedIds, setInstalledIds] = useState(new Set())
+  const [installedArenaIds, setInstalledArenaIds] = useState(new Set())
   const [selectedId, setSelectedId] = useState(null)
   const [selectedCollection, setSelectedCollection] = useState(null)
 
@@ -74,7 +77,7 @@ export default function App() {
   const [attireForm, setAttireForm] = useState(emptyAttire())
   const [collectionModalOpen, setCollectionModalOpen] = useState(false)
   const [collectionForm, setCollectionForm] = useState(emptyCollection())
-  const [collectionPicker, setCollectionPicker] = useState({ open: false, attire: null })
+  const [collectionPicker, setCollectionPicker] = useState({ open: false, item: null })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [newCreatorName, setNewCreatorName] = useState('')
@@ -86,10 +89,18 @@ export default function App() {
   const [resolvingLink, setResolvingLink] = useState(false)
   const [confirmAction, setConfirmAction] = useState({ open: false, title: '', message: '', confirmLabel: 'Confirm', tone: 'danger', busy: false, onConfirm: null })
 
-  const isApproved = Boolean(session && currentProfile?.approval_status === 'approved')
   const isModerator = currentProfile?.role === 'moderator'
   const isAdmin = currentProfile?.role === 'admin'
   const isStaff = isModerator || isAdmin
+
+  //const isApproved = Boolean(session && currentProfile?.approval_status === 'approved')
+
+  // 🔥 NEW: unified permission flag
+  const canContribute = Boolean(
+    session && (currentProfile?.approval_status === 'approved' || isStaff)
+  )
+
+  const canDeleteContent = Boolean(session && isStaff)
 
   function canManageContent(ownerId) {
     if (!session) return false
@@ -129,7 +140,7 @@ export default function App() {
   }
 
   async function handleTitantronScreenshotUpload(titantronId, files) {
-    if (!files?.length || !isApproved) return
+    if (!files?.length || !canContribute) return
 
     try {
       setUploading(true)
@@ -185,7 +196,7 @@ export default function App() {
   }
 
   async function removeTitantronScreenshot(titantronId, screenshotPath) {
-    if (!isApproved) return
+    if (!canDeleteContent) return
 
     try {
       setUploading(true)
@@ -228,7 +239,7 @@ export default function App() {
   }
 
   async function removeTitantron(titantronId) {
-    if (!isApproved) return
+    if (!canDeleteContent) return
 
     const titantron = (wrestlerForm.titantrons || []).find((item) => item.id === titantronId)
     if (!titantron) return
@@ -324,6 +335,8 @@ export default function App() {
         setCurrentPage('collections')
       } else if (page === 'collections') {
         setCurrentPage('collections')
+      } else if (page === 'arenas') {
+        setCurrentPage('arenas')
       } else if (page === 'admin') {
         setCurrentPage('admin')
       } else if (page === 'issues') {
@@ -361,6 +374,10 @@ export default function App() {
               *,
               wrestler:wrestlers (*),
               attire_images (*)
+            ),
+            arena:arenas (
+              *,
+              arena_images (*)
             )
           )
         `)
@@ -378,6 +395,10 @@ export default function App() {
                   *,
                   wrestler:wrestlers (*),
                   attire_images (*)
+                ),
+                arena:arenas (
+                  *,
+                  arena_images (*)
                 )
               )
             `)
@@ -385,7 +406,16 @@ export default function App() {
             .order('updated_at', { ascending: false })
         : Promise.resolve({ data: [], error: null })
 
-      const [wrestlerResult, creatorResult, installsResult, publicCollectionsResult, ownCollectionsResult, profilesResult] = await Promise.all([
+      const [
+        wrestlerResult,
+        arenaResult,
+        creatorResult,
+        installsResult,
+        installedArenasResult,
+        publicCollectionsResult,
+        ownCollectionsResult,
+        profilesResult
+      ] = await Promise.all([
         supabase
           .from('wrestlers')
           .select(`
@@ -402,10 +432,26 @@ export default function App() {
             mod_requests (*)
           `)
           .order('wrestler_name', { ascending: true }),
+
+        supabase
+          .from('arenas')
+          .select(`
+            *,
+            arena_images (*),
+            arena_requests (*)
+          `)
+          .order('name', { ascending: true }),
+
         supabase.from('creators').select('*').order('name', { ascending: true }),
+
         session?.user?.id
           ? supabase.from('user_installed_attires').select('attire_id').eq('user_id', session.user.id)
           : Promise.resolve({ data: [], error: null }),
+
+        session?.user?.id
+          ? supabase.from('user_installed_arenas').select('arena_id').eq('user_id', session.user.id)
+          : Promise.resolve({ data: [], error: null }),
+
         publicCollectionsQuery,
         ownCollectionsQuery,
         supabase.from('profiles').select('*').order('created_at', { ascending: false })
@@ -413,16 +459,20 @@ export default function App() {
 
       if (
         wrestlerResult.error ||
+        arenaResult.error ||
         creatorResult.error ||
         installsResult.error ||
+        installedArenasResult.error ||
         publicCollectionsResult.error ||
         ownCollectionsResult.error ||
         profilesResult.error
       ) {
         setError(
           wrestlerResult.error?.message ||
+          arenaResult.error?.message ||
           creatorResult.error?.message ||
           installsResult.error?.message ||
+          installedArenasResult.error?.message ||
           publicCollectionsResult.error?.message ||
           ownCollectionsResult.error?.message ||
           profilesResult.error?.message ||
@@ -457,6 +507,17 @@ export default function App() {
         requests: [...(wrestler.mod_requests || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       }))
 
+      const normalizedArenas = (arenaResult.data || []).map((arena) => ({
+        ...arena,
+        arena_images: (arena.arena_images || []).map((img) => ({
+          ...img,
+          image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+        })),
+        requests: [...(arena.arena_requests || [])].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        )
+      }))
+
       const collectionMap = new Map()
       ;[...(publicCollectionsResult.data || []), ...(ownCollectionsResult.data || [])].forEach((collection) => {
         const normalizedItems = (collection.collection_items || []).map((item) => ({
@@ -470,8 +531,17 @@ export default function App() {
             })),
             wrestler: item.attire.wrestler ? {
               ...item.attire.wrestler,
-              headshot_url: item.attire.wrestler.headshot_path ? getAssetUrl(item.attire.wrestler.headshot_path) : (item.attire.wrestler.headshot_external_url || '')
+              headshot_url: item.attire.wrestler.headshot_path
+                ? getAssetUrl(item.attire.wrestler.headshot_path)
+                : (item.attire.wrestler.headshot_external_url || '')
             } : null
+          } : null,
+          arena: item.arena ? {
+            ...item.arena,
+            arena_images: (item.arena.arena_images || []).map((img) => ({
+              ...img,
+              image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+            }))
           } : null
         }))
         collectionMap.set(collection.id, {
@@ -514,11 +584,13 @@ export default function App() {
       setProfiles(loadedProfiles)
       setCurrentProfile(myProfile)
       setWrestlers(normalizedWrestlers)
+      setArenas(normalizedArenas)
       setCreators(creatorResult.data || [])
       setCollections(repairedCollections)
       setSelectedCollection(collectionFromUrl || null)
       setSelectedId((current) => current || normalizedWrestlers[0]?.id || null)
       setInstalledIds(new Set((installsResult.data || []).map((item) => item.attire_id)))
+      setInstalledArenaIds(new Set((installedArenasResult.data || []).map((item) => item.arena_id)))
     } catch (err) {
       setError(err.message || 'Failed to load data.')
     } finally {
@@ -594,9 +666,20 @@ export default function App() {
   )
 
   const collectionMemberships = useMemo(() => {
-    if (!collectionPicker.attire || !session) return []
+    if (!collectionPicker.item || !session) return []
+
     return myCollections
-      .filter((collection) => (collection.items || []).some((item) => item.attire_id === collectionPicker.attire.id))
+      .filter((collection) =>
+        (collection.items || []).some((entry) => {
+          if (collectionPicker.item.modType === 'attire') {
+            return entry.attire_id === collectionPicker.item.id
+          }
+          if (collectionPicker.item.modType === 'arena') {
+            return entry.arena_id === collectionPicker.item.id
+          }
+          return false
+        })
+      )
       .map((item) => item.id)
   }, [myCollections, collectionPicker, session])
 
@@ -628,7 +711,7 @@ export default function App() {
   }
 
   async function saveWrestler() {
-    if (!isApproved) return
+    if (!canContribute) return
     setSaving(true)
     try {
       if (!wrestlerForm.wrestler_name.trim()) throw new Error('Wrestler name is required.')
@@ -724,7 +807,7 @@ export default function App() {
   }
 
   async function handleWrestlerAudioUpload(files, kind) {
-    if (!files?.length || !isApproved) return
+    if (!files?.length || !canContribute) return
 
     try {
       setUploading(true)
@@ -776,7 +859,7 @@ export default function App() {
   }
 
   async function saveAttire() {
-    if (!isApproved || !attireForm.wrestler_id) return
+    if (!canContribute || !attireForm.wrestler_id) return
     setSaving(true)
     try {
       if (!attireForm.name.trim()) throw new Error('Attire name is required.')
@@ -827,7 +910,7 @@ export default function App() {
   }
 
   async function saveCollection() {
-    if (!isApproved) return
+    if (!canContribute) return
     setSaving(true)
     try {
       const cleanName = collectionForm.name.trim()
@@ -853,7 +936,7 @@ export default function App() {
         cover_path: collectionForm.cover_path || '',
         cover_name: collectionForm.cover_name || ''
       }
-      if (collectionForm.id) {
+      if (collectionForm.persisted && collectionForm.id) {
         const { error } = await supabase.from('collections').update(payload).eq('id', collectionForm.id)
         if (error) throw error
         openNotice('success', 'Collection updated', `${cleanName} was updated.`)
@@ -872,7 +955,7 @@ export default function App() {
   }
 
   async function handleWrestlerHeadshotUpload(file) {
-    if (!file || !isApproved) return
+    if (!file || !canContribute) return
     try {
       setUploading(true)
       if (!file.type.startsWith('image/')) throw new Error('Headshot must be an image file.')
@@ -891,13 +974,30 @@ export default function App() {
   }
 
   async function handleCollectionCoverUpload(file) {
-    if (!file || !isApproved) return
+    if (!file || !canContribute) return
+
     try {
       setUploading(true)
       if (!file.type.startsWith('image/')) throw new Error('Cover must be an image file.')
-      const entityId = collectionForm.id || uid()
-      const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file, kind: 'cover', folder: 'collections' })
-      setCollectionForm((current) => ({ ...current, id: current.id || entityId, cover_path: path, cover_name: fileName, cover_url: getAssetUrl(path) }))
+
+      const entityId = collectionForm.id || collectionForm.temp_upload_id || uid()
+
+      const { path, fileName } = await uploadAsset({
+        userId: session.user.id,
+        entityId,
+        file,
+        kind: 'cover',
+        folder: 'collections'
+      })
+
+      setCollectionForm((current) => ({
+        ...current,
+        temp_upload_id: current.temp_upload_id || (!current.persisted ? entityId : ''),
+        cover_path: path,
+        cover_name: fileName,
+        cover_url: getAssetUrl(path)
+      }))
+
       openNotice('success', 'Cover uploaded', `${file.name} was uploaded successfully.`)
     } catch (err) {
       openNotice('error', 'Cover upload failed', err.message || 'Cover upload failed.')
@@ -907,7 +1007,7 @@ export default function App() {
   }
 
   async function handleAutoMatchHeadshot() {
-    if (!isApproved) return
+    if (!canContribute) return
     try {
       setUploading(true)
       const { imageUrl, sourceTitle } = await tryAutoMatchHeadshot(wrestlerForm.wrestler_name, wrestlerForm.auto_match_titles || [], wrestlerForm.auto_match_urls || [])
@@ -921,7 +1021,7 @@ export default function App() {
   }
 
   async function removeWrestlerHeadshot() {
-    if (!isApproved) return
+    if (!canDeleteContent) return
     try {
       if (wrestlerForm.headshot_path) await removeAssets([wrestlerForm.headshot_path])
       setWrestlerForm((current) => ({ ...current, headshot_path: '', headshot_name: '', headshot_url: '', headshot_external_url: '', auto_match_titles: [], auto_match_urls: [] }))
@@ -931,7 +1031,7 @@ export default function App() {
   }
 
   async function removeCollectionCover() {
-    if (!isApproved) return
+    if (!canDeleteContent) return
     try {
       if (collectionForm.cover_path) await removeAssets([collectionForm.cover_path])
       setCollectionForm((current) => ({ ...current, cover_path: '', cover_url: '', cover_name: '' }))
@@ -941,7 +1041,7 @@ export default function App() {
   }
 
   async function removeWrestlerAudio(audioFile) {
-    if (!isApproved || !audioFile) return
+    if (!canDeleteContent || !audioFile) return
 
     try {
       setUploading(true)
@@ -976,7 +1076,7 @@ export default function App() {
   }
 
   async function handleAssetUpload(filesOrFile, kind) {
-    if (!filesOrFile || !isApproved) return
+    if (!filesOrFile || !canContribute) return
     try {
       setUploading(true)
       if (kind === 'render') {
@@ -1007,7 +1107,7 @@ export default function App() {
   }
 
   async function removeAttireAsset(kind, path) {
-    if (!isApproved) return
+    if (!canDeleteContent) return
     try {
       if (path) await removeAssets([path])
       if (kind === 'render') setAttireForm((current) => ({ ...current, render_dds_path: '', render_dds_name: '', render_dds_url: '' }))
@@ -1038,19 +1138,40 @@ export default function App() {
     }
   }
 
-  async function addCreator() {
-    if (!isApproved) return
+  async function addAttireCreator() {
+    if (!canContribute) return
     const name = newCreatorName.trim()
     if (!name) return
+
     setAddingCreator(true)
     try {
-      const { data, error } = await supabase.from('creators').insert({ name }).select('*').single()
+      const { data, error } = await supabase
+        .from('creators')
+        .insert({ name })
+        .select('*')
+        .single()
+
       if (error) throw error
-      setCreators((current) => [...current, data].sort((a, b) => a.name.localeCompare(b.name)))
-      setAttireForm((current) => ({ ...current, creator_name: data.name }))
+
+      setCreators((current) => {
+        const exists = current.some((item) => item.id === data.id || item.name === data.name)
+        if (exists) return current
+        return [...current, data].sort((a, b) => a.name.localeCompare(b.name))
+      })
+
+      setAttireForm((current) => ({
+        ...current,
+        creator_name: data.name
+      }))
+
       setCreatorFilter(data.name)
       setNewCreatorName('')
-      openNotice('success', 'Creator added', `${data.name} is now available in the creator dropdown.`)
+
+      openNotice(
+        'success',
+        'Creator added',
+        `${data.name} is now available in the creator dropdown.`
+      )
     } catch (err) {
       openNotice('error', 'Could not add creator', err.message || 'Could not add creator.')
     } finally {
@@ -1058,8 +1179,47 @@ export default function App() {
     }
   }
 
+  async function addArenaCreator() {
+    if (!canContribute) return null
+
+    const name = newCreatorName.trim()
+    if (!name) return null
+
+    setAddingCreator(true)
+    try {
+      const { data, error } = await supabase
+        .from('creators')
+        .insert({ name })
+        .select('*')
+        .single()
+
+      if (error) throw error
+
+      setCreators((current) => {
+        const exists = current.some((item) => item.id === data.id || item.name === data.name)
+        if (exists) return current
+        return [...current, data].sort((a, b) => a.name.localeCompare(b.name))
+      })
+
+      setNewCreatorName('')
+
+      openNotice(
+        'success',
+        'Creator added',
+        `${data.name} is now available in the creator dropdown.`
+      )
+
+      return data
+    } catch (err) {
+      openNotice('error', 'Could not add creator', err.message || 'Could not add creator.')
+      return null
+    } finally {
+      setAddingCreator(false)
+    }
+  }
+
   async function toggleInstalled(attire, installed) {
-    if (!isApproved) return
+    if (!canContribute) return
     try {
       if (installed) {
         const { error } = await supabase.from('user_installed_attires').delete().eq('user_id', session.user.id).eq('attire_id', attire.id)
@@ -1077,7 +1237,7 @@ export default function App() {
   }
 
   function createRequest(wrestlerId, attireId, requestType, wrestlerName, attireName, prefillNotes = '') {
-    if (!isApproved) return
+    if (!canContribute) return
     setRequestModal({
       open: true,
       context: { wrestlerId, attireId, requestType, wrestlerName, attireName, prefillNotes }
@@ -1085,7 +1245,7 @@ export default function App() {
   }
 
   async function submitRequest(notes) {
-    if (!isApproved || !requestModal.context) return
+    if (!canContribute || !requestModal.context) return
     setRequestSubmitting(true)
     try {
       const { error } = await supabase.from('mod_requests').insert({ wrestler_id: requestModal.context.wrestlerId, attire_id: requestModal.context.attireId, request_type: requestModal.context.requestType, notes: (notes || '').trim() })
@@ -1101,7 +1261,7 @@ export default function App() {
   }
 
   function openResolveLink(wrestler, attire, issueType) {
-    if (!isApproved) return
+    if (!canContribute) return
     setResolveModal({
       open: true,
       context: {
@@ -1116,7 +1276,7 @@ export default function App() {
   }
 
   async function submitResolveLink(url, notes) {
-    if (!isApproved || !resolveModal.context) return
+    if (!canContribute || !resolveModal.context) return
     setResolvingLink(true)
     try {
       const cleanUrl = (url || '').trim()
@@ -1153,24 +1313,27 @@ export default function App() {
     }
   }
 
-    function openAddWrestler() {
-    if (!isApproved) return
+  function openAddWrestler() {
+    if (!canContribute) return
     setWrestlerForm(emptyWrestler())
     setWrestlerModalOpen(true)
   }
 
   function openEditWrestler(wrestler) {
+    if (!canManageContent(wrestler.owner_id)) return
     setWrestlerForm(normalizeWrestlerForEditor(wrestler))
     setWrestlerModalOpen(true)
   }
 
   function openAddAttire(wrestler) {
-    if (!isApproved) return
+    if (!canContribute) return
     setAttireForm({ ...emptyAttire(wrestler.id), pendingImageUploads: [] })
     setAttireModalOpen(true)
   }
 
   function openEditAttire(attire) {
+    if (!canManageContent(attire.owner_id)) return
+
     const normalized = normalizeAttireForEditor(attire)
 
     setAttireForm({
@@ -1178,17 +1341,18 @@ export default function App() {
       images: normalized.images || [],
       pendingImageUploads: [] 
     })
-    
+
     setAttireModalOpen(true)
   }
 
   function openCreateCollection() {
-    if (!isApproved) return
+    if (!canContribute) return
     setCollectionForm(emptyCollection())
     setCollectionModalOpen(true)
   }
 
   function openEditCollection(collection) {
+    if (!canManageContent(collection.owner_id)) return
     setCollectionForm(normalizeCollectionForEditor(collection))
     setCollectionModalOpen(true)
   }
@@ -1217,6 +1381,12 @@ export default function App() {
     window.history.replaceState({}, '', `${window.location.pathname}?page=collections`)
   }
 
+  function goArenasPage() {
+    setSelectedCollection(null)
+    setCurrentPage('arenas')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=arenas`)
+  }
+
   function goIssuesPage() {
     setSelectedCollection(null)
     setCurrentPage('issues')
@@ -1229,9 +1399,7 @@ export default function App() {
     window.history.replaceState({}, '', `${window.location.pathname}?page=admin`)
   }
 
-  function browseCollections() {
-    goCollectionsPage()
-  }
+
 
   async function shareCollection(collection) {
     const url = `${window.location.origin}${window.location.pathname}?page=collections&collection=${collection.slug}`
@@ -1243,24 +1411,70 @@ export default function App() {
     }
   }
 
-  function openCollectionPicker(attire) {
-    if (!isApproved) return
-    setCollectionPicker({ open: true, attire })
+  function openCollectionPicker(item) {
+    if (!canContribute) return
+    setCollectionPicker({ open: true, item })
   }
 
   async function toggleCollectionMembership(collection, isIn) {
-    if (!isApproved || !collectionPicker.attire) return
+    if (!canContribute || !collectionPicker.item) return
     setSaving(true)
+
     try {
-      if (isIn) {
-        const { error } = await supabase.from('collection_items').delete().eq('collection_id', collection.id).eq('attire_id', collectionPicker.attire.id)
-        if (error) throw error
-        openNotice('success', 'Removed from collection', `${collectionPicker.attire.name} was removed from ${collection.name}.`)
-      } else {
-        const { error } = await supabase.from('collection_items').insert({ collection_id: collection.id, attire_id: collectionPicker.attire.id })
-        if (error) throw error
-        openNotice('success', 'Added to collection', `${collectionPicker.attire.name} was added to ${collection.name}.`)
+      const item = collectionPicker.item
+
+      if (item.modType === 'attire') {
+        if (isIn) {
+          const { error } = await supabase
+            .from('collection_items')
+            .delete()
+            .eq('collection_id', collection.id)
+            .eq('attire_id', item.id)
+
+          if (error) throw error
+
+          openNotice('success', 'Removed from collection', `${item.name} was removed from ${collection.name}.`)
+        } else {
+          const { error } = await supabase
+            .from('collection_items')
+            .insert({
+              collection_id: collection.id,
+              mod_type: 'attire',
+              mod_subtype: '',
+              attire_id: item.id
+            })
+
+          if (error) throw error
+
+          openNotice('success', 'Added to collection', `${item.name} was added to ${collection.name}.`)
+        }
+      } else if (item.modType === 'arena') {
+        if (isIn) {
+          const { error } = await supabase
+            .from('collection_items')
+            .delete()
+            .eq('collection_id', collection.id)
+            .eq('arena_id', item.id)
+
+          if (error) throw error
+
+          openNotice('success', 'Removed from collection', `${item.name} was removed from ${collection.name}.`)
+        } else {
+          const { error } = await supabase
+            .from('collection_items')
+            .insert({
+              collection_id: collection.id,
+              mod_type: 'arena',
+              mod_subtype: '',
+              arena_id: item.id
+            })
+
+          if (error) throw error
+
+          openNotice('success', 'Added to collection', `${item.name} was added to ${collection.name}.`)
+        }
       }
+
       await fetchAll()
     } catch (err) {
       openNotice('error', 'Could not update collection', err.message || 'Could not update collection.')
@@ -1270,7 +1484,7 @@ export default function App() {
   }
   
   async function deleteAttire(attire) {
-    if (!canManageContent(attire.owner_id)) return
+    if (!canDeleteContent) return
 
     openConfirmAction({
       title: 'Delete attire mod?',
@@ -1289,7 +1503,7 @@ export default function App() {
   }
 
   function deleteWrestler(wrestler) {
-    if (!canManageContent(wrestler.owner_id)) return
+    if (!canDeleteContent) return
 
     openConfirmAction({
       title: 'Delete wrestler?',
@@ -1323,7 +1537,7 @@ export default function App() {
   }
 
   function deleteCollection(collection) {
-    if (!canManageContent(collection.owner_id)) return
+    if (!canDeleteContent) return
 
     openConfirmAction({
       title: 'Delete collection?',
@@ -1341,7 +1555,7 @@ export default function App() {
     })
   }
 
-  const stats = computeStats(wrestlers, collections)
+  const stats = computeStats(wrestlers, collections, arenas)
 
   if (!isSupabaseConfigured) {
     return (
@@ -1350,6 +1564,7 @@ export default function App() {
           onAddWrestler={() => {}}
           session={null}
           onBrowseCollections={() => {}}
+          onBrowseArenas={() => {}}
           onBrowseIssues={goIssuesPage}
           onGoHome={() => {}}
           currentPage="mods"
@@ -1368,11 +1583,12 @@ export default function App() {
         onAddWrestler={openAddWrestler}
         session={session}
         onBrowseCollections={goCollectionsPage}
+        onBrowseArenas={goArenasPage}
         onBrowseIssues={goIssuesPage}
         onGoHome={goHome}
         currentPage={currentPage}
         currentProfile={currentProfile}
-        canContribute={isApproved}
+        canContribute={canContribute}
         onBrowseAdmin={goAdminPage}
       />
       <AuthPanel session={session} currentProfile={currentProfile} />
@@ -1380,37 +1596,71 @@ export default function App() {
       {error ? <div className="message error">{error}</div> : null}
 
         {currentPage === 'collections' ? (
-          selectedCollection ? (
-            <CollectionView
-              collection={selectedCollection}
-              canContribute={isApproved}
-              onClose={goCollectionsPage}
-              onSelectWrestler={(payload) => {
-                const wrestlerId = payload?.wrestlerId
-                if (!wrestlerId) return
+          canContribute ? (
+            selectedCollection ? (
+              <CollectionView
+                collection={selectedCollection}
+                canContribute={canContribute}
+                onClose={goCollectionsPage}
+                onSelectWrestler={(payload) => {
+                  const wrestlerId = payload?.wrestlerId
+                  if (!wrestlerId) return
 
-                const index = filteredWrestlers.findIndex((item) => item.id === wrestlerId)
-                if (index >= 0) {
-                  const nextPage = Math.floor(index / modsPerPage) + 1
-                  setModsPage(nextPage)
-                }
+                  setQuery('')
+                  setShowMissingOnly(false)
+                  setCreatorFilter('all')
+                  setSourceGameFilter('all')
+                  setInstallFilter('all')
+                  setMissingDownloadOnly(false)
+                  setDeadLinkOnly(false)
 
-                setSelectedId(wrestlerId)
-                goHome()
-              }}
-            />
+                  const index = wrestlers.findIndex((item) => item.id === wrestlerId)
+                  if (index >= 0) {
+                    const nextPage = Math.floor(index / modsPerPage) + 1
+                    setModsPage(nextPage)
+                  }
+
+                  setSelectedId(wrestlerId)
+                  goHome()
+                }}
+              />
+            ) : (
+              <ProfileCollections
+                sectionId="my-collections-section"
+                session={session}
+                collections={myCollections}
+                onCreate={openCreateCollection}
+                onEdit={openEditCollection}
+                onDelete={canDeleteContent ? deleteCollection : null}
+                onOpen={openCollection}
+                onShare={shareCollection}
+              />
+            )
           ) : (
-            <ProfileCollections
-              sectionId="my-collections-section"
-              session={session}
-              collections={myCollections}
-              onCreate={openCreateCollection}
-              onEdit={openEditCollection}
-              onDelete={deleteCollection}
-              onOpen={openCollection}
-              onShare={shareCollection}
-            />
+            <div className="message error">
+              You must be an approved user to access collections.
+            </div>
           )
+        ) : currentPage === 'arenas' ? (
+          <ArenaPage
+            arenas={arenas}
+            creators={creators}
+            session={session}
+            canContribute={canContribute}
+            canDeleteContent={canDeleteContent}
+            canManageContent={canManageContent}
+            installedArenaIds={installedArenaIds}
+            setInstalledArenaIds={setInstalledArenaIds}
+            currentProfile={currentProfile}
+            supabase={supabase}
+            fetchAll={fetchAll}
+            newCreatorName={newCreatorName}
+            setNewCreatorName={setNewCreatorName}
+            onAddCreator={addArenaCreator}
+            addingCreator={addingCreator}
+            openNotice={openNotice}
+            onOpenCollectionPicker={openCollectionPicker}
+          />
         ) : currentPage === 'admin' ? (
           <AdminPanel
             session={session}
@@ -1425,6 +1675,7 @@ export default function App() {
             onResolveLink={openResolveLink}
             onCreateRequest={createRequest}
             canManageContent={canManageContent}
+            canContribute={canContribute}
             onEditAttire={openEditAttire}
           />
         ) : (
@@ -1449,9 +1700,10 @@ export default function App() {
                 deadLinkOnly={deadLinkOnly}
                 setDeadLinkOnly={setDeadLinkOnly}
                 session={session}
+                canContribute={canContribute}
                 newCreatorName={newCreatorName}
                 setNewCreatorName={setNewCreatorName}
-                onAddCreator={addCreator}
+                onAddCreator={addAttireCreator}
                 addingCreator={addingCreator}
               />
 
@@ -1460,7 +1712,7 @@ export default function App() {
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 onEdit={openEditWrestler}
-                onDelete={deleteWrestler}
+                onDelete={canDeleteContent ? deleteWrestler : null}
                 session={session}
                 currentProfile={currentProfile}
                 canManageContent={canManageContent}
@@ -1475,13 +1727,13 @@ export default function App() {
               wrestler={selectedWrestler}
               session={session}
               currentProfile={currentProfile}
-              canContribute={isApproved}
+              canContribute={canContribute}
               canManageContent={canManageContent}
               installedIds={installedIds}
               onAddAttire={openAddAttire}
               onEditWrestler={openEditWrestler}
               onEditAttire={openEditAttire}
-              onDeleteAttire={deleteAttire}
+              onDeleteAttire={canDeleteContent ? deleteAttire : null}
               onToggleInstalled={toggleInstalled}
               onCreateRequest={createRequest}
               onResolveLink={openResolveLink}
@@ -1524,7 +1776,7 @@ export default function App() {
         creatorOptions={creators}
         newCreatorName={newCreatorName}
         setNewCreatorName={setNewCreatorName}
-        onAddCreator={addCreator}
+        onAddCreator={addAttireCreator}
         onUploadJson={uploadAttireJsonFile}
         saving={saving}
         uploading={uploading}
@@ -1547,10 +1799,10 @@ export default function App() {
 
       <CollectionPickerModal
         open={collectionPicker.open}
-        attire={collectionPicker.attire}
+        item={collectionPicker.item}
         collections={myCollections}
         memberships={collectionMemberships}
-        onClose={() => setCollectionPicker({ open: false, attire: null })}
+        onClose={() => setCollectionPicker({ open: false, item: null })}
         onToggle={toggleCollectionMembership}
         saving={saving}
       />

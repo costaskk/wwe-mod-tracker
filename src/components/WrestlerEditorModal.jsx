@@ -73,6 +73,7 @@ function WemAudioList({ title, items = [], type, onUploadAudio, onRemoveAudio, u
             type="file"
             accept=".wem"
             multiple
+            disabled={uploading}
             onChange={(e) => {
               const files = Array.from(e.target.files || [])
               if (files.length) {
@@ -263,7 +264,7 @@ export default function WrestlerEditorModal({
     <div className="modal-backdrop">
       <div className="panel modal-card large-modal">
         <div className="modal-header">
-          <h2>{form.id ? 'Edit wrestler' : 'Add wrestler'}</h2>
+          <h2>{form.persisted ? 'Edit wrestler' : 'Add wrestler'}</h2>
           <p className="subtle-copy">
             Create a wrestler page, add notes and tags, upload or auto-match a headshot, attach wrestler-level audio files, and manage titantrons with multiple links and screenshots.
           </p>
@@ -276,7 +277,7 @@ export default function WrestlerEditorModal({
                 <label className="span-2">
                   Wrestler name
                   <input
-                    value={form.wrestler_name}
+                    value={form.wrestler_name || ''}
                     onChange={(e) => setForm((current) => ({ ...current, wrestler_name: e.target.value }))}
                     placeholder="Adam Cole"
                     autoComplete="off"
@@ -324,7 +325,7 @@ export default function WrestlerEditorModal({
                 <label>
                   Tags
                   <input
-                    value={form.tags_text}
+                    value={form.tags_text || ''}
                     onChange={(e) => setForm((current) => ({ ...current, tags_text: e.target.value }))}
                     placeholder="Legend, WCW, 1997"
                     disabled={saving || uploading}
@@ -334,7 +335,7 @@ export default function WrestlerEditorModal({
                 <label className="span-2">
                   Notes
                   <textarea
-                    value={form.notes}
+                    value={form.notes || ''}
                     onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))}
                     disabled={saving || uploading}
                   />
@@ -351,7 +352,11 @@ export default function WrestlerEditorModal({
                   </div>
 
                   {form.headshot_url ? (
-                    <img className="upload-preview portrait-preview spotlight-image" src={form.headshot_url} alt="Headshot" />
+                    <img
+                      className="upload-preview portrait-preview spotlight-image"
+                      src={form.headshot_url}
+                      alt={form.wrestler_name || 'Headshot'}
+                    />
                   ) : (
                     <div className="upload-placeholder">No wrestler image saved</div>
                   )}
