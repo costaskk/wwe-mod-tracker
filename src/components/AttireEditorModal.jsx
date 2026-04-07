@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ATTIRE_STATUSES, MOD_TYPES, SOURCE_GAMES, titleCase, parseDownloadLinks, getDownloadProvider, getDownloadProviderLabel, getDownloadProviderMark } from '../lib/utils'
 
-function JsonEditor({ title, value, onChange, onUpload, filenameHint }) {
+function JsonEditor({ title, value, onChange, onUpload, filenameHint, uploading }) {
   const [expanded, setExpanded] = useState(true)
 
   return (
@@ -261,6 +261,7 @@ export default function AttireEditorModal({
                   onChange={(value) => updateField('moveset_json_text', value)}
                   onUpload={(file) => onUploadJson(file, 'moveset')}
                   filenameHint="moveset JSON"
+                  uploading={uploading}
                 />
 
                 <JsonEditor
@@ -269,6 +270,7 @@ export default function AttireEditorModal({
                   onChange={(value) => updateField('profile_json_text', value)}
                   onUpload={(file) => onUploadJson(file, 'profile')}
                   filenameHint="profile JSON"
+                  uploading={uploading}
                 />
               </div>
             </section>
@@ -281,12 +283,19 @@ export default function AttireEditorModal({
                     <p>Upload multiple screenshots for this attire.</p>
                   </div>
 
-                  {form.images.length ? (
+                  {(form.images || []).length ? (
                     <div className="gallery-grid modal-gallery-grid">
                       {form.images.map((image) => (
                         <div className="gallery-tile" key={image.path || image.id}>
                           <img className="gallery-img" src={image.url} alt={image.name || 'Attire screenshot'} />
-                          <button className="ghost-button small-btn gallery-remove" type="button" onClick={() => onRemoveAsset('image', image.path)}>Remove</button>
+                          <button
+                            className="ghost-button small-btn gallery-remove"
+                            type="button"
+                            disabled={uploading}
+                            onClick={() => onRemoveAsset('image', image.path)}
+                          >
+                            Remove
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -322,9 +331,29 @@ export default function AttireEditorModal({
                   <div className="upload-actions">
                     <label className="secondary-button inline-file file-button">
                       Upload DDS
-                      <input type="file" accept=".dds" onChange={(e) => onUpload(e.target.files?.[0], 'render')} />
+                      <input
+                        type="file"
+                        accept=".dds"
+                        disabled={uploading}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            onUpload(file, 'render')
+                          }
+                          e.target.value = ''
+                        }}
+                      />
                     </label>
-                    {form.render_dds_path ? <button className="ghost-button" type="button" onClick={() => onRemoveAsset('render', form.render_dds_path)}>Remove</button> : null}
+                    {form.render_dds_path ? (
+                      <button
+                        className="ghost-button"
+                        type="button"
+                        disabled={uploading}
+                        onClick={() => onRemoveAsset('render', form.render_dds_path)}
+                      >
+                        Remove
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               </div>
