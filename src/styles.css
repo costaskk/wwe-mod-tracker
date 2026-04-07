@@ -662,6 +662,38 @@ select:focus {
   border: 1px solid var(--line);
 }
 
+.titantron-editor-list,
+.titantron-display-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.titantron-display-grid {
+  grid-template-columns: 1fr;
+}
+
+.titantron-editor-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 14px;
+}
+
+.titantron-editor-card .gallery-grid {
+  margin-top: 6px;
+}
+
+.titantron-editor-card .panel-header {
+  flex-wrap: wrap;
+}
+
+.titantron-editor-card .download-links-list,
+.titantron-display-grid .download-links-list {
+  align-items: flex-start;
+}
+
 .placeholder-thumb,
 .hero-headshot-placeholder {
   display: grid;

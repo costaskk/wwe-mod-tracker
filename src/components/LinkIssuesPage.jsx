@@ -9,10 +9,10 @@ export default function LinkIssuesPage({
 }) {
   const issues = wrestlers.flatMap((wrestler) =>
     (wrestler.attires || []).flatMap((attire) => {
-      const summary = requestSummary(wrestler.requests || [], attire.id)
+      const requestInfo = requestSummary(wrestler.requests || [], attire.id)
       const links = parseDownloadLinks(attire.download_url)
       const missing = links.length === 0
-      const dead = summary.deadLinks > 0
+      const dead = requestInfo.deadLinks > 0
 
       if (!missing && !dead) return []
 
@@ -20,7 +20,8 @@ export default function LinkIssuesPage({
         wrestler,
         attire,
         issueType: dead ? 'dead_link' : 'missing_link',
-        summary
+        summary,
+        links
       }]
     })
   )
@@ -52,8 +53,8 @@ export default function LinkIssuesPage({
                 <h3>{item.attire.name}</h3>
 
                 <div className="download-links-list">
-                  {parseDownloadLinks(item.attire.download_url).length ? (
-                    parseDownloadLinks(item.attire.download_url).map((link, index) => {
+                  {item.links.length ? (
+                    item.links.map((link, index) => {
                       const provider = getDownloadProvider(link)
                       return (
                         <div className={`download-link-chip provider-${provider}`} key={`${link}-${index}`}>
@@ -69,33 +70,42 @@ export default function LinkIssuesPage({
               </div>
 
               <div className="link-issue-actions">
-                <button className="secondary-button small-btn"
-                  onClick={() =>
-                    onResolveLink(item.wrestler, item.attire, item.issueType)
-                  }
+                <button
+                  type="button"
+                  className="secondary-button small-btn"
+                  onClick={() => onResolveLink(item.wrestler, item.attire, item.issueType)}
                 >
                   Fix
                 </button>
 
-                <button className="ghost-button small-btn"
+                <button
+                  type="button"
+                  className="ghost-button small-btn"
                   onClick={() =>
                     onCreateRequest(
                       item.wrestler.id,
                       item.attire.id,
                       item.issueType,
                       item.wrestler.wrestler_name,
-                      item.attire.name
+                      item.attire.name,
+                      item.issueType === 'dead_link'
+                        ? 'Please review the reported dead link(s).'
+                        : 'Please add a working download link.'
                     )
                   }
                 >
                   Add note
                 </button>
 
-                {canManageContent(item.attire.owner_id) && (
-                  <button className="ghost-button small-btn" onClick={() => onEditAttire(item.attire)}>
+                {canManageContent(item.attire.owner_id) ? (
+                  <button
+                    type="button"
+                    className="ghost-button small-btn"
+                    onClick={() => onEditAttire(item.attire)}
+                  >
                     Edit
                   </button>
-                )}
+                ) : null}
               </div>
             </div>
           ))}

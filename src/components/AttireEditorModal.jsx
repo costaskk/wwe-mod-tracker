@@ -14,7 +14,16 @@ function JsonEditor({ title, value, onChange, onUpload, filenameHint }) {
         <div className="hero-actions">
           <label className="secondary-button inline-file file-button small-btn">
             Upload JSON
-            <input type="file" accept="application/json,.json" onChange={(e) => onUpload(e.target.files?.[0])} />
+            <input
+              type="file"
+              accept="application/json,.json"
+              disabled={uploading}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                onUpload(file)
+                e.target.value = ''
+              }}
+            />
           </label>
           <button type="button" className="ghost-button small-btn" onClick={() => setExpanded((v) => !v)}>
             {expanded ? 'Hide code' : 'Browse code'}
@@ -288,7 +297,16 @@ export default function AttireEditorModal({
                   <div className="upload-actions">
                     <label className="secondary-button inline-file file-button">
                       Upload image(s)
-                      <input type="file" accept="image/*" multiple onChange={(e) => onUpload(Array.from(e.target.files || []), 'image')} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        disabled={uploading}
+                        onChange={(e) => {
+                          onUpload(Array.from(e.target.files || []), 'image')
+                          e.target.value = ''
+                        }}
+                      />
                     </label>
                   </div>
                 </div>

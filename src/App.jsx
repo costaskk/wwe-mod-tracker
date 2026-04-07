@@ -26,6 +26,7 @@ import {
   emptyAttire,
   emptyCollection,
   emptyWrestler,
+  emptyTitantron,
   normalizeAttireForEditor,
   normalizeCollectionForEditor,
   normalizeWrestlerForEditor,
@@ -97,6 +98,169 @@ export default function App() {
 
   function openNotice(type, title, message) {
     setNotice({ type, title, message })
+  }
+
+  function addTitantron() {
+    setWrestlerForm((current) => ({
+      ...current,
+      titantrons: [
+        ...(current.titantrons || []),
+        {
+          ...emptyTitantron(),
+          id: uid(),
+          persisted: false,
+          wrestler_id: current.id || null,
+          title: '',
+          download_url: '',
+          screenshots: [],
+          pendingScreenshotUploads: []
+        }
+      ]
+    }))
+  }
+
+  function updateTitantron(titantronId, changes) {
+    setWrestlerForm((current) => ({
+      ...current,
+      titantrons: (current.titantrons || []).map((item) =>
+        item.id === titantronId ? { ...item, ...changes } : item
+      )
+    }))
+  }
+
+  async function handleTitantronScreenshotUpload(titantronId, files) {
+    if (!files?.length || !isApproved) return
+
+    try {
+      setUploading(true)
+
+      if (!wrestlerForm.id) {
+        throw new Error('Please save the wrestler before uploading titantron screenshots.')
+      }
+
+      const titantron = (wrestlerForm.titantrons || []).find((item) => item.id === titantronId)
+      if (!titantron) throw new Error('Titantron not found.')
+
+      const wrestlerEntityId = wrestlerForm.id
+      const uploaded = []
+
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) throw new Error('Titantron screenshots must be image files.')
+        const { path, fileName } = await uploadAsset({
+          userId: session.user.id,
+          entityId: wrestlerEntityId,
+          file,
+          kind: 'titantron_image',
+          folder: 'wrestlers'
+        })
+        uploaded.push({
+          id: uid(),
+          path,
+          name: fileName,
+          url: getAssetUrl(path)
+        })
+      }
+
+      setWrestlerForm((current) => ({
+        ...current,
+        id: current.id,
+        titantrons: (current.titantrons || []).map((item) =>
+          item.id === titantronId
+            ? {
+                ...item,
+                wrestler_id: wrestlerEntityId,
+                screenshots: [...(item.screenshots || []), ...uploaded],
+                pendingScreenshotUploads: [...(item.pendingScreenshotUploads || []), ...uploaded]
+              }
+            : item
+        )
+      }))
+
+      openNotice('success', 'Titantron screenshots uploaded', `${uploaded.length} screenshot${uploaded.length === 1 ? '' : 's'} uploaded successfully.`)
+    } catch (err) {
+      openNotice('error', 'Upload failed', err.message || 'Could not upload titantron screenshots.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function removeTitantronScreenshot(titantronId, screenshotPath) {
+    if (!isApproved) return
+
+    try {
+      setUploading(true)
+
+      if (screenshotPath) {
+        await removeAssets([screenshotPath])
+      }
+
+      const titantron = (wrestlerForm.titantrons || []).find((item) => item.id === titantronId)
+
+      setWrestlerForm((current) => ({
+        ...current,
+        titantrons: (current.titantrons || []).map((item) =>
+          item.id === titantronId
+            ? {
+                ...item,
+                screenshots: (item.screenshots || []).filter((img) => img.path !== screenshotPath),
+                pendingScreenshotUploads: (item.pendingScreenshotUploads || []).filter((img) => img.path !== screenshotPath)
+              }
+            : item
+        )
+      }))
+
+      if (titantron?.persisted) {
+        const { error } = await supabase
+          .from('titantron_images')
+          .delete()
+          .eq('wrestler_titantron_id', titantronId)
+          .eq('image_path', screenshotPath)
+
+        if (error) throw error
+      }
+
+      openNotice('success', 'Titantron screenshot removed', 'The screenshot was removed.')
+    } catch (err) {
+      openNotice('error', 'Could not remove screenshot', err.message || 'Could not remove titantron screenshot.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function removeTitantron(titantronId) {
+    if (!isApproved) return
+
+    const titantron = (wrestlerForm.titantrons || []).find((item) => item.id === titantronId)
+    if (!titantron) return
+
+    try {
+      setUploading(true)
+
+      const screenshotPaths = (titantron.screenshots || []).map((img) => img.path).filter(Boolean)
+      if (screenshotPaths.length) {
+        await removeAssets(screenshotPaths)
+      }
+
+      if (titantron.persisted) {
+        const { error } = await supabase
+          .from('wrestler_titantrons')
+          .delete()
+          .eq('id', titantronId)
+
+        if (error) throw error
+      }
+
+      setWrestlerForm((current) => ({
+        ...current,
+        titantrons: (current.titantrons || []).filter((item) => item.id !== titantronId)
+      }))
+
+      openNotice('success', 'Titantron removed', `${titantron.title || 'Titantron'} was removed.`)
+    } catch (err) {
+      openNotice('error', 'Could not remove titantron', err.message || 'Could not remove titantron.')
+    } finally {
+      setUploading(false)
+    }
   }
 
   function openConfirmAction(config) {
@@ -186,157 +350,180 @@ export default function App() {
     setLoading(true)
     setError('')
 
-    const publicCollectionsQuery = supabase
-      .from('collections')
-      .select(`
-        *,
-        collection_items (
-          *,
-          attire:attires (
-            *,
-            wrestler:wrestlers (*),
-            attire_images (*)
-          )
-        )
-      `)
-      .eq('visibility', 'public')
-      .order('updated_at', { ascending: false })
-
-    const ownCollectionsQuery = session?.user?.id
-      ? supabase
-          .from('collections')
-          .select(`
-            *,
-            collection_items (
-              *,
-              attire:attires (
-                *,
-                wrestler:wrestlers (*),
-                attire_images (*)
-              )
-            )
-          `)
-          .eq('owner_id', session.user.id)
-          .order('updated_at', { ascending: false })
-      : Promise.resolve({ data: [], error: null })
-
-      const [wrestlerResult, creatorResult, installsResult, publicCollectionsResult, ownCollectionsResult, profilesResult] = await Promise.all([
-      supabase
-        .from('wrestlers')
+    try {
+      const publicCollectionsQuery = supabase
+        .from('collections')
         .select(`
           *,
-          wrestler_audio_files (*),
-          attires (
+          collection_items (
             *,
-            attire_images (*)
-          ),
-          mod_requests (*)
+            attire:attires (
+              *,
+              wrestler:wrestlers (*),
+              attire_images (*)
+            )
+          )
         `)
-        .order('wrestler_name', { ascending: true }),
-      supabase.from('creators').select('*').order('name', { ascending: true }),
-      session?.user?.id
-        ? supabase.from('user_installed_attires').select('attire_id').eq('user_id', session.user.id)
-        : Promise.resolve({ data: [], error: null }),
-      publicCollectionsQuery,
-      ownCollectionsQuery,
-      supabase.from('profiles').select('*').order('created_at', { ascending: false })
-    ])
+        .eq('visibility', 'public')
+        .order('updated_at', { ascending: false })
 
-    if (wrestlerResult.error || creatorResult.error || publicCollectionsResult.error || ownCollectionsResult.error || profilesResult.error) {
-      setError(
-        wrestlerResult.error?.message ||
-        creatorResult.error?.message ||
-        publicCollectionsResult.error?.message ||
-        ownCollectionsResult.error?.message ||
-        profilesResult.error?.message ||
-        'Failed to load data.'
-      )
-      setLoading(false)
-      return
-    }
+      const ownCollectionsQuery = session?.user?.id
+        ? supabase
+            .from('collections')
+            .select(`
+              *,
+              collection_items (
+                *,
+                attire:attires (
+                  *,
+                  wrestler:wrestlers (*),
+                  attire_images (*)
+                )
+              )
+            `)
+            .eq('owner_id', session.user.id)
+            .order('updated_at', { ascending: false })
+        : Promise.resolve({ data: [], error: null })
 
-    const normalizedWrestlers = (wrestlerResult.data || []).map((wrestler) => ({
-      ...wrestler,
-      headshot_url: wrestler.headshot_path ? getAssetUrl(wrestler.headshot_path) : (wrestler.headshot_external_url || ''),
-      audio_files: (wrestler.wrestler_audio_files || []).map((file) => ({
-        ...file,
-        file_url: file.file_path ? getAssetUrl(file.file_path) : ''
-      })),
-      attires: sortAttires((wrestler.attires || []).map((attire) => ({
-        ...attire,
-        mod_type: attire.mod_type === 'port' ? 'port' : 'original',
-        render_dds_url: attire.render_dds_path ? getAssetUrl(attire.render_dds_path) : '',
-        attire_images: (attire.attire_images || []).map((img) => ({
-          ...img,
-          image_url: img.image_path ? getAssetUrl(img.image_path) : ''
-        }))
-      }))),
-      requests: [...(wrestler.mod_requests || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    }))
+        const [wrestlerResult, creatorResult, installsResult, publicCollectionsResult, ownCollectionsResult, profilesResult] = await Promise.all([
+        supabase
+          .from('wrestlers')
+          .select(`
+            *,
+            wrestler_audio_files (*),
+            wrestler_titantrons (
+              *,
+              titantron_images (*)
+            ),
+            attires (
+              *,
+              attire_images (*)
+            ),
+            mod_requests (*)
+          `)
+          .order('wrestler_name', { ascending: true }),
+        supabase.from('creators').select('*').order('name', { ascending: true }),
+        session?.user?.id
+          ? supabase.from('user_installed_attires').select('attire_id').eq('user_id', session.user.id)
+          : Promise.resolve({ data: [], error: null }),
+        publicCollectionsQuery,
+        ownCollectionsQuery,
+        supabase.from('profiles').select('*').order('created_at', { ascending: false })
+      ])
 
-    const collectionMap = new Map()
-    ;[...(publicCollectionsResult.data || []), ...(ownCollectionsResult.data || [])].forEach((collection) => {
-      const normalizedItems = (collection.collection_items || []).map((item) => ({
-        ...item,
-        attire: item.attire ? {
-          ...item.attire,
-          render_dds_url: item.attire.render_dds_path ? getAssetUrl(item.attire.render_dds_path) : '',
-          attire_images: (item.attire.attire_images || []).map((img) => ({
+      if (
+        wrestlerResult.error ||
+        creatorResult.error ||
+        installsResult.error ||
+        publicCollectionsResult.error ||
+        ownCollectionsResult.error ||
+        profilesResult.error
+      ) {
+        setError(
+          wrestlerResult.error?.message ||
+          creatorResult.error?.message ||
+          installsResult.error?.message ||
+          publicCollectionsResult.error?.message ||
+          ownCollectionsResult.error?.message ||
+          profilesResult.error?.message ||
+          'Failed to load data.'
+        )
+        return
+      }
+
+      const normalizedWrestlers = (wrestlerResult.data || []).map((wrestler) => ({
+        ...wrestler,
+        headshot_url: wrestler.headshot_path ? getAssetUrl(wrestler.headshot_path) : (wrestler.headshot_external_url || ''),
+        audio_files: (wrestler.wrestler_audio_files || []).map((file) => ({
+          ...file,
+          file_url: file.file_path ? getAssetUrl(file.file_path) : ''
+        })),
+        titantrons: (wrestler.wrestler_titantrons || []).map((item) => ({
+          ...item,
+          titantron_images: (item.titantron_images || []).map((img) => ({
             ...img,
             image_url: img.image_path ? getAssetUrl(img.image_path) : ''
-          })),
-          wrestler: item.attire.wrestler ? {
-            ...item.attire.wrestler,
-            headshot_url: item.attire.wrestler.headshot_path ? getAssetUrl(item.attire.wrestler.headshot_path) : (item.attire.wrestler.headshot_external_url || '')
-          } : null
-        } : null
+          }))
+        })),
+        attires: sortAttires((wrestler.attires || []).map((attire) => ({
+          ...attire,
+          mod_type: attire.mod_type === 'port' ? 'port' : 'original',
+          render_dds_url: attire.render_dds_path ? getAssetUrl(attire.render_dds_path) : '',
+          attire_images: (attire.attire_images || []).map((img) => ({
+            ...img,
+            image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+          }))
+        }))),
+        requests: [...(wrestler.mod_requests || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       }))
-      collectionMap.set(collection.id, {
-        ...collection,
-        cover_url: collection.cover_path ? getAssetUrl(collection.cover_path) : '',
-        items: normalizedItems
+
+      const collectionMap = new Map()
+      ;[...(publicCollectionsResult.data || []), ...(ownCollectionsResult.data || [])].forEach((collection) => {
+        const normalizedItems = (collection.collection_items || []).map((item) => ({
+          ...item,
+          attire: item.attire ? {
+            ...item.attire,
+            render_dds_url: item.attire.render_dds_path ? getAssetUrl(item.attire.render_dds_path) : '',
+            attire_images: (item.attire.attire_images || []).map((img) => ({
+              ...img,
+              image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+            })),
+            wrestler: item.attire.wrestler ? {
+              ...item.attire.wrestler,
+              headshot_url: item.attire.wrestler.headshot_path ? getAssetUrl(item.attire.wrestler.headshot_path) : (item.attire.wrestler.headshot_external_url || '')
+            } : null
+          } : null
+        }))
+        collectionMap.set(collection.id, {
+          ...collection,
+          cover_url: collection.cover_path ? getAssetUrl(collection.cover_path) : '',
+          items: normalizedItems
+        })
       })
-    })
 
-    const mergedCollections = [...collectionMap.values()].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-    const seenSlugs = new Set()
-    const repairedCollections = await Promise.all(
-      mergedCollections.map(async (collection) => {
-        if (!collection.slug || seenSlugs.has(collection.slug)) {
-          const newSlug = uniqueCollectionSlug(collection.name, collection.owner_id)
+      const mergedCollections = [...collectionMap.values()].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+      const seenSlugs = new Set()
+      const repairedCollections = await Promise.all(
+        mergedCollections.map(async (collection) => {
+          if (!collection.slug || seenSlugs.has(collection.slug)) {
+            const newSlug = uniqueCollectionSlug(collection.name, collection.owner_id)
 
-          const { error: slugUpdateError } = await supabase
-            .from('collections')
-            .update({ slug: newSlug })
-            .eq('id', collection.id)
+            const { error: slugUpdateError } = await supabase
+              .from('collections')
+              .update({ slug: newSlug })
+              .eq('id', collection.id)
 
-          if (slugUpdateError) throw slugUpdateError
+            if (slugUpdateError) throw slugUpdateError
 
-          seenSlugs.add(newSlug)
-          return { ...collection, slug: newSlug }
-        }
+            seenSlugs.add(newSlug)
+            return { ...collection, slug: newSlug }
+          }
 
-        seenSlugs.add(collection.slug)
-        return collection
-      })
-    )
-    const slug = new URLSearchParams(window.location.search).get('collection')
-    const collectionFromUrl = slug ? repairedCollections.find((item) => item.slug === slug) : null
+          seenSlugs.add(collection.slug)
+          return collection
+        })
+      )
+      const slug = new URLSearchParams(window.location.search).get('collection')
+      const collectionFromUrl = slug ? repairedCollections.find((item) => item.slug === slug) : null
 
-    const loadedProfiles = profilesResult.data || []
-    const myProfile = session
-      ? loadedProfiles.find((item) => item.user_id === session.user.id) || null
-      : null
+      const loadedProfiles = profilesResult.data || []
+      const myProfile = session
+        ? loadedProfiles.find((item) => item.user_id === session.user.id) || null
+        : null
 
-    setProfiles(loadedProfiles)
-    setCurrentProfile(myProfile)
-    setWrestlers(normalizedWrestlers)
-    setCreators(creatorResult.data || [])
-    setCollections(repairedCollections)
-    setSelectedCollection(collectionFromUrl || null)
-    setSelectedId((current) => current || normalizedWrestlers[0]?.id || null)
-    setInstalledIds(new Set((installsResult.data || []).map((item) => item.attire_id)))
-    setLoading(false)
+      setProfiles(loadedProfiles)
+      setCurrentProfile(myProfile)
+      setWrestlers(normalizedWrestlers)
+      setCreators(creatorResult.data || [])
+      setCollections(repairedCollections)
+      setSelectedCollection(collectionFromUrl || null)
+      setSelectedId((current) => current || normalizedWrestlers[0]?.id || null)
+      setInstalledIds(new Set((installsResult.data || []).map((item) => item.attire_id)))
+    } catch (err) {
+      setError(err.message || 'Failed to load data.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const filteredWrestlers = useMemo(() => {
@@ -383,42 +570,42 @@ export default function App() {
   }, [wrestlers, query, showMissingOnly, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, deadLinkOnly, installedIds])
 
 
-    const paginatedMods = useMemo(() => paginateItems(filteredWrestlers, modsPage, modsPerPage), [filteredWrestlers, modsPage])
-    const visibleWrestlers = paginatedMods.items
+  const paginatedMods = useMemo(() => paginateItems(filteredWrestlers, modsPage, modsPerPage), [filteredWrestlers, modsPage])
+  const visibleWrestlers = paginatedMods.items
 
-    useEffect(() => {
-      setModsPage(1)
-    }, [query, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, deadLinkOnly, showMissingOnly])
+  useEffect(() => {
+    setModsPage(1)
+  }, [query, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, deadLinkOnly, showMissingOnly])
 
-    useEffect(() => {
-      if (modsPage > paginatedMods.totalPages) {
-        setModsPage(paginatedMods.totalPages)
-      }
-    }, [modsPage, paginatedMods.totalPages])
+  useEffect(() => {
+    if (modsPage > paginatedMods.totalPages) {
+      setModsPage(paginatedMods.totalPages)
+    }
+  }, [modsPage, paginatedMods.totalPages])
 
-    const myCollections = useMemo(
-      () => session ? collections.filter((item) => item.owner_id === session.user.id) : [],
-      [collections, session]
-    )
+  const myCollections = useMemo(
+    () => session ? collections.filter((item) => item.owner_id === session.user.id) : [],
+    [collections, session]
+  )
 
-    const selectedWrestler = useMemo(
-      () => filteredWrestlers.find((item) => item.id === selectedId) || visibleWrestlers[0] || null,
-      [filteredWrestlers, visibleWrestlers, selectedId]
-    )
+  const selectedWrestler = useMemo(
+    () => filteredWrestlers.find((item) => item.id === selectedId) || visibleWrestlers[0] || null,
+    [filteredWrestlers, visibleWrestlers, selectedId]
+  )
 
-    const collectionMemberships = useMemo(() => {
-      if (!collectionPicker.attire || !session) return []
-      return myCollections
-        .filter((collection) => (collection.items || []).some((item) => item.attire_id === collectionPicker.attire.id))
-        .map((item) => item.id)
-    }, [myCollections, collectionPicker, session])
+  const collectionMemberships = useMemo(() => {
+    if (!collectionPicker.attire || !session) return []
+    return myCollections
+      .filter((collection) => (collection.items || []).some((item) => item.attire_id === collectionPicker.attire.id))
+      .map((item) => item.id)
+  }, [myCollections, collectionPicker, session])
 
-    useEffect(() => {
-      if (!selectedId && visibleWrestlers[0]) setSelectedId(visibleWrestlers[0].id)
-      if (selectedId && !visibleWrestlers.some((item) => item.id === selectedId)) {
-        setSelectedId(visibleWrestlers[0]?.id || null)
-      }
-    }, [visibleWrestlers, selectedId])
+  useEffect(() => {
+    if (!selectedId && visibleWrestlers[0]) setSelectedId(visibleWrestlers[0].id)
+    if (selectedId && !visibleWrestlers.some((item) => item.id === selectedId)) {
+      setSelectedId(visibleWrestlers[0]?.id || null)
+    }
+  }, [visibleWrestlers, selectedId])
 
   async function updateProfile(userId, changes) {
     if (!isAdmin) return
@@ -455,7 +642,8 @@ export default function App() {
         headshot_name: wrestlerForm.headshot_name || '',
         headshot_external_url: wrestlerForm.headshot_external_url || ''
       }
-      
+
+
       let wrestlerId = wrestlerForm.id
 
       if (wrestlerForm.id) {
@@ -470,7 +658,7 @@ export default function App() {
         openNotice('success', 'Wrestler added', `${wrestlerForm.wrestler_name} was added to the database.`)
       }
 
-      if (Array.isArray(wrestlerForm.pendingAudioUploads) && wrestlerForm.pendingAudioUploads.length) {
+      /* if (Array.isArray(wrestlerForm.pendingAudioUploads) && wrestlerForm.pendingAudioUploads.length) {
         const inserts = wrestlerForm.pendingAudioUploads.map((item) => ({
           wrestler_id: wrestlerId,
           owner_id: session.user.id,
@@ -481,7 +669,51 @@ export default function App() {
 
         const { error } = await supabase.from('wrestler_audio_files').insert(inserts)
         if (error) throw error
+      } */
+
+      const titantrons = wrestlerForm.titantrons || []
+
+      for (const titantron of titantrons) {
+        const payload = {
+          wrestler_id: wrestlerId,
+          owner_id: session.user.id,
+          title: (titantron.title || '').trim(),
+          download_url: (titantron.download_url || '').trim()
+        }
+
+        let titantronRowId = titantron.id
+
+        if (titantron.persisted) {
+          const { error } = await supabase
+            .from('wrestler_titantrons')
+            .update(payload)
+            .eq('id', titantron.id)
+
+          if (error) throw error
+        } else {
+          const { data, error } = await supabase
+            .from('wrestler_titantrons')
+            .insert(payload)
+            .select('id')
+            .single()
+
+          if (error) throw error
+          titantronRowId = data.id
+        }
+
+        if (Array.isArray(titantron.pendingScreenshotUploads) && titantron.pendingScreenshotUploads.length) {
+          const imageRows = titantron.pendingScreenshotUploads.map((img) => ({
+            wrestler_titantron_id: titantronRowId,
+            owner_id: session.user.id,
+            image_path: img.path,
+            image_name: img.name
+          }))
+
+          const { error } = await supabase.from('titantron_images').insert(imageRows)
+          if (error) throw error
+        }
       }
+
       setWrestlerModalOpen(false)
       await fetchAll()
     } catch (err) {
@@ -500,6 +732,7 @@ export default function App() {
       if (!wrestlerForm.id) {
         throw new Error('Please save the wrestler before uploading audio.')
       }
+
       const entityId = wrestlerForm.id
       const uploadedRows = []
 
@@ -525,22 +758,10 @@ export default function App() {
         })
       }
 
-      if (wrestlerForm.id) {
-        const { error } = await supabase.from('wrestler_audio_files').insert(uploadedRows)
-        if (error) throw error
-        // skip local update if saving to DB
-        await fetchAll()
-      } else {
-        setWrestlerForm((current) => ({
-          ...current,
-          id: current.id || entityId,
-          pendingAudioUploads: [...(current.pendingAudioUploads || []), ...uploadedRows],
-          audio_files: [...(current.audio_files || []), ...uploadedRows.map((row) => ({
-            ...row,
-            file_url: getAssetUrl(row.file_path)
-          }))]
-        }))
-      }
+      const { error } = await supabase.from('wrestler_audio_files').insert(uploadedRows)
+      if (error) throw error
+
+      await fetchAll()
 
       openNotice(
         'success',
@@ -934,11 +1155,7 @@ export default function App() {
 
     function openAddWrestler() {
     if (!isApproved) return
-    setWrestlerForm({
-      ...emptyWrestler(),
-      audio_files: [],
-      pendingAudioUploads: []
-    })
+    setWrestlerForm(emptyWrestler())
     setWrestlerModalOpen(true)
   }
 
@@ -1074,9 +1291,20 @@ export default function App() {
       tone: 'danger',
       onConfirm: async () => {
         const assetPaths = [wrestler.headshot_path]
+        for (const audio of wrestler.audio_files || []) {
+          if (audio.file_path) assetPaths.push(audio.file_path)
+        }
+
+        for (const titantron of wrestler.titantrons || []) {
+          for (const img of titantron.titantron_images || []) {
+            if (img.image_path) assetPaths.push(img.image_path)
+          }
+        }
         for (const attire of wrestler.attires || []) {
           if (attire.render_dds_path) assetPaths.push(attire.render_dds_path)
-          for (const img of attire.attire_images || []) assetPaths.push(img.image_path)
+          for (const img of attire.attire_images || []) {
+            if (img.image_path) assetPaths.push(img.image_path)
+          }
         }
         await removeAssets(assetPaths)
         const { error } = await supabase.from('wrestlers').delete().eq('id', wrestler.id)
@@ -1268,6 +1496,11 @@ export default function App() {
         onRemoveHeadshot={removeWrestlerHeadshot}
         onUploadAudio={handleWrestlerAudioUpload}
         onRemoveAudio={removeWrestlerAudio}
+        onAddTitantron={addTitantron}
+        onUpdateTitantron={updateTitantron}
+        onRemoveTitantron={removeTitantron}
+        onUploadTitantronScreenshots={handleTitantronScreenshotUpload}
+        onRemoveTitantronScreenshot={removeTitantronScreenshot}
         saving={saving}
         uploading={uploading}
         wrestlers={wrestlers}

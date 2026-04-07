@@ -10,7 +10,10 @@ export default function RequestModal({
   const [notes, setNotes] = useState('')
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setNotes('')
+      return
+    }
     setNotes(context?.prefillNotes || '')
   }, [open, context])
 
@@ -27,7 +30,7 @@ export default function RequestModal({
         <div className="modal-header">
           <h2>{label}</h2>
           <p className="subtle-copy">
-            {context.wrestlerName} · {context.attireName}
+            {context.wrestlerName || 'Unknown wrestler'} · {context.attireName || 'Unknown attire'}
           </p>
         </div>
 
@@ -35,6 +38,7 @@ export default function RequestModal({
           <label>
             Notes
             <textarea
+              autoFocus
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add details here..."
@@ -49,8 +53,8 @@ export default function RequestModal({
           <button
             className="primary-button"
             type="button"
-            onClick={() => onSubmit(notes)}
-            disabled={submitting}
+            onClick={() => onSubmit(notes.trim())}
+            disabled={submitting || !notes.trim()}
           >
             {submitting ? 'Submitting…' : 'Submit'}
           </button>

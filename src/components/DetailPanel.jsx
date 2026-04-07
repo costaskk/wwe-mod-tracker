@@ -192,6 +192,79 @@ function WrestlerAudioSection({ wrestler }) {
   )
 }
 
+function WrestlerTitantronSection({ wrestler, canContribute, onPreviewImage }) {
+  const titantrons = wrestler.titantrons || []
+
+  if (!titantrons.length) return null
+
+  return (
+    <section className="panel soft-panel">
+      <div className="panel-header">
+        <div>
+          <h2>Titantrons</h2>
+          <p className="subtle-copy">Titantron packs attached directly to this wrestler.</p>
+        </div>
+      </div>
+
+      <div className="titantron-display-grid">
+        {titantrons.map((item) => {
+          const screenshots = item.titantron_images || item.screenshots || []
+          const validScreenshots = screenshots.filter((image) => image.image_url || image.url)
+
+          return (
+            <article className="attire-card improved-attire-card elevated-card" key={item.id}>
+              <div className="attire-card-top">
+                <div className="attire-title-stack">
+                  <h3>{item.title || 'Untitled titantron'}</h3>
+                </div>
+              </div>
+
+              <div className="visual-block">
+                <div className="visual-label">Screenshots</div>
+                <div className="gallery-grid detail-gallery-grid">
+                  {validScreenshots.length ? (
+                    validScreenshots.map((image, index) => (
+                      <button
+                        key={image.id || image.image_path || image.image_url || image.url || `${item.id}-${index}`}
+                        type="button"
+                        className="gallery-tile gallery-button-reset"
+                        onClick={() => onPreviewImage(image.image_url || image.url)}
+                      >
+                        <img
+                          className="gallery-img"
+                          src={image.image_url || image.url}
+                          alt={image.image_name || image.name || item.title || 'Titantron screenshot'}
+                        />
+                      </button>
+                    ))
+                  ) : (
+                    <div className="visual-placeholder">No screenshots uploaded</div>
+                  )}
+                </div>
+              </div>
+
+              {canContribute ? (
+                <div className="split-meta">
+                  <div>
+                    <span className="muted-text">Download links</span>
+                    <div className="meta-value break-line">
+                      <DownloadLinks value={item.download_url} />
+                    </div>
+                  </div>
+                  <div>
+                    <span className="muted-text">Screenshots</span>
+                    <div className="meta-value break-line">{validScreenshots.length}</div>
+                  </div>
+                </div>
+              ) : null}
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 function CompactRow({
   attire,
   wrestler,
@@ -207,6 +280,8 @@ function CompactRow({
   onResolveLink,
   onOpenCollectionPicker
 }) {
+
+  const downloadLinks = parseDownloadLinks(attire.download_url)
   return (
     <div className="compact-attire-row">
       <div className="compact-main">
@@ -259,8 +334,8 @@ function CompactRow({
           ) : null}
 
           {canContribute ? (
-            parseDownloadLinks(attire.download_url).length ? (
-              parseDownloadLinks(attire.download_url).map((link, index) => {
+            downloadLinks.length ? (
+              downloadLinks.map((link, index) => {
                 const provider = getDownloadProvider(link)
                 return (
                   <button
@@ -328,6 +403,7 @@ function CompactRow({
 export default function DetailPanel({
   wrestler,
   session,
+  currentProfile,
   canContribute,
   canManageContent,
   installedIds,
@@ -402,6 +478,12 @@ export default function DetailPanel({
 
       <WrestlerAudioSection wrestler={wrestler} />
 
+      <WrestlerTitantronSection
+        wrestler={wrestler}
+        canContribute={canContribute}
+        onPreviewImage={setPreviewImage}
+      />
+
       <section className="panel soft-panel">
         <div className="panel-header with-actions">
           <div>
@@ -458,6 +540,8 @@ export default function DetailPanel({
                 const installed = installedIds.has(attire.id)
                 const requestInfo = requestSummary(wrestler.requests || [], attire.id)
                 const screenshots = attire.attire_images || []
+                const validScreenshots = screenshots.filter((image) => image.image_url)
+                const downloadLinks = parseDownloadLinks(attire.download_url)
 
                 return (
                   <article className="attire-card improved-attire-card elevated-card" key={attire.id}>
@@ -490,10 +574,10 @@ export default function DetailPanel({
                       <div className="visual-block">
                         <div className="visual-label">Screenshots</div>
                         <div className="gallery-grid detail-gallery-grid">
-                          {screenshots.length ? (
-                            screenshots.map((image) => (
+                          {validScreenshots.length ? (
+                            validScreenshots.map((image, index) => (
                               <button
-                                key={image.id || image.image_path || image.image_url}
+                                key={image.id || image.image_path || image.image_url || `${attire.id}-${index}`}
                                 type="button"
                                 className="gallery-tile gallery-button-reset"
                                 onClick={() => setPreviewImage(image.image_url)}
@@ -578,8 +662,8 @@ export default function DetailPanel({
                       ) : null}
 
                       {canContribute ? (
-                        parseDownloadLinks(attire.download_url).length ? (
-                          parseDownloadLinks(attire.download_url).map((link, index) => {
+                        downloadLinks.length ? (
+                          downloadLinks.map((link, index) => {
                             const provider = getDownloadProvider(link)
                             return (
                               <button

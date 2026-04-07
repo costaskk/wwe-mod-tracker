@@ -24,7 +24,7 @@ export default function CollectionModal({ open, form, setForm, onClose, onSave, 
                   <input
                     value={
                       form.slug
-                        ? `${window.location.origin}/?page=collections&collection=${form.slug}`
+                        ? `${window.location.origin}/?page=collections&collection=${encodeURIComponent(form.slug)}`
                         : 'A unique public share link will be generated automatically when you save.'
                     }
                     readOnly
@@ -58,9 +58,22 @@ export default function CollectionModal({ open, form, setForm, onClose, onSave, 
                 <div className="upload-actions wrap-actions">
                   <label className="secondary-button inline-file file-button">
                     Upload cover
-                    <input type="file" accept="image/*" onChange={(e) => onUploadCover(e.target.files?.[0])} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploading}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        onUploadCover(file)
+                        e.target.value = ''
+                      }}
+                    />
                   </label>
-                  {(form.cover_path || form.cover_url) ? <button className="ghost-button" onClick={onRemoveCover} type="button">Remove</button> : null}
+                  {(form.cover_path || form.cover_url) ? (
+                    <button className="ghost-button" onClick={onRemoveCover} type="button" disabled={uploading}>
+                      Remove
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </section>

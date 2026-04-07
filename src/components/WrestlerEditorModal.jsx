@@ -75,13 +75,138 @@ function WemAudioList({ title, items = [], type, onUploadAudio, onRemoveAudio, u
             multiple
             onChange={(e) => {
               const files = Array.from(e.target.files || [])
-              onUploadAudio(files, type)
+              if (files.length) {
+                onUploadAudio(files, type)
+              }
               e.target.value = ''
             }}
           />
         </label>
         {uploading ? <span className="muted-text small-text">Uploading…</span> : null}
       </div>
+    </div>
+  )
+}
+
+function TitantronEditorList({
+  items = [],
+  onAddTitantron,
+  onUpdateTitantron,
+  onRemoveTitantron,
+  onUploadTitantronScreenshots,
+  onRemoveTitantronScreenshot,
+  uploading
+}) {
+  return (
+    <div className="upload-card premium-upload-card">
+      <div className="upload-card-header">
+        <h5>Titantrons</h5>
+        <p>Add multiple titantrons for this wrestler. Each titantron can have a title, multiple download links, and multiple screenshots.</p>
+      </div>
+
+      <div className="upload-actions wrap-actions">
+        <button
+          type="button"
+          className="secondary-button small-btn"
+          onClick={onAddTitantron}
+          disabled={uploading}
+        >
+          Add titantron
+        </button>
+      </div>
+
+      {items.length ? (
+        <div className="titantron-editor-list">
+          {items.map((item, index) => (
+            <div className="titantron-editor-card" key={item.id || index}>
+              <div className="panel-header with-actions">
+                <div>
+                  <strong>{item.title?.trim() || `Titantron ${index + 1}`}</strong>
+                </div>
+                <button
+                  type="button"
+                  className="ghost-button small-btn"
+                  onClick={() => onRemoveTitantron(item.id)}
+                  disabled={uploading}
+                >
+                  Remove titantron
+                </button>
+              </div>
+
+              <div className="form-grid">
+                <label>
+                  Title
+                  <input
+                    value={item.title || ''}
+                    onChange={(e) => onUpdateTitantron(item.id, { title: e.target.value })}
+                    placeholder="AEW Dynamite 2024 Titantron"
+                    disabled={uploading}
+                  />
+                </label>
+
+                <label>
+                  Download links
+                  <textarea
+                    value={item.download_url || ''}
+                    onChange={(e) => onUpdateTitantron(item.id, { download_url: e.target.value })}
+                    placeholder={'One download link per line'}
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
+
+              <div className="visual-block">
+                <div className="visual-label">Screenshots</div>
+
+                <div className="upload-actions wrap-actions">
+                  <label className="secondary-button inline-file file-button">
+                    Upload screenshot(s)
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      disabled={uploading}
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || [])
+                        if (files.length) {
+                          onUploadTitantronScreenshots(item.id, files)
+                        }
+                        e.target.value = ''
+                      }}
+                    />
+                  </label>
+                </div>
+
+                <div className="gallery-grid detail-gallery-grid">
+                  {(item.screenshots || []).length ? (
+                    item.screenshots.map((img, imgIndex) => (
+                      <div className="gallery-tile" key={img.id || img.path || imgIndex}>
+                        <img
+                          className="gallery-img"
+                          src={img.url || img.image_url}
+                          alt={img.name || img.image_name || item.title || 'Titantron screenshot'}
+                        />
+                        <button
+                          type="button"
+                          className="ghost-button small-btn gallery-remove"
+                          onClick={() => onRemoveTitantronScreenshot(item.id, img.path)}
+                          disabled={uploading}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="visual-placeholder">No screenshots uploaded</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="upload-placeholder">No titantrons added yet</div>
+      )}
     </div>
   )
 }
@@ -97,6 +222,11 @@ export default function WrestlerEditorModal({
   onRemoveHeadshot,
   onUploadAudio,
   onRemoveAudio,
+  onAddTitantron,
+  onUpdateTitantron,
+  onRemoveTitantron,
+  onUploadTitantronScreenshots,
+  onRemoveTitantronScreenshot,
   saving,
   uploading,
   wrestlers = []
@@ -135,7 +265,7 @@ export default function WrestlerEditorModal({
         <div className="modal-header">
           <h2>{form.id ? 'Edit wrestler' : 'Add wrestler'}</h2>
           <p className="subtle-copy">
-            Create a wrestler page, add notes and tags, upload or auto-match a headshot, and attach wrestler-level audio files.
+            Create a wrestler page, add notes and tags, upload or auto-match a headshot, attach wrestler-level audio files, and manage titantrons with multiple links and screenshots.
           </p>
         </div>
 
@@ -150,6 +280,7 @@ export default function WrestlerEditorModal({
                     onChange={(e) => setForm((current) => ({ ...current, wrestler_name: e.target.value }))}
                     placeholder="Adam Cole"
                     autoComplete="off"
+                    disabled={saving || uploading}
                   />
                 </label>
 
@@ -182,6 +313,7 @@ export default function WrestlerEditorModal({
                         onClick={() =>
                           setForm((current) => ({ ...current, wrestler_name: item.wrestler_name }))
                         }
+                        disabled={saving || uploading}
                       >
                         {item.wrestler_name}
                       </button>
@@ -195,6 +327,7 @@ export default function WrestlerEditorModal({
                     value={form.tags_text}
                     onChange={(e) => setForm((current) => ({ ...current, tags_text: e.target.value }))}
                     placeholder="Legend, WCW, 1997"
+                    disabled={saving || uploading}
                   />
                 </label>
 
@@ -203,6 +336,7 @@ export default function WrestlerEditorModal({
                   <textarea
                     value={form.notes}
                     onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))}
+                    disabled={saving || uploading}
                   />
                 </label>
               </div>
@@ -228,9 +362,12 @@ export default function WrestlerEditorModal({
                       <input
                         type="file"
                         accept="image/*"
+                        disabled={uploading}
                         onChange={(e) => {
                           const file = e.target.files?.[0]
-                          onUploadHeadshot(file)
+                          if (file) {
+                            onUploadHeadshot(file)
+                          }
                           e.target.value = ''
                         }}
                       />
@@ -268,6 +405,16 @@ export default function WrestlerEditorModal({
                   onRemoveAudio={onRemoveAudio}
                   uploading={uploading}
                 />
+
+                <TitantronEditorList
+                  items={form.titantrons || []}
+                  onAddTitantron={onAddTitantron}
+                  onUpdateTitantron={onUpdateTitantron}
+                  onRemoveTitantron={onRemoveTitantron}
+                  onUploadTitantronScreenshots={onUploadTitantronScreenshots}
+                  onRemoveTitantronScreenshot={onRemoveTitantronScreenshot}
+                  uploading={uploading}
+                />
               </div>
             </section>
           </div>
@@ -281,7 +428,9 @@ export default function WrestlerEditorModal({
                 ? 'Uploading asset…'
                 : ''}
           </div>
-          <button className="ghost-button" onClick={onClose} type="button">Cancel</button>
+          <button className="ghost-button" onClick={onClose} type="button" disabled={saving || uploading}>
+            Cancel
+          </button>
           <button
             className="primary-button"
             onClick={onSave}

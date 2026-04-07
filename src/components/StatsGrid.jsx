@@ -1,10 +1,10 @@
-export default function StatsGrid({ stats }) {
+export default function StatsGrid({ stats = {} }) {
   const items = [
-    ['Wrestlers', stats.wrestlers],
-    ['Attire mods', stats.attires],
-    ['Open requests', stats.requests],
-    ['No download link', stats.missingDownloads],
-    ['Collections', stats.collections]
+    ['Wrestlers', stats.wrestlers ?? 0],
+    ['Attire mods', stats.attires ?? 0],
+    ['Open requests', stats.requests ?? 0],
+    ['No download link', stats.missingDownloads ?? 0],
+    ['Collections', stats.collections ?? 0]
   ]
 
   return (

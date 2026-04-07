@@ -77,7 +77,7 @@ export default function WrestlerList({
                 <th>Attires</th>
                 <th>Requests</th>
                 <th>Updated</th>
-                <th></th>
+                <th aria-label="Actions"></th>
               </tr>
             </thead>
             <tbody>
@@ -96,6 +96,13 @@ export default function WrestlerList({
                       key={wrestler.id}
                       className={isSelected ? 'selected-row' : ''}
                       onClick={() => onSelect(wrestler.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          onSelect(wrestler.id)
+                        }
+                      }}
+                      tabIndex={0}
                     >
                       <td>
                         <div className="table-wrestler-cell">
@@ -103,12 +110,12 @@ export default function WrestlerList({
                             <img className="table-thumb" src={wrestler.headshot_url} alt={wrestler.wrestler_name} />
                           ) : (
                             <div className="table-thumb placeholder-thumb">
-                              {wrestler.wrestler_name.slice(0, 2).toUpperCase()}
+                              {(wrestler.wrestler_name || '?').slice(0, 2).toUpperCase()}
                             </div>
                           )}
 
                           <div className="table-wrestler-copy">
-                            <strong>{wrestler.wrestler_name}</strong>
+                            <strong>{wrestler.wrestler_name || 'Unknown wrestler'}</strong>
                             <div className="table-wrestler-sub">
                               {attireCount} attire mod{attireCount === 1 ? '' : 's'}
                             </div>
@@ -161,13 +168,13 @@ export default function WrestlerList({
                         <img className="list-thumb" src={wrestler.headshot_url} alt={wrestler.wrestler_name} />
                       ) : (
                         <div className="list-thumb placeholder-thumb">
-                          {wrestler.wrestler_name.slice(0, 2).toUpperCase()}
+                          {(wrestler.wrestler_name || '?').slice(0, 2).toUpperCase()}
                         </div>
                       )}
                     </div>
 
                     <div className="list-main-copy">
-                      <div className="list-title">{wrestler.wrestler_name}</div>
+                      <div className="list-title">{wrestler.wrestler_name || 'Unknown wrestler'}</div>
                       <div className="small-text muted-text">
                         {attireCount} attire mod{attireCount === 1 ? '' : 's'} · Updated {formatDate(wrestler.updated_at)}
                       </div>

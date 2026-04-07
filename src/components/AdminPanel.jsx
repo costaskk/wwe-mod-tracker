@@ -51,6 +51,7 @@ export default function AdminPanel({
                     <div className="admin-actions">
                       {profile.approval_status !== 'approved' ? (
                         <button
+                          type="button"
                           className="secondary-button small-btn"
                           disabled={updating}
                           onClick={() =>
@@ -63,6 +64,7 @@ export default function AdminPanel({
 
                       {profile.approval_status !== 'rejected' ? (
                         <button
+                          type="button"
                           className="ghost-button small-btn"
                           disabled={updating}
                           onClick={() =>

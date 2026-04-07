@@ -37,7 +37,21 @@ export function emptyWrestler() {
     auto_match_titles: [],
     auto_match_urls: [],
     audio_files: [],
-    pendingAudioUploads: []
+    pendingAudioUploads: [],
+    titantrons: [],
+    removedTitantronIds: []
+  }
+}
+
+export function emptyTitantron() {
+  return {
+    id: uid(),
+    persisted: false,
+    wrestler_id: null,
+    title: '',
+    download_url: '',
+    screenshots: [],
+    pendingScreenshotUploads: []
   }
 }
 
@@ -98,7 +112,22 @@ export function normalizeWrestlerForEditor(wrestler) {
       file_name: file.file_name || '',
       file_url: file.file_url || ''
     })),
-    pendingAudioUploads: []
+    pendingAudioUploads: [],
+    titantrons: (wrestler.titantrons || wrestler.wrestler_titantrons || []).map((item) => ({
+      id: item.id,
+      persisted: true,
+      wrestler_id: item.wrestler_id || wrestler.id,
+      title: item.title || '',
+      download_url: item.download_url || '',
+      screenshots: (item.titantron_images || item.screenshots || []).map((img) => ({
+        id: img.id || null,
+        path: img.image_path || img.path || '',
+        url: img.image_url || img.url || '',
+        name: img.image_name || img.name || ''
+      })),
+      pendingScreenshotUploads: []
+    })),
+    removedTitantronIds: []
   }
 }
 
@@ -155,7 +184,8 @@ export function parseJsonOrNull(text) {
 
 export function formatDate(value) {
   if (!value) return '—'
-  return new Date(value).toLocaleDateString()
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString()
 }
 
 export function parseAppearanceDate(name = '') {
@@ -232,8 +262,9 @@ export function uniqueCollectionSlug(name, ownerId = '') {
     .replace(/[^a-zA-Z0-9]/g, '')
     .slice(0, 8)
     .toLowerCase() || 'public'
+  const random = Math.random().toString(36).slice(2, 6)
 
-  return `${base}-${shortOwner}`
+  return `${base}-${shortOwner}-${random}`
 }
 
 export function paginateItems(items = [], page = 1, perPage = 16) {
