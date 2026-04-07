@@ -385,7 +385,7 @@ export default function App() {
             .order('updated_at', { ascending: false })
         : Promise.resolve({ data: [], error: null })
 
-        const [wrestlerResult, creatorResult, installsResult, publicCollectionsResult, ownCollectionsResult, profilesResult] = await Promise.all([
+      const [wrestlerResult, creatorResult, installsResult, publicCollectionsResult, ownCollectionsResult, profilesResult] = await Promise.all([
         supabase
           .from('wrestlers')
           .select(`
@@ -1171,7 +1171,14 @@ export default function App() {
   }
 
   function openEditAttire(attire) {
-    setAttireForm({ ...normalizeAttireForEditor(attire), pendingImageUploads: [] })
+    const normalized = normalizeAttireForEditor(attire)
+
+    setAttireForm({
+      ...normalized,
+      images: normalized.images || [],
+      pendingImageUploads: [] 
+    })
+    
     setAttireModalOpen(true)
   }
 
