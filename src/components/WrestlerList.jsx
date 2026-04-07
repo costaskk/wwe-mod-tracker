@@ -124,7 +124,9 @@ export default function WrestlerList({
                       </td>
                       <td>{attireCount}</td>
                       <td>{openRequests}</td>
-                      <td>{formatDate(wrestler.updated_at)}</td>
+                      <td>
+                        <span className="muted-text">{formatDate(wrestler.updated_at)}</span>
+                      </td>
                       <td>
                         {session && canManageContent(wrestler.owner_id) ? (
                           <div className="list-card-actions compact-actions" onClick={(e) => e.stopPropagation()}>
@@ -145,7 +147,7 @@ export default function WrestlerList({
           </table>
         </div>
       ) : (
-        <div className="list-scroll">
+        <div className={`list-scroll ${wrestlers.length === 1 ? 'one-item' : ''}`}>
           {wrestlers.length === 0 ? (
             <div className="empty-state small-empty">No wrestlers match the current filters.</div>
           ) : (

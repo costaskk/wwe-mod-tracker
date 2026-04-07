@@ -685,10 +685,15 @@ select option {
   flex-direction: column;
   gap: 12px;
   max-height: calc(100vh - 250px);
-  min-height: 320px;
+  min-height: 0;
   overflow: auto;
   padding-right: 6px;
   align-items: stretch;
+}
+
+.list-scroll.one-item {
+  max-height: none;
+  overflow: visible;
 }
 
 .list-scroll > * {
@@ -745,6 +750,7 @@ select option {
 .wrestler-list-card {
   display: grid;
   gap: 12px;
+  min-height: 0;
 }
 
 .wrestler-list-card .list-card-top {
@@ -888,34 +894,43 @@ select option {
 
 .wrestler-table {
   width: 100%;
-  min-width: 640px;
+  min-width: 920px;
   border-collapse: collapse;
   table-layout: fixed;
 }
 
 .wrestler-table th:first-child,
 .wrestler-table td:first-child {
-  width: 52%;
+  width: 46%;
 }
 
 .wrestler-table th:nth-child(2),
 .wrestler-table td:nth-child(2) {
-  width: 16%;
+  width: 12%;
 }
 
 .wrestler-table th:nth-child(3),
 .wrestler-table td:nth-child(3) {
+  width: 12%;
+}
+
+.wrestler-table th:nth-child(4),
+.wrestler-table td:nth-child(4) {
   width: 16%;
 }
 
 .wrestler-table th:last-child,
 .wrestler-table td:last-child {
-  width: 16%;
+  width: 14%;
+}
+
+.wrestler-table td:last-child {
+  text-align: right;
 }
 
 .wrestler-table th,
 .wrestler-table td {
-  padding: 14px 16px;
+  padding: 16px 18px;
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: middle;
@@ -923,11 +938,14 @@ select option {
 
 .wrestler-table th {
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .wrestler-table tbody tr {
   cursor: pointer;
+  transition: background 0.2s ease;
 }
 
 .wrestler-table tbody tr:hover,
@@ -942,7 +960,7 @@ select option {
 
 .table-wrestler-cell {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
   min-width: 0;
 }
@@ -969,26 +987,12 @@ select option {
   white-space: normal;
   word-break: break-word;
   line-height: 1.35;
-  max-height: 2.7em;
-  overflow: hidden;
 }
 
 .table-wrestler-sub {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   line-height: 1.35;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-
-.table-thumb {
-  width: 54px;
-  height: 54px;
-  object-fit: cover;
-  border-radius: 14px;
-  border: 1px solid var(--line);
 }
 
 .tiny-text {
@@ -1063,6 +1067,23 @@ select option {
   border-radius: 22px;
   padding: 16px;
   line-height: 1.6;
+}
+
+.list-card-actions.compact-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.list-card-actions.compact-actions .ghost-button {
+  min-width: 72px;
+}
+
+.wrestler-table tbody tr:last-child td {
+  border-bottom: 0;
 }
 
 .compact-note {
@@ -1723,6 +1744,15 @@ select option {
   margin-top: 0;
 }
 
+.wrestler-table td:last-child .list-card-actions.compact-actions {
+  justify-content: flex-end;
+}
+
+.wrestler-table tbody tr:focus {
+  outline: 2px solid rgba(63, 166, 255, 0.34);
+  outline-offset: -2px;
+}
+
 .link-issues-list {
   display: grid;
   gap: 14px;
@@ -1775,6 +1805,17 @@ select option {
 
 .admin-role-select {
   min-width: 130px;
+}
+
+@media (min-width: 1400px) {
+  .layout-grid {
+    grid-template-columns: 430px minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .wrestler-table {
+    min-width: 980px;
+  }
 }
 
 @media (min-width: 1101px) {
@@ -1897,12 +1938,12 @@ select option {
     }
   }
 
-  @media (max-width: 560px) {
-    .gallery-grid,
-    .modal-gallery-grid {
-      grid-template-columns: 1fr;
-    }
+@media (max-width: 560px) {
+  .gallery-grid,
+  .modal-gallery-grid {
+    grid-template-columns: 1fr;
   }
+}
 
 .autocomplete-title {
   color: var(--muted);
@@ -2117,6 +2158,16 @@ select option {
 .table-thumb,
 .list-thumb {
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.table-thumb,
+.placeholder-thumb.table-thumb {
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  flex: 0 0 auto;
 }
 
 .image-modal-backdrop {
