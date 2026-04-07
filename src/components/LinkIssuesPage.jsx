@@ -1,7 +1,13 @@
-import { requestSummary, parseDownloadLinks, getDownloadProvider, getDownloadProviderLabel, getDownloadProviderMark } from '../lib/utils'
+import {
+  requestSummary,
+  parseDownloadLinks,
+  getDownloadProvider,
+  getDownloadProviderLabel,
+  getDownloadProviderMark
+} from '../lib/utils'
 
 export default function LinkIssuesPage({
-  wrestlers,
+  wrestlers = [],
   onResolveLink,
   onCreateRequest,
   canManageContent,
@@ -9,20 +15,22 @@ export default function LinkIssuesPage({
 }) {
   const issues = wrestlers.flatMap((wrestler) =>
     (wrestler.attires || []).flatMap((attire) => {
-      const requestInfo = requestSummary(wrestler.requests || [], attire.id)
-      const links = parseDownloadLinks(attire.download_url)
+      const requestInfo = requestSummary(wrestler.requests || [], 'attire_id', attire.id)
+      const links = parseDownloadLinks(attire.download_url || '')
       const missing = links.length === 0
       const dead = requestInfo.deadLinks > 0
 
       if (!missing && !dead) return []
 
-      return [{
-        wrestler,
-        attire,
-        issueType: dead ? 'dead_link' : 'missing_link',
-        summary,
-        links
-      }]
+      return [
+        {
+          wrestler,
+          attire,
+          issueType: dead ? 'dead_link' : 'missing_link',
+          requestInfo,
+          links
+        }
+      ]
     })
   )
 
@@ -52,14 +60,25 @@ export default function LinkIssuesPage({
 
                 <h3>{item.attire.name}</h3>
 
+                <div className="muted-text small-text">
+                  {item.requestInfo.deadLinks > 0
+                    ? `${item.requestInfo.deadLinks} dead link report${item.requestInfo.deadLinks === 1 ? '' : 's'}`
+                    : 'No download link added'}
+                </div>
+
                 <div className="download-links-list">
                   {item.links.length ? (
                     item.links.map((link, index) => {
                       const provider = getDownloadProvider(link)
                       return (
-                        <div className={`download-link-chip provider-${provider}`} key={`${link}-${index}`}>
+                        <div
+                          className={`download-link-chip provider-${provider}`}
+                          key={`${link}-${index}`}
+                        >
                           <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
-                          <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
+                          <span className="provider-label">
+                            {getDownloadProviderLabel(provider)}
+                          </span>
                         </div>
                       )
                     })

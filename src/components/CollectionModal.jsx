@@ -6,7 +6,7 @@ export default function CollectionModal({ open, form, setForm, onClose, onSave, 
     <div className="modal-backdrop modal-backdrop-front">
       <div className="panel modal-card large-modal">
         <div className="modal-header">
-          <h2>{form.id ? 'Edit collection' : 'Create collection'}</h2>
+          <h2>{form.persisted ? 'Edit collection' : 'Create collection'}</h2>
           <p className="subtle-copy">Build a personal mod pack, add a cover, and choose whether it is private or shareable.</p>
         </div>
 
@@ -16,7 +16,7 @@ export default function CollectionModal({ open, form, setForm, onClose, onSave, 
               <div className="form-grid compact-grid">
                 <label>
                   Collection name
-                  <input value={form.name} onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))} />
+                  <input value={form.name || ''} onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))} />
                 </label>
 
                 <label>
@@ -33,12 +33,12 @@ export default function CollectionModal({ open, form, setForm, onClose, onSave, 
 
                 <label className="span-2">
                   Description
-                  <textarea value={form.description} onChange={(e) => setForm((current) => ({ ...current, description: e.target.value }))} />
+                  <textarea value={form.description || ''} onChange={(e) => setForm((current) => ({ ...current, description: e.target.value }))} />
                 </label>
 
                 <label>
                   Visibility
-                  <select value={form.visibility} onChange={(e) => setForm((current) => ({ ...current, visibility: e.target.value }))}>
+                  <select value={form.visibility || 'public'} onChange={(e) => setForm((current) => ({ ...current, visibility: e.target.value }))}>
                     <option value="public">Public / shareable</option>
                     <option value="private">Private / profile only</option>
                   </select>
@@ -64,7 +64,7 @@ export default function CollectionModal({ open, form, setForm, onClose, onSave, 
                       disabled={uploading}
                       onChange={(e) => {
                         const file = e.target.files?.[0]
-                        onUploadCover(file)
+                        if (file) onUploadCover(file)
                         e.target.value = ''
                       }}
                     />

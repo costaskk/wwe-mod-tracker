@@ -1,5 +1,14 @@
 import { useMemo, useState } from 'react'
-import { ATTIRE_STATUSES, MOD_TYPES, SOURCE_GAMES, titleCase, parseDownloadLinks, getDownloadProvider, getDownloadProviderLabel, getDownloadProviderMark } from '../lib/utils'
+import {
+  ATTIRE_STATUSES,
+  MOD_TYPES,
+  SOURCE_GAMES,
+  titleCase,
+  parseDownloadLinks,
+  getDownloadProvider,
+  getDownloadProviderLabel,
+  getDownloadProviderMark
+} from '../lib/utils'
 
 function JsonEditor({ title, value, onChange, onUpload, filenameHint, uploading }) {
   const [expanded, setExpanded] = useState(true)
@@ -35,7 +44,7 @@ function JsonEditor({ title, value, onChange, onUpload, filenameHint, uploading 
       {expanded ? (
         <textarea
           className="json-editor-area"
-          value={value}
+          value={value || ''}
           onChange={(e) => onChange(e.target.value)}
           placeholder={`Paste ${filenameHint || 'JSON'} here...`}
         />
@@ -46,19 +55,27 @@ function JsonEditor({ title, value, onChange, onUpload, filenameHint, uploading 
 
 function DdsPreview({ url, name }) {
   const [failed, setFailed] = useState(false)
+
   if (!url) return <div className="upload-placeholder">No DDS render uploaded</div>
 
   return (
     <div className="dds-preview-wrap">
       {!failed ? (
-        <img className="upload-preview dds-preview" src={url} alt={name || 'DDS render'} onError={() => setFailed(true)} />
+        <img
+          className="upload-preview dds-preview"
+          src={url}
+          alt={name || 'DDS render'}
+          onError={() => setFailed(true)}
+        />
       ) : (
         <div className="render-tile">
           <div className="render-badge">DDS</div>
           <div className="render-name">This browser cannot render DDS directly. You can still open or download the file.</div>
         </div>
       )}
-      <a className="secondary-button inline-btn small-btn" href={url} target="_blank" rel="noreferrer">Open / download DDS</a>
+      <a className="secondary-button inline-btn small-btn" href={url} target="_blank" rel="noreferrer">
+        Open / download DDS
+      </a>
     </div>
   )
 }
@@ -89,11 +106,13 @@ export default function AttireEditorModal({
 
   const duplicateAttire = useMemo(() => {
     if (!parentWrestler || !normalizedAttireName) return null
-    return (parentWrestler.attires || []).find(
-      (item) =>
-        (item.name || '').trim().toLowerCase() === normalizedAttireName &&
-        item.id !== form.id
-    ) || null
+    return (
+      (parentWrestler.attires || []).find(
+        (item) =>
+          (item.name || '').trim().toLowerCase() === normalizedAttireName &&
+          item.id !== form.id
+      ) || null
+    )
   }, [parentWrestler, normalizedAttireName, form.id])
 
   const attireSuggestions = useMemo(() => {
@@ -119,7 +138,9 @@ export default function AttireEditorModal({
       <div className="panel modal-card large-modal">
         <div className="modal-header">
           <h2>{form.persisted ? 'Edit attire mod' : 'Add attire mod'}</h2>
-          <p className="subtle-copy">Each attire stores its own creator, link, screenshots, DDS render, moveset JSON, and hype / DC profile JSON.</p>
+          <p className="subtle-copy">
+            Each attire stores its own creator, link, screenshots, DDS render, moveset JSON, and hype / DC profile JSON.
+          </p>
         </div>
 
         <div className="modal-scroll">
@@ -129,7 +150,7 @@ export default function AttireEditorModal({
                 <label>
                   Attire name
                   <input
-                    value={form.name}
+                    value={form.name || ''}
                     onChange={(e) => updateField('name', e.target.value)}
                     placeholder="Black and Gold 2021"
                     autoComplete="off"
@@ -179,7 +200,7 @@ export default function AttireEditorModal({
                   <label>
                     Era / appearance date hint
                     <input
-                      value={form.era}
+                      value={form.era || ''}
                       onChange={(e) => updateField('era', e.target.value)}
                       placeholder="1997 WCW, March 2001, Ruthless Aggression"
                     />
@@ -187,8 +208,15 @@ export default function AttireEditorModal({
 
                   <label>
                     Status
-                    <select value={form.status} onChange={(e) => updateField('status', e.target.value)}>
-                      {ATTIRE_STATUSES.map((item) => <option key={item} value={item}>{titleCase(item)}</option>)}
+                    <select
+                      value={form.status || 'complete'}
+                      onChange={(e) => updateField('status', e.target.value)}
+                    >
+                      {ATTIRE_STATUSES.map((item) => (
+                        <option key={item} value={item}>
+                          {titleCase(item)}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 </div>
@@ -196,17 +224,33 @@ export default function AttireEditorModal({
                 <div className="form-grid compact-grid">
                   <label>
                     Creator
-                    <select value={form.creator_name} onChange={(e) => updateField('creator_name', e.target.value)}>
+                    <select
+                      value={form.creator_name || ''}
+                      onChange={(e) => updateField('creator_name', e.target.value)}
+                    >
                       <option value="">Select a creator</option>
-                      {creatorOptions.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+                      {creatorOptions.map((item) => (
+                        <option key={item.id} value={item.name}>
+                          {item.name}
+                        </option>
+                      ))}
                     </select>
                   </label>
 
                   <label>
                     Add creator
                     <div className="inline-stack creator-inline-stack">
-                      <input value={newCreatorName} onChange={(e) => setNewCreatorName(e.target.value)} placeholder="New creator name" />
-                      <button type="button" className="secondary-button small-btn" onClick={onAddCreator} disabled={addingCreator || !newCreatorName.trim()}>
+                      <input
+                        value={newCreatorName}
+                        onChange={(e) => setNewCreatorName(e.target.value)}
+                        placeholder="New creator name"
+                      />
+                      <button
+                        type="button"
+                        className="secondary-button small-btn"
+                        onClick={onAddCreator}
+                        disabled={addingCreator || !newCreatorName.trim()}
+                      >
                         {addingCreator ? 'Adding…' : 'Add'}
                       </button>
                     </div>
@@ -216,7 +260,10 @@ export default function AttireEditorModal({
                 <div className="form-grid compact-grid">
                   <label>
                     Source game
-                    <select value={form.source_game} onChange={(e) => updateField('source_game', e.target.value)}>
+                    <select
+                      value={form.source_game || 'WWE 2K25'}
+                      onChange={(e) => updateField('source_game', e.target.value)}
+                    >
                       {SOURCE_GAMES.map((item) => (
                         <option key={item} value={item}>
                           {item === 'WWE 2K26' ? 'WWE 2K26 • NEW' : item}
@@ -227,8 +274,15 @@ export default function AttireEditorModal({
 
                   <label>
                     Mod type
-                    <select value={form.mod_type} onChange={(e) => updateField('mod_type', e.target.value)}>
-                      {MOD_TYPES.map((item) => <option key={item} value={item}>{titleCase(item)}</option>)}
+                    <select
+                      value={form.mod_type || 'original'}
+                      onChange={(e) => updateField('mod_type', e.target.value)}
+                    >
+                      {MOD_TYPES.map((item) => (
+                        <option key={item} value={item}>
+                          {titleCase(item)}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 </div>
@@ -236,7 +290,7 @@ export default function AttireEditorModal({
                 <label>
                   Download links
                   <textarea
-                    value={form.download_url}
+                    value={form.download_url || ''}
                     onChange={(e) => updateField('download_url', e.target.value)}
                     placeholder={'Paste one link per line\nhttps://www.mediafire.com/...\nhttps://mega.nz/...'}
                   />
@@ -258,12 +312,15 @@ export default function AttireEditorModal({
 
                 <label>
                   Notes
-                  <textarea value={form.notes} onChange={(e) => updateField('notes', e.target.value)} />
+                  <textarea
+                    value={form.notes || ''}
+                    onChange={(e) => updateField('notes', e.target.value)}
+                  />
                 </label>
 
                 <JsonEditor
                   title="Moveset / animations JSON"
-                  value={form.moveset_json_text}
+                  value={form.moveset_json_text || ''}
                   onChange={(value) => updateField('moveset_json_text', value)}
                   onUpload={(file) => onUploadJson(file, 'moveset')}
                   filenameHint="moveset JSON"
@@ -272,7 +329,7 @@ export default function AttireEditorModal({
 
                 <JsonEditor
                   title="Hype / DC profile JSON"
-                  value={form.profile_json_text}
+                  value={form.profile_json_text || ''}
                   onChange={(value) => updateField('profile_json_text', value)}
                   onUpload={(file) => onUploadJson(file, 'profile')}
                   filenameHint="profile JSON"
@@ -293,7 +350,11 @@ export default function AttireEditorModal({
                     <div className="gallery-grid modal-gallery-grid">
                       {form.images.map((image) => (
                         <div className="gallery-tile" key={image.path || image.id}>
-                          <img className="gallery-img" src={image.url} alt={image.name || 'Attire screenshot'} />
+                          <img
+                            className="gallery-img"
+                            src={image.url || image.image_url}
+                            alt={image.name || image.image_name || 'Attire screenshot'}
+                          />
                           <button
                             className="ghost-button small-btn gallery-remove"
                             type="button"
@@ -375,7 +436,9 @@ export default function AttireEditorModal({
                 ? 'Uploading asset…'
                 : ''}
           </div>
-          <button className="ghost-button" onClick={onClose} type="button" disabled={saving || uploading}>Cancel</button>
+          <button className="ghost-button" onClick={onClose} type="button" disabled={saving || uploading}>
+            Cancel
+          </button>
           <button
             className="primary-button"
             onClick={onSave}

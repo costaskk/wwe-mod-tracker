@@ -1,5 +1,10 @@
-
-import { formatDate, titleCase, parseDownloadLinks } from '../lib/utils'
+import {
+  formatDate,
+  titleCase,
+  parseDownloadLinks,
+  getCollectionItemTarget,
+  getModTypeLabel
+} from '../lib/utils'
 
 export default function CollectionView({ collection, canContribute, onClose, onSelectWrestler }) {
   if (!collection) return null
@@ -12,7 +17,9 @@ export default function CollectionView({ collection, canContribute, onClose, onS
           <h2>{collection.name}</h2>
           <p className="subtle-copy">{collection.description || 'No description added yet.'}</p>
         </div>
-        <button className="ghost-button" onClick={onClose} type="button">Back to collections</button>
+        <button className="ghost-button" onClick={onClose} type="button">
+          Back to collections
+        </button>
       </div>
 
       <div className="collection-hero-grid">
@@ -26,9 +33,18 @@ export default function CollectionView({ collection, canContribute, onClose, onS
 
         <div className="collection-hero-copy">
           <div className="mini-stats mini-stats-three">
-            <div><span>Visibility</span><strong>{titleCase(collection.visibility)}</strong></div>
-            <div><span>Items</span><strong>{collection.items?.length || 0}</strong></div>
-            <div><span>Updated</span><strong>{formatDate(collection.updated_at)}</strong></div>
+            <div>
+              <span>Visibility</span>
+              <strong>{titleCase(collection.visibility)}</strong>
+            </div>
+            <div>
+              <span>Items</span>
+              <strong>{collection.items?.length || 0}</strong>
+            </div>
+            <div>
+              <span>Updated</span>
+              <strong>{formatDate(collection.updated_at)}</strong>
+            </div>
           </div>
         </div>
       </div>
@@ -38,38 +54,77 @@ export default function CollectionView({ collection, canContribute, onClose, onS
           <div className="empty-state small-empty">This collection has no items yet.</div>
         ) : (
           collection.items.map((item) => {
-            const attire = item.attire || item.attires
-            const wrestler = attire?.wrestler
-            const image = attire?.attire_images?.[0]
+            const target = getCollectionItemTarget(item)
+            const attire = item.attire || item.attires || null
+            const arena = item.arena || item.arenas || null
+
+            const isAttire = target.mod_type === 'attire'
+            const isArena = target.mod_type === 'arena'
+
+            const displayName = isAttire
+              ? (attire?.name || 'Unknown attire')
+              : isArena
+                ? (arena?.name || 'Unknown arena')
+                : 'Unknown item'
+
+            const subtitle = isAttire
+              ? `${attire?.wrestler?.wrestler_name || 'Unknown wrestler'} · ${attire?.source_game || '—'}`
+              : isArena
+                ? `${getModTypeLabel(target.mod_type)} · ${arena?.source_game || '—'}`
+                : getModTypeLabel(target.mod_type)
+
+            const creatorName = isAttire
+              ? attire?.creator_name
+              : isArena
+                ? arena?.creator_name
+                : ''
+
+            const image = isAttire
+              ? attire?.attire_images?.[0]
+              : isArena
+                ? arena?.arena_images?.[0]
+                : null
+
+            const thumbUrl = image?.image_url || image?.url || ''
+            const downloadUrl = isAttire
+              ? attire?.download_url
+              : isArena
+                ? arena?.download_url
+                : ''
 
             return (
               <article className="collection-item-card" key={item.id}>
-                {image?.image_url ? (
-                  <img className="collection-item-thumb" src={image.image_url} alt={attire?.name || 'Attire'} />
+                {thumbUrl ? (
+                  <img className="collection-item-thumb" src={thumbUrl} alt={displayName} />
                 ) : (
                   <div className="collection-item-thumb collection-cover-placeholder">
-                    {(attire?.name || '?').slice(0, 2).toUpperCase()}
+                    {displayName.slice(0, 2).toUpperCase()}
                   </div>
                 )}
 
                 <div className="collection-item-body">
-                  <h3>{attire?.name || 'Unknown attire'}</h3>
+                  <h3>{displayName}</h3>
+
                   <div className="muted-text small-text">
-                    {wrestler?.wrestler_name || 'Unknown wrestler'} · {attire?.source_game || '—'}
+                    {subtitle}
                   </div>
 
-                  {attire?.creator_name ? (
-                    <div className="creator-badge prominent-creator-badge">{attire.creator_name}</div>
+                  <div className="muted-text small-text">
+                    {getModTypeLabel(target.mod_type)}
+                  </div>
+
+                  {creatorName ? (
+                    <div className="creator-badge prominent-creator-badge">{creatorName}</div>
                   ) : null}
 
                   <div className="collection-actions wrap-actions">
-                    {wrestler ? (
+                    {isAttire && attire?.wrestler ? (
                       <button
                         className="secondary-button small-btn"
                         onClick={() =>
                           onSelectWrestler({
-                            wrestlerId: wrestler.id,
-                            wrestlerName: wrestler.wrestler_name
+                            wrestlerId: attire.wrestler.id,
+                            wrestlerName: attire.wrestler.wrestler_name
                           })
                         }
                         type="button"
@@ -79,8 +134,8 @@ export default function CollectionView({ collection, canContribute, onClose, onS
                     ) : null}
 
                     {canContribute ? (
-                      parseDownloadLinks(attire?.download_url).length ? (
-                        <span className="pill">{parseDownloadLinks(attire?.download_url).length} link(s)</span>
+                      parseDownloadLinks(downloadUrl).length ? (
+                        <span className="pill">{parseDownloadLinks(downloadUrl).length} link(s)</span>
                       ) : (
                         <span className="pill danger-pill">No link</span>
                       )
