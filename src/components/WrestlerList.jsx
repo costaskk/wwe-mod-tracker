@@ -103,6 +103,7 @@ export default function WrestlerList({
                         }
                       }}
                       tabIndex={0}
+                      aria-selected={isSelected}
                     >
                       <td>
                         <div className="table-wrestler-cell">
