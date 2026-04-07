@@ -460,6 +460,27 @@ button:disabled {
   gap: 20px;
 }
 
+.left-column .filter-row-grid-three {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.left-column .filter-row-grid-three > label:last-child {
+  grid-column: 1 / -1;
+}
+
+.left-column .filter-checkbox-grid {
+  grid-template-columns: 1fr;
+}
+
+.left-column .filter-row-grid-three > label,
+.left-column .filter-row-grid > label,
+.left-column select,
+.left-column input {
+  min-width: 0;
+}
+
+
+
 .panel-header,
 .with-actions,
 .detail-heading-row,
@@ -534,6 +555,10 @@ select {
     linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.025)),
     rgba(10, 20, 36, 0.92);
   color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  padding-right: 2.5rem;
   padding: 0.95rem 2.9rem 0.95rem 1rem;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
