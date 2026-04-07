@@ -6,7 +6,14 @@ export default function ResolveLinkModal({ open, context, onClose, onSubmit, sub
   const [notes, setNotes] = useState('')
 
   useEffect(() => {
-    if (!open || !context) return
+    if (!open) {
+      setUrl('')
+      setNotes('')
+      return
+    }
+
+    if (!context) return
+
     setUrl(context.currentUrl || '')
     setNotes('')
   }, [open, context])
@@ -19,13 +26,15 @@ export default function ResolveLinkModal({ open, context, onClose, onSubmit, sub
         <div className="modal-header">
           <h2>Fix link</h2>
           <p className="subtle-copy">
-            {context.wrestlerName} · {context.attireName}
+            {context.wrestlerName || 'Unknown wrestler'} · {context.attireName || 'Unknown attire'}
           </p>
         </div>
 
         <label>
           Correct download URL
           <input
+            type="url"
+            autoFocus
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://example.com/mod-download"
@@ -42,8 +51,15 @@ export default function ResolveLinkModal({ open, context, onClose, onSubmit, sub
         </label>
 
         <div className="modal-footer">
-          <button className="ghost-button" onClick={onClose}>Cancel</button>
-          <button className="primary-button" onClick={() => onSubmit(url, notes)} disabled={submitting || !url.trim()}>
+          <button className="ghost-button" type="button" onClick={onClose} disabled={submitting}>
+            Cancel
+          </button>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => onSubmit(url.trim(), notes.trim())}
+            disabled={submitting || !url.trim()}
+          >
             {submitting ? 'Saving…' : 'Save and resolve'}
           </button>
         </div>

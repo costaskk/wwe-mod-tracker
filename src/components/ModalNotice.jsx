@@ -9,7 +9,7 @@ export default function ModalNotice({ notice, onClose }) {
         <h3>{notice.title || 'Notice'}</h3>
         <p className="subtle-copy">{notice.message}</p>
         <div className="modal-footer notice-footer">
-          <button className="primary-button" onClick={onClose}>OK</button>
+          <button type="button" className="primary-button" onClick={onClose}>OK</button>
         </div>
       </div>
     </div>

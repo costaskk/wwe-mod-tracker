@@ -45,7 +45,9 @@ export default function CollectionPickerModal({ open, attire, collections, membe
         )}
 
         <div className="modal-footer">
-          <button className="ghost-button" onClick={onClose}>Close</button>
+          <button className="ghost-button" type="button" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>

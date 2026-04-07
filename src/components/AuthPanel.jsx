@@ -66,10 +66,10 @@ export default function AuthPanel({ session, currentProfile }) {
       </div>
 
       <div className="segment-control compact-segment">
-        <button className={mode === 'signin' ? 'active' : ''} onClick={() => setMode('signin')}>
+        <button type="button" className={mode === 'signin' ? 'active' : ''} onClick={() => setMode('signin')}>
           Sign in
         </button>
-        <button className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')}>
+        <button type="button" className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')}>
           Create account
         </button>
       </div>
@@ -93,7 +93,7 @@ export default function AuthPanel({ session, currentProfile }) {
           </label>
 
           <div className="auth-submit-wrap">
-            <button className="primary-button" disabled={loading}>
+            <button type="button" className="primary-button" disabled={loading}>
               {loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
             </button>
           </div>
