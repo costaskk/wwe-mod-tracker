@@ -20,7 +20,9 @@ function JsonEditor({ title, value, onChange, onUpload, filenameHint, uploading 
               disabled={uploading}
               onChange={(e) => {
                 const file = e.target.files?.[0]
-                onUpload(file)
+                if (file) {
+                  onUpload(file)
+                }
                 e.target.value = ''
               }}
             />
@@ -215,7 +217,11 @@ export default function AttireEditorModal({
                   <label>
                     Source game
                     <select value={form.source_game} onChange={(e) => updateField('source_game', e.target.value)}>
-                      {SOURCE_GAMES.map((item) => <option key={item} value={item}>{item}</option>)}
+                      {SOURCE_GAMES.map((item) => (
+                        <option key={item} value={item}>
+                          {item === 'WWE 2K26' ? 'WWE 2K26 • NEW' : item}
+                        </option>
+                      ))}
                     </select>
                   </label>
 
@@ -369,7 +375,7 @@ export default function AttireEditorModal({
                 ? 'Uploading asset…'
                 : ''}
           </div>
-          <button className="ghost-button" onClick={onClose} type="button">Cancel</button>
+          <button className="ghost-button" onClick={onClose} type="button" disabled={saving || uploading}>Cancel</button>
           <button
             className="primary-button"
             onClick={onSave}
