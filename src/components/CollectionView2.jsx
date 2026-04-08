@@ -87,13 +87,14 @@ export default function CollectionView({
 }) {
   const [viewMode, setViewMode] = useState('grid')
   const [selectedIds, setSelectedIds] = useState([])
+  const [previewImage, setPreviewImage] = useState(null)
 
   const items = collection?.items || []
-
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds])
 
   useEffect(() => {
     setSelectedIds([])
+    setPreviewImage(null)
   }, [collection?.id])
 
   if (!collection) return null
@@ -121,7 +122,7 @@ export default function CollectionView({
   }
 
   return (
-    <section className="panel detail-hero collection-view-panel">
+    <section className="panel detail-hero collection-view-panel collection-view-panel-improved">
       <div className="panel-header with-actions">
         <div>
           <div className="eyebrow">Collection page</div>
@@ -136,7 +137,7 @@ export default function CollectionView({
         </div>
       </div>
 
-      <div className="collection-hero-grid">
+      <div className="collection-hero-grid collection-hero-grid-improved">
         {collection.cover_url ? (
           <img className="collection-hero-cover" src={collection.cover_url} alt={collection.name} />
         ) : (
@@ -163,15 +164,15 @@ export default function CollectionView({
         </div>
       </div>
 
-      <div className="panel-header with-actions">
+      <div className="panel-header with-actions collection-toolbar-row">
         <div>
           <h3>Collection items</h3>
           <p className="subtle-copy">
-            Browse all saved mods with category tags, quick links, and removal tools.
+            Browse all saved mods with category tags, quick links, image preview, and removal tools.
           </p>
         </div>
 
-        <div className="wrap-actions">
+        <div className="wrap-actions collection-toolbar-actions">
           <div className="view-toggle">
             <button
               type="button"
@@ -191,11 +192,11 @@ export default function CollectionView({
 
           {canManageCollection && items.length ? (
             <>
-            {selectedIds.length > 0 ? (
-              <span className="pill subtle-pill">
-                {selectedIds.length} selected
-              </span>
-            ) : null}
+              {selectedIds.length > 0 ? (
+                <span className="pill subtle-pill collection-selected-pill">
+                  {selectedIds.length} selected
+                </span>
+              ) : null}
 
               <button
                 type="button"
@@ -222,7 +223,7 @@ export default function CollectionView({
       {items.length === 0 ? (
         <div className="empty-state small-empty">This collection has no items yet.</div>
       ) : viewMode === 'compact' ? (
-        <div className="compact-attire-table">
+        <div className="compact-attire-table collection-compact-table">
           {items.map((item) => {
             const {
               target,
@@ -232,23 +233,26 @@ export default function CollectionView({
               subtitle,
               creatorName,
               displayName,
-              linkCount
+              linkCount,
+              thumbUrl
             } = getCollectionItemData(item)
 
             return (
-              <article className="compact-attire-row" key={item.id}>
+              <article className="compact-attire-row collection-compact-row" key={item.id}>
                 <div className="compact-main">
                   <div className="compact-title-row">
                     {canManageCollection ? (
-                      <input
-                        type="checkbox"
-                        checked={selectedIdSet.has(item.id)}
-                        onChange={(e) => {
-                          e.stopPropagation()
-                          toggleSelected(item.id)
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
+                      <label className="collection-select-check" aria-label={`Select ${displayName}`}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIdSet.has(item.id)}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            toggleSelected(item.id)
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </label>
                     ) : null}
 
                     <strong title={displayName}>{displayName}</strong>
@@ -279,8 +283,18 @@ export default function CollectionView({
                   </div>
                 </div>
 
-                <div className="compact-side">
+                <div className="compact-side collection-compact-side">
                   <div className="compact-actions-row">
+                    {thumbUrl ? (
+                      <button
+                        className="ghost-button small-btn"
+                        onClick={() => setPreviewImage(thumbUrl)}
+                        type="button"
+                      >
+                        Preview image
+                      </button>
+                    ) : null}
+
                     {isAttire && entity?.wrestler ? (
                       <button
                         className="secondary-button small-btn"
@@ -327,7 +341,7 @@ export default function CollectionView({
           })}
         </div>
       ) : (
-        <div className="collection-items-grid">
+        <div className="collection-items-grid collection-items-grid-improved">
           {items.map((item) => {
             const {
               target,
@@ -354,7 +368,7 @@ export default function CollectionView({
                   </div>
 
                   {canManageCollection ? (
-                    <label className="collection-select-check">
+                    <label className="collection-select-check" aria-label={`Select ${displayName}`}>
                       <input
                         type="checkbox"
                         checked={selectedIdSet.has(item.id)}
@@ -372,21 +386,8 @@ export default function CollectionView({
                   <button
                     type="button"
                     className="collection-thumb-button"
-                    onClick={() => {
-                      if (isAttire && entity?.wrestler) {
-                        onSelectWrestler?.({
-                          wrestlerId: entity.wrestler.id,
-                          wrestlerName: entity.wrestler.wrestler_name
-                        })
-                      }
-
-                      if (isArena) {
-                        onSelectArena?.({
-                          arenaId: entity.id,
-                          arenaName: entity.name
-                        })
-                      }
-                    }}
+                    onClick={() => setPreviewImage(thumbUrl)}
+                    aria-label={`Preview ${displayName}`}
                   >
                     <img className="collection-item-thumb" src={thumbUrl} alt={displayName} />
                   </button>
@@ -399,7 +400,7 @@ export default function CollectionView({
                 <div className="collection-item-body">
                   <h3 title={displayName}>{displayName}</h3>
 
-                  <div className="muted-text small-text">{subtitle}</div>
+                  <div className="muted-text small-text collection-item-subtitle">{subtitle}</div>
 
                   {creatorName ? (
                     <div className="creator-badge prominent-creator-badge">{creatorName}</div>
@@ -416,6 +417,16 @@ export default function CollectionView({
                   </div>
 
                   <div className="collection-actions wrap-actions">
+                    {thumbUrl ? (
+                      <button
+                        className="ghost-button small-btn"
+                        onClick={() => setPreviewImage(thumbUrl)}
+                        type="button"
+                      >
+                        Preview image
+                      </button>
+                    ) : null}
+
                     {isAttire && entity?.wrestler ? (
                       <button
                         className="secondary-button small-btn"
@@ -462,6 +473,14 @@ export default function CollectionView({
           })}
         </div>
       )}
+
+      {previewImage ? (
+        <div className="image-modal-backdrop image-modal-backdrop-open" onClick={() => setPreviewImage(null)}>
+          <div className="image-modal-content image-modal-content-open" onClick={(e) => e.stopPropagation()}>
+            <img src={previewImage} alt="Collection preview" />
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }
