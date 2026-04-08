@@ -492,14 +492,10 @@ export default function CollectionView({
           onClick={() => setPreviewImage(null)}
         >
           <div
-            className="image-modal-content image-modal-content-open collection-image-modal-content"
+            className="image-modal-content image-modal-content-open"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              className="collection-image-modal-img"
-              src={previewImage}
-              alt="Collection preview"
-            />
+            <img src={previewImage} alt="Collection preview" />
           </div>
         </div>
       ) : null}
