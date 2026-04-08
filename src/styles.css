@@ -1799,6 +1799,8 @@ select option {
   padding: 0;
   margin: 0;
   background: transparent;
+  border-radius: 18px 18px 0 0;
+  overflow: hidden;
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
@@ -1818,9 +1820,35 @@ select option {
   filter: brightness(0.96);
 }
 
+.collection-thumb-button .collection-item-thumb {
+  display: block;
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  transition: transform 0.22s ease, filter 0.22s ease;
+}
+
 .collection-thumb-button:hover .collection-item-thumb {
-  transform: scale(1.03);
-  filter: brightness(1.04);
+  transform: scale(1.02);
+  filter: brightness(1.05);
+}
+
+.collection-image-modal-content {
+  width: min(96vw, 1800px);
+  height: 92vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collection-image-modal-img {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
 }
 
 .cover-preview {
@@ -1838,6 +1866,47 @@ select option {
   color: var(--text);
   font-weight: 800;
   font-size: 1.4rem;
+}
+
+.collection-checkbox-input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border-radius: 7px;
+  border: 1px solid rgba(161, 196, 255, 0.24);
+  background: rgba(255, 255, 255, 0.05);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  flex: 0 0 22px;
+}
+
+.collection-checkbox-input:hover {
+  border-color: rgba(63, 166, 255, 0.46);
+  background: rgba(63, 166, 255, 0.12);
+}
+
+.collection-checkbox-input:checked {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-color: rgba(125, 123, 255, 0.6);
+  box-shadow: 0 0 0 3px rgba(63, 166, 255, 0.12);
+}
+
+.collection-checkbox-input::after {
+  content: '';
+  width: 6px;
+  height: 10px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(45deg) translate(-1px, -1px);
+  opacity: 0;
+}
+
+.collection-checkbox-input:checked::after {
+  opacity: 1;
 }
 
 .collection-body,
@@ -1934,7 +2003,10 @@ select option {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  flex: 0 0 22px;
 }
 
 .collection-select-check input,

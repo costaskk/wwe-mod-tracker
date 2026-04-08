@@ -103,6 +103,16 @@ export default function CollectionView({
     setSelectedIds([])
   }, [collection?.id])
 
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.key === 'Escape') setPreviewImage(null)
+    }
+    if (previewImage) {
+      window.addEventListener('keydown', handleKey)
+    }
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [previewImage])
+
   if (!collection) return null
 
   function toggleSelected(itemId) {
@@ -249,6 +259,7 @@ export default function CollectionView({
                     {canManageCollection ? (
                       <input
                         type="checkbox"
+                        className="collection-checkbox-input"
                         checked={selectedIdSet.has(item.id)}
                         onChange={(e) => {
                           e.stopPropagation()
@@ -364,6 +375,7 @@ export default function CollectionView({
                     <label className="collection-select-check">
                       <input
                         type="checkbox"
+                        className="collection-checkbox-input"
                         checked={selectedIdSet.has(item.id)}
                         onChange={(e) => {
                           e.stopPropagation()
@@ -478,10 +490,14 @@ export default function CollectionView({
           onClick={() => setPreviewImage(null)}
         >
           <div
-            className="image-modal-content image-modal-content-open"
+            className="image-modal-content image-modal-content-open collection-image-modal-content"
             onClick={(e) => e.stopPropagation()}
           >
-            <img src={previewImage} alt="Collection preview" />
+            <img
+              className="collection-image-modal-img"
+              src={previewImage}
+              alt="Collection preview"
+            />
           </div>
         </div>
       ) : null}
