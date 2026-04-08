@@ -221,15 +221,6 @@ function WrestlerTitantronSection({ wrestler, canContribute, onPreviewImage }) {
               <div className="attire-card-top">
                 <div className="attire-title-stack">
                   <h3>{item.title || 'Untitled titantron'}</h3>
-
-                  <div className="list-meta wrap-meta">
-                    <span className="game-badge">
-                      {item.source_game || 'WWE 2K25'}
-                      {item.source_game === 'WWE 2K26' ? (
-                        <span className="latest-badge">NEW</span>
-                      ) : null}
-                    </span>
-                  </div>
                 </div>
               </div>
 
@@ -264,6 +255,10 @@ function WrestlerTitantronSection({ wrestler, canContribute, onPreviewImage }) {
                     <div className="meta-value break-line">
                       <DownloadLinks value={item.download_url} />
                     </div>
+                  </div>
+                  <div>
+                    <span className="muted-text">Source game</span>
+                    <div className="meta-value break-line">{item.source_game || 'WWE 2K25'}</div>
                   </div>
                   <div>
                     <span className="muted-text">Screenshots</span>
