@@ -2562,14 +2562,20 @@ select option {
 .image-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.88);
+  width: 100vw;
+  height: 100vh;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
-  padding: 24px;
-  backdrop-filter: blur(0px);
-  animation: imageBackdropFadeIn 0.22s ease forwards;
+
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+
+  z-index: 9999; /* 🔥 IMPORTANT */
+
+  /* 🔥 FORCE it to escape parent stacking contexts */
+  isolation: isolate;
 }
 
 .image-modal-backdrop-open {
@@ -2577,15 +2583,13 @@ select option {
 }
 
 .image-modal-content {
+  position: relative;
+  max-width: 95vw;
+  max-height: 95vh;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  max-width: 92vw;
-  max-height: 92vh;
-  transform: scale(0.92);
-  opacity: 0;
-  animation: imageModalPopIn 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-  overflow: hidden;
 }
 
 .image-modal-content-open {
@@ -2593,15 +2597,13 @@ select option {
 }
 
 .image-modal-content img {
-  display: block;
-  max-width: min(92vw, 1400px);
-  max-height: 90vh;
+  max-width: 95vw;
+  max-height: 95vh;
   width: auto;
   height: auto;
   object-fit: contain;
-  border-radius: 18px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.42);
-  background: #0b1220;
+
+  border-radius: 16px;
 }
 
 @keyframes imageBackdropFadeIn {

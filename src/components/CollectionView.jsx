@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   formatDate,
   titleCase,
@@ -486,19 +487,22 @@ export default function CollectionView({
         </div>
       )}
 
-      {previewImage ? (
-        <div
-          className="image-modal-backdrop image-modal-backdrop-open"
-          onClick={() => setPreviewImage(null)}
-        >
+      {previewImage &&
+        createPortal(
           <div
-            className="image-modal-content image-modal-content-open"
-            onClick={(e) => e.stopPropagation()}
+            className="image-modal-backdrop image-modal-backdrop-open"
+            onClick={() => setPreviewImage(null)}
           >
-            <img src={previewImage} alt="Collection preview" />
-          </div>
-        </div>
-      ) : null}
+            <div
+              className="image-modal-content image-modal-content-open"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img src={previewImage} alt="Collection preview" />
+            </div>
+          </div>,
+          document.body
+        )
+      }
     </section>
   )
 }
