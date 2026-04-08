@@ -862,6 +862,10 @@ select option {
   line-height: 1;
 }
 
+.empty-state-action {
+  margin-top: 10px;
+}
+
 @media (max-width: 900px) {
   .titantron-stats-grid {
     grid-template-columns: 1fr;
@@ -901,6 +905,12 @@ select option {
 .hero-headshot-button:hover .hero-headshot {
   transform: scale(1.02);
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+}
+
+.warning-pill {
+  color: #ffe7c2;
+  background: rgba(255, 176, 86, 0.14);
+  border-color: rgba(255, 176, 86, 0.24);
 }
 
 @media (max-width: 860px) {

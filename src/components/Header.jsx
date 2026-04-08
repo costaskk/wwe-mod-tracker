@@ -80,7 +80,9 @@ export default function Header({
           </div>
 
           <span className="user-chip subtle-chip">
-            {session ? `${currentProfile?.role || 'user'} mode` : 'Public browse mode'}
+            {session ? 
+              `${currentProfile?.role || 'account'} mode` 
+              : 'Public browse mode'}
           </span>
 
           {session ? (
@@ -98,8 +100,8 @@ export default function Header({
           ) : null}
         </div>
 
-        <div className="hero-actions">
-          {currentPage === 'mods' && (
+        {currentPage === 'mods' ? (
+          <div className="hero-actions">
             <button
               className="primary-button hero-primary"
               onClick={onAddWrestler}
@@ -108,8 +110,8 @@ export default function Header({
             >
               Add wrestler
             </button>
-          )}
-        </div>
+          </div>
+        ) : null}
       </div>
     </header>
   )

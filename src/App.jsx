@@ -1274,9 +1274,27 @@ export default function App() {
   async function submitRequest(notes) {
     if (!canContribute || !requestModal.context) return
     setRequestSubmitting(true)
+
     try {
-      const { error } = await supabase.from('mod_requests').insert({ wrestler_id: requestModal.context.wrestlerId, attire_id: requestModal.context.attireId, request_type: requestModal.context.requestType, notes: (notes || '').trim() })
-      if (error) throw error
+      if (requestModal.context.modCategory === 'arena') {
+        const { error } = await supabase.from('arena_requests').insert({
+          arena_id: requestModal.context.arenaId,
+          request_type: requestModal.context.requestType,
+          notes: (notes || '').trim()
+        })
+
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('mod_requests').insert({
+          wrestler_id: requestModal.context.wrestlerId,
+          attire_id: requestModal.context.attireId,
+          request_type: requestModal.context.requestType,
+          notes: (notes || '').trim()
+        })
+
+        if (error) throw error
+      }
+
       setRequestModal({ open: false, context: null })
       openNotice('success', 'Request submitted', 'Your request was added successfully.')
       await fetchAll()
@@ -1285,6 +1303,36 @@ export default function App() {
     } finally {
       setRequestSubmitting(false)
     }
+  }
+
+  function openArenaIssueRequest(arena, requestType, prefillNotes = '') {
+    if (!canContribute) return
+
+    setRequestModal({
+      open: true,
+      context: {
+        modCategory: 'arena',
+        arenaId: arena.id,
+        requestType,
+        arenaName: arena.name,
+        prefillNotes
+      }
+    })
+  }
+
+  function openResolveArenaLink(arena, issueType) {
+    if (!canContribute) return
+
+    setResolveModal({
+      open: true,
+      context: {
+        modCategory: 'arena',
+        arenaId: arena.id,
+        arenaName: arena.name,
+        issueType,
+        currentUrl: arena.download_url || ''
+      }
+    })
   }
 
   function openResolveLink(wrestler, attire, issueType) {
@@ -1305,33 +1353,67 @@ export default function App() {
   async function submitResolveLink(url, notes) {
     if (!canContribute || !resolveModal.context) return
     setResolvingLink(true)
+
     try {
       const cleanUrl = (url || '').trim()
       if (!cleanUrl) throw new Error('A corrected download URL is required.')
 
-      const { error: attireError } = await supabase
-        .from('attires')
-        .update({ download_url: cleanUrl })
-        .eq('id', resolveModal.context.attireId)
-      if (attireError) throw attireError
+      if (resolveModal.context.modCategory === 'arena') {
+        const { error: arenaError } = await supabase
+          .from('arenas')
+          .update({ download_url: cleanUrl })
+          .eq('id', resolveModal.context.arenaId)
 
-      const requestTypes = resolveModal.context.issueType === 'dead_link'
-        ? ['dead_link']
-        : ['missing_link', 'dead_link']
+        if (arenaError) throw arenaError
 
-      const { error: requestError } = await supabase
-        .from('mod_requests')
-        .update({
-          status: 'fulfilled',
-          notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
-        })
-        .eq('attire_id', resolveModal.context.attireId)
-        .eq('status', 'open')
-        .in('request_type', requestTypes)
-      if (requestError) throw requestError
+        const requestTypes =
+          resolveModal.context.issueType === 'dead_link'
+            ? ['dead_link']
+            : ['missing_link', 'dead_link']
+
+        const { error: requestError } = await supabase
+          .from('arena_requests')
+          .update({
+            status: 'fulfilled',
+            notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
+          })
+          .eq('arena_id', resolveModal.context.arenaId)
+          .eq('status', 'open')
+          .in('request_type', requestTypes)
+
+        if (requestError) throw requestError
+      } else {
+        const { error: attireError } = await supabase
+          .from('attires')
+          .update({ download_url: cleanUrl })
+          .eq('id', resolveModal.context.attireId)
+
+        if (attireError) throw attireError
+
+        const requestTypes =
+          resolveModal.context.issueType === 'dead_link'
+            ? ['dead_link']
+            : ['missing_link', 'dead_link']
+
+        const { error: requestError } = await supabase
+          .from('mod_requests')
+          .update({
+            status: 'fulfilled',
+            notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
+          })
+          .eq('attire_id', resolveModal.context.attireId)
+          .eq('status', 'open')
+          .in('request_type', requestTypes)
+
+        if (requestError) throw requestError
+      }
 
       setResolveModal({ open: false, context: null })
-      openNotice('success', 'Link issue resolved', 'The download link was updated and matching open link requests were marked as resolved.')
+      openNotice(
+        'success',
+        'Link issue resolved',
+        'The download link was updated and matching open link requests were marked as resolved.'
+      )
       await fetchAll()
     } catch (err) {
       openNotice('error', 'Could not resolve link', err.message || 'Could not resolve this link issue.')
@@ -1370,6 +1452,16 @@ export default function App() {
     })
 
     setAttireModalOpen(true)
+  }
+
+  function openEditArenaFromIssues(arena) {
+    setCurrentPage('arenas')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=arenas`)
+    openNotice(
+      'info',
+      'Arena selected',
+      `Go to the Arenas section and edit "${arena.name}" there.`
+    )
   }
 
   function openCreateCollection() {
@@ -1699,11 +1791,17 @@ export default function App() {
         ) : currentPage === 'issues' ? (
           <LinkIssuesPage
             wrestlers={wrestlers}
+            arenas={arenas}
+            titleBelts={titleBelts}
+            otherMods={otherMods}
             onResolveLink={openResolveLink}
             onCreateRequest={createRequest}
             canManageContent={canManageContent}
             canContribute={canContribute}
             onEditAttire={openEditAttire}
+            onEditArena={openEditArenaFromIssues}
+            onEditTitleBelt={null}
+            onEditOtherMod={null}
           />
         ) : (
         <>

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   formatDate,
   parseDownloadLinks,
@@ -44,7 +44,7 @@ function DownloadLinks({ value, canViewLinks }) {
   )
 }
 
-function ArenaGallery({ images = [] }) {
+function ArenaGallery({ images = [], onPreviewImage }) {
   if (!images.length) {
     return <div className="upload-placeholder">No arena screenshots uploaded</div>
   }
@@ -52,13 +52,18 @@ function ArenaGallery({ images = [] }) {
   return (
     <div className="gallery-grid detail-gallery-grid">
       {images.map((image) => (
-        <div className="gallery-tile" key={image.id || image.path || image.url}>
+        <button
+          type="button"
+          className="gallery-tile gallery-button-reset"
+          key={image.id || image.path || image.url}
+          onClick={() => onPreviewImage(image.url || image.image_url)}
+        >
           <img
             className="gallery-img"
             src={image.url || image.image_url}
             alt={image.name || image.image_name || 'Arena screenshot'}
           />
-        </div>
+        </button>
       ))}
     </div>
   )
@@ -77,6 +82,8 @@ export default function ArenaDetailPanel({
   onCreateRequest,
   onOpenCollectionPicker
 }) {
+  const [previewImage, setPreviewImage] = useState(null)  
+
   const isApprovedViewer = Boolean(
     session && (
       currentProfile?.approval_status === 'approved' ||
@@ -104,7 +111,7 @@ export default function ArenaDetailPanel({
   const openRequests = requests.filter((item) => item.status === 'open')
   const requestInfo = requestSummary(openRequests, 'arena_id', arena.id)
   const installed = installedArenaIds?.has ? installedArenaIds.has(arena.id) : false
-  const hasMissingDownload = !(arena.download_url || '').trim()
+  const hasMissingDownload = !String(arena.download_url || '').trim()
   const hasDeadLink = openRequests.some((item) => item.request_type === 'dead_link')
 
   return (
@@ -145,7 +152,12 @@ export default function ArenaDetailPanel({
 
         <div className="hero-side-stack">
           <div className="hero-collection-pill">
-            <span>{arena.source_game || 'WWE 2K25'}</span>
+            <span className="game-badge">
+                {arena.source_game || 'WWE 2K25'}
+                {arena.source_game === 'WWE 2K26' ? (
+                <span className="latest-badge">NEW</span>
+                ) : null}
+            </span>
           </div>
 
           {canContribute ? (
@@ -264,7 +276,7 @@ export default function ArenaDetailPanel({
           </div>
         </div>
 
-        <ArenaGallery images={images} />
+        <ArenaGallery images={images} onPreviewImage={setPreviewImage} />
       </div>
 
       <div className="panel soft-panel improved-attire-card">
@@ -307,6 +319,13 @@ export default function ArenaDetailPanel({
           </div>
         </div>
       </div>
+      {previewImage ? (
+        <div className="image-modal-backdrop image-modal-backdrop-open" onClick={() => setPreviewImage(null)}>
+            <div className="image-modal-content image-modal-content-open" onClick={(e) => e.stopPropagation()}>
+            <img src={previewImage} alt="Arena preview" />
+            </div>
+        </div>
+      ) : null}
     </section>
   )
 }

@@ -470,8 +470,9 @@ export default function ArenaPage({
             onSelect={setSelectedArenaId}
             onEdit={openEditArena}
             onDelete={canDeleteContent ? deleteArena : null}
+            onAddArena={openAddArena}
             session={session}
-            currentProfile={currentProfile}
+            canContribute={canContribute}
             canManageContent={canManageContent}
             viewMode={arenaViewMode}
             setViewMode={setArenaViewMode}

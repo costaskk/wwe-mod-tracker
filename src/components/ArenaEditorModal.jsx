@@ -276,7 +276,10 @@ export default function ArenaEditorModal({
                         multiple
                         disabled={uploading}
                         onChange={(e) => {
-                          onUpload(Array.from(e.target.files || []), 'image')
+                          const files = Array.from(e.target.files || [])
+                          if (files.length) {
+                            onUpload(files, 'image')
+                          }
                           e.target.value = ''
                         }}
                       />
@@ -297,7 +300,7 @@ export default function ArenaEditorModal({
                 : ''}
           </div>
 
-          <button className="ghost-button" onClick={onClose} type="button">
+          <button className="ghost-button" onClick={onClose} type="button" disabled={saving || uploading}>
             Cancel
           </button>
 

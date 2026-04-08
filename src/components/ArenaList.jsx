@@ -35,7 +35,9 @@ export default function ArenaList({
   onSelect,
   onEdit,
   onDelete,
+  onAddArena,
   session,
+  canContribute,
   canManageContent,
   viewMode,
   setViewMode,
@@ -50,22 +52,34 @@ export default function ArenaList({
     <section className="panel soft-panel list-panel">
       <div className="panel-header with-actions">
         <div>
-          <h2>Arenas</h2>
-          <p className="subtle-copy">
+            <h2>Arenas</h2>
+            <p className="subtle-copy">
             {pagination
-              ? `${pagination.totalItems} total · showing ${pagination.totalItems ? pageStart : 0}-${pageEnd}`
-              : `${arenas.length} visible`}
-          </p>
+                ? `${pagination.totalItems} total · showing ${pagination.totalItems ? pageStart : 0}-${pageEnd}`
+                : `${arenas.length} visible`}
+            </p>
         </div>
 
-        <Toggle
-          value={viewMode}
-          onChange={setViewMode}
-          options={[
-            { value: 'cards', label: 'Cards' },
-            { value: 'table', label: 'Table' }
-          ]}
-        />
+        <div className="wrap-actions">
+            {canContribute ? (
+            <button
+                className="primary-button small-btn"
+                onClick={onAddArena}
+                type="button"
+            >
+                Add arena
+            </button>
+            ) : null}
+
+            <Toggle
+            value={viewMode}
+            onChange={setViewMode}
+            options={[
+                { value: 'cards', label: 'Cards' },
+                { value: 'table', label: 'Table' }
+            ]}
+            />
+        </div>
       </div>
 
       {viewMode === 'table' ? (
@@ -83,7 +97,20 @@ export default function ArenaList({
             <tbody>
               {arenas.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="table-empty">No arenas match the current filters.</td>
+                  <td colSpan="5" className="table-empty">
+                    <div>No arenas match the current filters.</div>
+                    {canContribute ? (
+                        <div className='empty-state-action'>
+                        <button
+                            className="primary-button small-btn"
+                            onClick={onAddArena}
+                            type="button"
+                        >
+                            Add arena
+                        </button>
+                        </div>
+                    ) : null}
+                   </td>
                 </tr>
               ) : (
                 arenas.map((arena) => {
@@ -127,14 +154,20 @@ export default function ArenaList({
                           <div className="list-card-actions compact-actions" onClick={(e) => e.stopPropagation()}>
                             <button
                               className="ghost-button inline-btn small-btn"
-                              onClick={() => onEdit(arena)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onEdit(arena)
+                              }}
                               type="button"
                             >
                               Edit
                             </button>
                             <button
                               className="ghost-button inline-btn small-btn"
-                              onClick={() => onDelete(arena)}
+                              onClick={(e) => {
+                                e.stopPropagation()  
+                                onDelete?.(arena)
+                            }}
                               type="button"
                             >
                               Delete
@@ -152,7 +185,18 @@ export default function ArenaList({
       ) : (
         <div className={`list-scroll ${arenas.length === 1 ? 'one-item' : ''}`}>
           {arenas.length === 0 ? (
-            <div className="empty-state small-empty">No arenas match the current filters.</div>
+            <div className="empty-state small-empty">
+                <div>No arenas match the current filters.</div>
+                {canContribute ? (
+                    <button
+                    className="primary-button small-btn"
+                    onClick={onAddArena}
+                    type="button"
+                    >
+                    Add arena
+                    </button>
+                ) : null}
+            </div>
           ) : (
             arenas.map((arena) => {
               const isSelected = arena.id === selectedId
@@ -204,14 +248,20 @@ export default function ArenaList({
                     <div className="list-card-actions" onClick={(e) => e.stopPropagation()}>
                       <button
                         className="ghost-button inline-btn small-btn"
-                        onClick={() => onEdit(arena)}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onEdit(arena)
+                        }}
                         type="button"
                       >
                         Edit
                       </button>
                       <button
                         className="ghost-button inline-btn small-btn"
-                        onClick={() => onDelete(arena)}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onDelete?.(arena)
+                        }}
                         type="button"
                       >
                         Delete
