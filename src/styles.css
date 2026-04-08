@@ -1864,7 +1864,8 @@ select option {
 .collection-thumb-button .collection-item-thumb {
   display: block;
   width: 100%;
-  height: 220px;
+  aspect-ratio: 16 / 10;
+  height: auto;
   object-fit: cover;
   transition: transform 0.22s ease, filter 0.22s ease;
 }
@@ -1875,19 +1876,22 @@ select option {
 }
 
 .collection-image-modal-content {
-  width: 100vw;
-  height: 100vh;
-  padding: 40px;
+  width: auto;
+  height: auto;
+  max-width: 96vw;
+  max-height: 96vh;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .collection-image-modal-img {
-  max-width: 100%;
-  max-height: 100%;
-  width: none;
-  height: none;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 96vw;
+  max-height: 96vh;
   object-fit: contain;
   border-radius: 18px;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
@@ -1919,11 +1923,13 @@ select option {
   border-radius: 7px;
   border: 1px solid rgba(161, 196, 255, 0.24);
   background: rgba(255, 255, 255, 0.05);
-  display: inline-grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
   flex: 0 0 22px;
+  position: relative;
 }
 
 .collection-checkbox-input:hover {
@@ -1944,12 +1950,19 @@ select option {
   border-right: 2px solid #fff;
   border-bottom: 2px solid #fff;
   transform: rotate(45deg);
-  margin-top: -2px;
   opacity: 0;
+  margin-top: -1px;
 }
 
 .collection-checkbox-input:checked::after {
   opacity: 1;
+}
+
+.collection-checkbox-input:focus {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(63, 166, 255, 0.16),
+    0 0 0 1px rgba(125, 123, 255, 0.32) inset;
 }
 
 .collection-body,
@@ -2046,62 +2059,10 @@ select option {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   margin: 0;
-  flex: 0 0 22px;
-}
-
-.collection-select-check input,
-.compact-title-row input[type="checkbox"] {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  border-radius: 6px;
-  border: 1px solid rgba(161, 196, 255, 0.28);
-  background: rgba(255, 255, 255, 0.04);
-  display: inline-grid;
-  place-items: center;
-  cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
-}
-
-.collection-select-check input:hover,
-.compact-title-row input[type="checkbox"]:hover {
-  border-color: rgba(63, 166, 255, 0.48);
-  background: rgba(63, 166, 255, 0.1);
-}
-
-.collection-select-check input:checked,
-.compact-title-row input[type="checkbox"]:checked {
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  border-color: rgba(63, 166, 255, 0.8);
-}
-
-.collection-select-check input::after,
-.compact-title-row input[type="checkbox"]::after {
-  content: '';
-  width: 9px;
-  height: 5px;
-  border-left: 2px solid white;
-  border-bottom: 2px solid white;
-  transform: rotate(-45deg) scale(0);
-  transition: transform 0.15s ease;
-  margin-top: -1px;
-}
-
-.collection-select-check input:checked::after,
-.compact-title-row input[type="checkbox"]:checked::after {
-  transform: rotate(-45deg) scale(1);
-}
-
-.collection-select-check input:focus,
-.compact-title-row input[type="checkbox"]:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(63, 166, 255, 0.16);
+  flex: 0 0 24px;
 }
 
 .picker-row-active {

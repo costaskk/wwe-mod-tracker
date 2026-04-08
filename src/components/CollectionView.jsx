@@ -257,16 +257,18 @@ export default function CollectionView({
                 <div className="compact-main">
                   <div className="compact-title-row">
                     {canManageCollection ? (
-                      <input
-                        type="checkbox"
-                        className="collection-checkbox-input"
-                        checked={selectedIdSet.has(item.id)}
-                        onChange={(e) => {
-                          e.stopPropagation()
-                          toggleSelected(item.id)
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
+                      <label className="collection-select-check">
+                        <input
+                          type="checkbox"
+                          className="collection-checkbox-input"
+                          checked={selectedIdSet.has(item.id)}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            toggleSelected(item.id)
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </label>
                     ) : null}
 
                     <strong title={displayName}>{displayName}</strong>
