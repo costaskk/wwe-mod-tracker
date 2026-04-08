@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import AdminPanel from './components/AdminPanel'
 import AuthPanel from './components/AuthPanel'
 import ArenaPage from './components/ArenaPage'
+import TitleBeltPage from './components/TitleBeltPage'
 import LinkIssuesPage from './components/LinkIssuesPage'
 import AttireEditorModal from './components/AttireEditorModal'
 import CollectionModal from './components/CollectionModal'
@@ -95,6 +96,13 @@ export default function App() {
 
   const [arenaCreateSignal, setArenaCreateSignal] = useState(0)
   const [arenaSelectSignal, setArenaSelectSignal] = useState(null)
+
+  const [titleBelts, setTitleBelts] = useState([])
+  const [installedTitleIds, setInstalledTitleIds] = useState(new Set())
+
+  const [titleCreateSignal, setTitleCreateSignal] = useState(0)
+  const [titleSelectSignal, setTitleSelectSignal] = useState(null)
+  const [otherMods] = useState([])
 
   //const isApproved = Boolean(session && currentProfile?.approval_status === 'approved')
 
@@ -352,6 +360,8 @@ export default function App() {
         setCurrentPage('collections')
       } else if (page === 'arenas') {
         setCurrentPage('arenas')
+      } else if (page === 'titles') {
+        setCurrentPage('titles')
       } else if (page === 'admin') {
         setCurrentPage('admin')
       } else if (page === 'issues') {
@@ -441,8 +451,10 @@ export default function App() {
         wrestlerResult,
         arenaResult,
         creatorResult,
+        titleResult,
         installsResult,
         installedArenasResult,
+        installedTitlesResult,
         publicCollectionsResult,
         ownCollectionsResult,
         profilesResult
@@ -475,12 +487,26 @@ export default function App() {
 
         supabase.from('creators').select('*').order('name', { ascending: true }),
 
+        supabase
+          .from('title_belts')
+          .select(`
+            *,
+            title_belt_images (*),
+            title_belt_audio_files (*),
+            title_belt_requests (*)
+          `)
+          .order('name', { ascending: true }),
+
         session?.user?.id
           ? supabase.from('user_installed_attires').select('attire_id').eq('user_id', session.user.id)
           : Promise.resolve({ data: [], error: null }),
 
         session?.user?.id
           ? supabase.from('user_installed_arenas').select('arena_id').eq('user_id', session.user.id)
+          : Promise.resolve({ data: [], error: null }),
+
+        session?.user?.id
+          ? supabase.from('user_installed_title_belts').select('title_belt_id').eq('user_id', session.user.id)
           : Promise.resolve({ data: [], error: null }),
 
         publicCollectionsQuery,
@@ -492,8 +518,10 @@ export default function App() {
         wrestlerResult.error ||
         arenaResult.error ||
         creatorResult.error ||
+        titleResult.error ||
         installsResult.error ||
         installedArenasResult.error ||
+        installedTitlesResult.error ||
         publicCollectionsResult.error ||
         ownCollectionsResult.error ||
         profilesResult.error
@@ -502,8 +530,10 @@ export default function App() {
           wrestlerResult.error?.message ||
           arenaResult.error?.message ||
           creatorResult.error?.message ||
+          titleResult.error?.message ||
           installsResult.error?.message ||
           installedArenasResult.error?.message ||
+          installedTitlesResult.error?.message ||
           publicCollectionsResult.error?.message ||
           ownCollectionsResult.error?.message ||
           profilesResult.error?.message ||
@@ -545,6 +575,22 @@ export default function App() {
           image_url: img.image_path ? getAssetUrl(img.image_path) : ''
         })),
         requests: [...(arena.arena_requests || [])].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        )
+      }))
+
+      const normalizedTitles = (titleResult.data || []).map((title) => ({
+        ...title,
+        render_dds_url: title.render_dds_path ? getAssetUrl(title.render_dds_path) : '',
+        title_belt_images: (title.title_belt_images || []).map((img) => ({
+          ...img,
+          image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+        })),
+        audio_files: (title.title_belt_audio_files || []).map((file) => ({
+          ...file,
+          file_url: file.file_path ? getAssetUrl(file.file_path) : ''
+        })),
+        requests: [...(title.title_belt_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
         )
       }))
@@ -634,12 +680,14 @@ export default function App() {
       setCurrentProfile(myProfile)
       setWrestlers(normalizedWrestlers)
       setArenas(normalizedArenas)
+      setTitleBelts(normalizedTitles)
       setCreators(creatorResult.data || [])
       setCollections(repairedCollections)
       setSelectedCollection(collectionFromUrl || null)
       setSelectedId((current) => current || normalizedWrestlers[0]?.id || null)
       setInstalledIds(new Set((installsResult.data || []).map((item) => item.attire_id)))
       setInstalledArenaIds(new Set((installedArenasResult.data || []).map((item) => item.arena_id)))
+      setInstalledTitleIds(new Set((installedTitlesResult.data || []).map((item) => item.title_belt_id)))
     } catch (err) {
       setError(err.message || 'Failed to load data.')
     } finally {
@@ -688,7 +736,7 @@ export default function App() {
         return include ? { ...wrestler, attires: filteredAttires } : null
       })
       .filter(Boolean)
-  }, [wrestlers, query, showMissingOnly, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, deadLinkOnly, installedIds])
+  }, [wrestlers, query, showMissingOnly, creatorFilter, sourceGameFilter, installFilter, collections, missingDownloadOnly, deadLinkOnly, installedIds])
 
 
   const paginatedMods = useMemo(() => paginateItems(filteredWrestlers, modsPage, modsPerPage), [filteredWrestlers, modsPage])
@@ -725,6 +773,9 @@ export default function App() {
           }
           if (collectionPicker.item.modType === 'arena') {
             return entry.arena_id === collectionPicker.item.id
+          }
+          if (collectionPicker.item.modType === 'title') {
+            return entry.title_id === collectionPicker.item.id
           }
           return false
         })
@@ -1328,6 +1379,14 @@ export default function App() {
         })
 
         if (error) throw error
+      } else if (requestModal.context.modCategory === 'title') {
+        const { error } = await supabase.from('title_belt_requests').insert({
+          title_belt_id: requestModal.context.titleId,
+          request_type: requestModal.context.requestType,
+          notes: (notes || '').trim()
+        })
+
+        if (error) throw error
       } else {
         const { error } = await supabase.from('mod_requests').insert({
           wrestler_id: requestModal.context.wrestlerId,
@@ -1364,6 +1423,21 @@ export default function App() {
     })
   }
 
+  function openTitleBeltIssueRequest(titleBelt, requestType, prefillNotes = '') {
+    if (!canContribute) return
+
+    setRequestModal({
+      open: true,
+      context: {
+        modCategory: 'title',
+        titleId: titleBelt.id,
+        requestType,
+        titleName: titleBelt.name,
+        prefillNotes
+      }
+    })
+  }
+
   function openResolveArenaLink(arena, issueType) {
     if (!canContribute) return
 
@@ -1375,6 +1449,21 @@ export default function App() {
         arenaName: arena.name,
         issueType,
         currentUrl: arena.download_url || ''
+      }
+    })
+  }
+
+  function openResolveTitleBeltLink(titleBelt, issueType) {
+    if (!canContribute) return
+
+    setResolveModal({
+      open: true,
+      context: {
+        modCategory: 'title',
+        titleId: titleBelt.id,
+        titleName: titleBelt.name,
+        issueType,
+        currentUrl: titleBelt.download_url || ''
       }
     })
   }
@@ -1422,6 +1511,30 @@ export default function App() {
             notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
           })
           .eq('arena_id', resolveModal.context.arenaId)
+          .eq('status', 'open')
+          .in('request_type', requestTypes)
+
+        if (requestError) throw requestError
+      } else if (resolveModal.context.modCategory === 'title') {
+        const { error: titleError } = await supabase
+          .from('title_belts')
+          .update({ download_url: cleanUrl })
+          .eq('id', resolveModal.context.titleId)
+
+        if (titleError) throw titleError
+
+        const requestTypes =
+          resolveModal.context.issueType === 'dead_link'
+            ? ['dead_link']
+            : ['missing_link', 'dead_link']
+
+        const { error: requestError } = await supabase
+          .from('title_belt_requests')
+          .update({
+            status: 'fulfilled',
+            notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
+          })
+          .eq('title_belt_id', resolveModal.context.titleId)
           .eq('status', 'open')
           .in('request_type', requestTypes)
 
@@ -1499,12 +1612,38 @@ export default function App() {
   }
 
   function openEditArenaFromIssues(arena) {
+    if (!arena?.id) return
+
+    setArenaSelectSignal({
+      arenaId: arena.id,
+      ts: Date.now()
+    })
+
     setCurrentPage('arenas')
     window.history.replaceState({}, '', `${window.location.pathname}?page=arenas`)
+
     openNotice(
       'info',
       'Arena selected',
-      `Go to the Arenas section and edit "${arena.name}" there.`
+      `Go to the Arenas section and edit "${arena.name}".`
+    )
+  }
+
+  function openEditTitleBeltFromIssues(titleBelt) {
+    if (!titleBelt?.id) return
+
+    setTitleSelectSignal({
+      titleId: titleBelt.id,
+      ts: Date.now()
+    })
+
+    setCurrentPage('titles')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=titles`)
+
+    openNotice(
+      'info',
+      'Title belt selected',
+      `Go to the Titles section and edit "${titleBelt.name}".`
     )
   }
 
@@ -1548,6 +1687,19 @@ export default function App() {
     setSelectedCollection(null)
     setCurrentPage('arenas')
     window.history.replaceState({}, '', `${window.location.pathname}?page=arenas`)
+  }
+
+  function goTitlesPage() {
+    setSelectedCollection(null)
+    setCurrentPage('titles')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=titles`)
+  }
+
+  function openAddTitleFromHeader() {
+    if (!canContribute) return
+    setCurrentPage('titles')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=titles`)
+    setTitleCreateSignal((current) => current + 1)
   }
 
   function goIssuesPage() {
@@ -1636,6 +1788,33 @@ export default function App() {
 
           openNotice('success', 'Added to collection', `${item.name} was added to ${collection.name}.`)
         }
+      } else if (item.modType === 'title') {
+        if (isIn) {
+          const { error } = await supabase
+            .from('collection_items')
+            .delete()
+            .eq('collection_id', collection.id)
+            .eq('title_id', item.id)
+
+          if (error) throw error
+
+          openNotice('success', 'Removed from collection', `${item.name} was removed from ${collection.name}.`)
+        } else {
+          const { error } = await supabase
+            .from('collection_items')
+            .insert({
+              collection_id: collection.id,
+              mod_type: 'title',
+              mod_subtype: '',
+              title_id: item.id
+            })
+
+          if (error) throw error
+
+          openNotice('success', 'Added to collection', `${item.name} was added to ${collection.name}.`)
+        }
+      } else {
+        throw new Error(`Unsupported collection item type: ${item.modType}`)
       }
 
       await fetchAll()
@@ -1718,7 +1897,7 @@ export default function App() {
     })
   }
 
-  const stats = computeStats(wrestlers, collections, arenas)
+  const stats = computeStats(wrestlers, collections, arenas, titleBelts, otherMods)
 
   if (!isSupabaseConfigured) {
     return (
@@ -1726,9 +1905,11 @@ export default function App() {
         <Header
           onAddWrestler={() => {}}
           onAddArena={() => {}}
+          onAddTitle={() => {}}
           session={null}
           onBrowseCollections={() => {}}
           onBrowseArenas={() => {}}
+          onBrowseTitles={() => {}}
           onBrowseIssues={goIssuesPage}
           onGoHome={() => {}}
           currentPage="mods"
@@ -1746,9 +1927,11 @@ export default function App() {
       <Header
         onAddWrestler={openAddWrestler}
         onAddArena={openAddArenaFromHeader}
+        onAddTitle={openAddTitleFromHeader}
         session={session}
         onBrowseCollections={goCollectionsPage}
         onBrowseArenas={goArenasPage}
+        onBrowseTitles={goTitlesPage}
         onBrowseIssues={goIssuesPage}
         onGoHome={goHome}
         currentPage={currentPage}
@@ -1801,6 +1984,20 @@ export default function App() {
                   setCurrentPage('arenas')
                   window.history.replaceState({}, '', `${window.location.pathname}?page=arenas`)
                 }}
+
+                onSelectTitle={(payload) => {
+                  const titleId = payload?.titleId
+                  if (!titleId) return
+
+                  setTitleSelectSignal({
+                    titleId,
+                    ts: Date.now()
+                  })
+
+                  setCurrentPage('titles')
+                  window.history.replaceState({}, '', `${window.location.pathname}?page=titles`)
+                }}
+
                 onRemoveItem={async (item) => {
                   if (!canManageContent(selectedCollection?.owner_id)) return
 
@@ -1873,6 +2070,28 @@ export default function App() {
             arenaCreateSignal={arenaCreateSignal}
             arenaSelectSignal={arenaSelectSignal}
           />
+        ) : currentPage === 'titles' ? (
+          <TitleBeltPage
+            titleBelts={titleBelts}
+            creators={creators}
+            session={session}
+            canContribute={canContribute}
+            canDeleteContent={canDeleteContent}
+            canManageContent={canManageContent}
+            installedTitleIds={installedTitleIds}
+            setInstalledTitleIds={setInstalledTitleIds}
+            currentProfile={currentProfile}
+            supabase={supabase}
+            fetchAll={fetchAll}
+            newCreatorName={newCreatorName}
+            setNewCreatorName={setNewCreatorName}
+            onAddCreator={addAttireCreator}
+            addingCreator={addingCreator}
+            openNotice={openNotice}
+            onOpenCollectionPicker={openCollectionPicker}
+            titleCreateSignal={titleCreateSignal}
+            titleSelectSignal={titleSelectSignal}
+          />
         ) : currentPage === 'admin' ? (
           <AdminPanel
             session={session}
@@ -1888,12 +2107,18 @@ export default function App() {
             titleBelts={titleBelts}
             otherMods={otherMods}
             onResolveLink={openResolveLink}
+            onResolveArenaLink={openResolveArenaLink}
+            onResolveTitleBeltLink={openResolveTitleBeltLink}
+            onResolveOtherModLink={null}
             onCreateRequest={createRequest}
+            onCreateArenaRequest={openArenaIssueRequest}
+            onCreateTitleBeltRequest={openTitleBeltIssueRequest}
+            onCreateOtherModRequest={null}
             canManageContent={canManageContent}
             canContribute={canContribute}
             onEditAttire={openEditAttire}
             onEditArena={openEditArenaFromIssues}
-            onEditTitleBelt={null}
+            onEditTitleBelt={openEditTitleBeltFromIssues}
             onEditOtherMod={null}
           />
         ) : (

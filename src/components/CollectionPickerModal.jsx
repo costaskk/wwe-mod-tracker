@@ -12,10 +12,12 @@ export default function CollectionPickerModal({
   if (!open || !item) return null
 
   const itemTypeLabel =
-    item.modType === 'arena'
-      ? 'Arena'
-      : item.modType === 'attire'
-        ? 'Attire'
+  item.modType === 'arena'
+    ? 'Arena'
+    : item.modType === 'attire'
+      ? 'Attire'
+      : item.modType === 'title'
+        ? 'Title Belt'
         : 'Item'
 
   return (

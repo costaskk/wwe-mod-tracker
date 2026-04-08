@@ -83,6 +83,7 @@ export default function CollectionView({
   onClose,
   onSelectWrestler,
   onSelectArena,
+  onSelectTitle,
   onRemoveItem,
   onBulkRemoveItems
 }) {
@@ -247,6 +248,7 @@ export default function CollectionView({
               entity,
               isAttire,
               isArena,
+              isTitle,
               subtitle,
               creatorName,
               displayName,
@@ -332,6 +334,21 @@ export default function CollectionView({
                       </button>
                     ) : null}
 
+                    {isTitle ? (
+                      <button
+                        className="secondary-button small-btn"
+                        onClick={() =>
+                          onSelectTitle?.({
+                            titleId: entity.id,
+                            titleName: entity.name
+                          })
+                        }
+                        type="button"
+                      >
+                        Open title
+                      </button>
+                    ) : null}
+
                     {canManageCollection && onRemoveItem ? (
                       <button
                         className="ghost-button small-btn"
@@ -355,6 +372,7 @@ export default function CollectionView({
               entity,
               isAttire,
               isArena,
+              isTitle,
               subtitle,
               creatorName,
               thumbUrl,
@@ -413,6 +431,11 @@ export default function CollectionView({
                           arenaId: entity.id,
                           arenaName: entity.name
                         })
+                      } else if (isTitle) {
+                        onSelectTitle?.({
+                          titleId: entity.id,
+                          titleName: entity.name
+                        })
                       }
                     }}
                   >
@@ -467,6 +490,21 @@ export default function CollectionView({
                         type="button"
                       >
                         Open arena
+                      </button>
+                    ) : null}
+
+                    {isTitle ? (
+                      <button
+                        className="secondary-button small-btn"
+                        onClick={() =>
+                          onSelectTitle?.({
+                            titleId: entity.id,
+                            titleName: entity.name
+                          })
+                        }
+                        type="button"
+                      >
+                        Open title
                       </button>
                     ) : null}
 

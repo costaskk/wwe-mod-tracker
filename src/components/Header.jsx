@@ -3,8 +3,10 @@ import { supabase } from '../lib/supabase'
 export default function Header({
   onAddWrestler,
   onAddArena,
+  onAddTitle,
   onBrowseCollections,
   onBrowseArenas,
+  onBrowseTitles,
   onBrowseAdmin,
   onBrowseIssues,
   onGoHome,
@@ -27,8 +29,8 @@ export default function Header({
         <div className="eyebrow">Public community database</div>
         <h1>WWE 2K26 Mod Database</h1>
         <p className="hero-copy">
-          Browse wrestler pages, compare attire and arena mods, build collections, track missing or dead links,
-          and contribute after approval.
+          Browse wrestler pages, compare attire, arena, and title belt mods, build collections,
+          track missing or dead links, and contribute after approval.
         </p>
       </div>
 
@@ -49,6 +51,14 @@ export default function Header({
               onClick={onBrowseArenas}
             >
               Arenas
+            </button>
+
+            <button
+              type="button"
+              className={`nav-chip ${currentPage === 'titles' ? 'active' : ''}`}
+              onClick={onBrowseTitles}
+            >
+              Titles
             </button>
 
             <button
@@ -91,7 +101,11 @@ export default function Header({
                 <div className="muted-text small-text">
                   Status: {currentProfile?.approval_status || 'pending'}
                 </div>
-                <button className="ghost-button small-btn" onClick={handleSignOut} type="button">
+                <button
+                  className="ghost-button small-btn"
+                  onClick={handleSignOut}
+                  type="button"
+                >
                   Sign out
                 </button>
               </div>
@@ -119,6 +133,17 @@ export default function Header({
               type="button"
             >
               Add arena
+            </button>
+          ) : null}
+
+          {currentPage === 'titles' ? (
+            <button
+              className="primary-button hero-primary"
+              onClick={onAddTitle}
+              disabled={!canContribute}
+              type="button"
+            >
+              Add title belt
             </button>
           ) : null}
         </div>

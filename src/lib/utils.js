@@ -277,7 +277,7 @@ export function normalizeArenaForEditor(arena) {
 export function normalizeTitleBeltForEditor(titleBelt) {
   return {
     id: titleBelt.id,
-    persisted: true,
+    persisted: Boolean(titleBelt.id),
     name: titleBelt.name || '',
     temp_upload_id: '',
     creator_name: titleBelt.creator_name || '',
@@ -399,10 +399,10 @@ export function computeStats(
   otherMods = []
 ) {
   const attires = wrestlers.flatMap((wrestler) => wrestler.attires || [])
-  const wrestlerRequests = wrestlers.flatMap((wrestler) => wrestler.requests || [])
-  const arenaRequests = arenas.flatMap((arena) => arena.requests || [])
-  const titleRequests = titleBelts.flatMap((title) => title.requests || [])
-  const otherRequests = otherMods.flatMap((mod) => mod.requests || [])
+  const wrestlerRequests = (wrestlers || []).flatMap((wrestler) => wrestler.requests || [])
+  const arenaRequests = (arenas || []).flatMap((arena) => arena.requests || [])
+  const titleRequests = (titleBelts || []).flatMap((title) => title.requests || [])
+  const otherRequests = (otherMods || []).flatMap((mod) => mod.requests || [])
 
   const requests = [
     ...wrestlerRequests,
@@ -516,6 +516,7 @@ export function getDownloadProvider(url = '') {
   if (value.includes('patreon.com')) return 'patreon'
   if (value.includes('pixeldrain.com')) return 'pixeldrain'
   if (value.includes('dropbox.com')) return 'dropbox'
+  if (value.includes('onedrive.live.com')) return 'onedrive'
 
   return 'link'
 }
@@ -536,6 +537,8 @@ export function getDownloadProviderLabel(provider = '') {
       return 'PixelDrain'
     case 'dropbox':
       return 'Dropbox'
+    case 'onedrive':
+      return 'OneDrive'
     default:
       return 'Link'
   }
@@ -557,8 +560,27 @@ export function getDownloadProviderMark(provider = '') {
       return 'PD'
     case 'dropbox':
       return 'DB'
+    case 'onedrive':
+      return 'OD'
     default:
       return '↗'
+  }
+}
+
+export function getCollectionItemId(item, modType) {
+  if (!item) return null
+
+  switch (modType) {
+    case 'attire':
+      return item.attire_id || item.id
+    case 'arena':
+      return item.arena_id || item.id
+    case 'title':
+      return item.title_id || item.title_belt_id || item.id
+    case 'other':
+      return item.other_mod_id || item.id
+    default:
+      return null
   }
 }
 
@@ -571,7 +593,7 @@ export function getCollectionItemTarget(item = {}) {
     return { mod_type: 'arena', mod_subtype: item.mod_subtype || '' }
   }
 
-  if (item.title_id || item.title_belt_id || item.title || item.title_belt || item.titleBelt) {
+  if (item.title_id || item.title_belt_id || item.title_belt || item.title || item.titleBelt) {
     return { mod_type: 'title', mod_subtype: item.mod_subtype || '' }
   }
 
