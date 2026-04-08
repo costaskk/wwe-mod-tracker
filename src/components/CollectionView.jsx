@@ -369,7 +369,27 @@ export default function CollectionView({
                 </div>
 
                 {thumbUrl ? (
-                  <img className="collection-item-thumb" src={thumbUrl} alt={displayName} />
+                  <button
+                    type="button"
+                    className="collection-thumb-button"
+                    onClick={() => {
+                      if (isAttire && entity?.wrestler) {
+                        onSelectWrestler?.({
+                          wrestlerId: entity.wrestler.id,
+                          wrestlerName: entity.wrestler.wrestler_name
+                        })
+                      }
+
+                      if (isArena) {
+                        onSelectArena?.({
+                          arenaId: entity.id,
+                          arenaName: entity.name
+                        })
+                      }
+                    }}
+                  >
+                    <img className="collection-item-thumb" src={thumbUrl} alt={displayName} />
+                  </button>
                 ) : (
                   <div className="collection-item-thumb collection-cover-placeholder">
                     {displayName.slice(0, 2).toUpperCase()}
