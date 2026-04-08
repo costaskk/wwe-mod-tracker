@@ -70,6 +70,7 @@ export function emptyTitantron() {
     wrestler_id: null,
     title: '',
     download_url: '',
+    source_game: 'WWE 2K25',
     screenshots: [],
     pendingScreenshotUploads: []
   }
@@ -196,6 +197,7 @@ export function normalizeWrestlerForEditor(wrestler) {
       wrestler_id: item.wrestler_id || wrestler.id,
       title: item.title || '',
       download_url: item.download_url || '',
+      source_game: 'WWE 2K25',
       screenshots: (item.titantron_images || item.screenshots || []).map((img) => ({
         id: img.id || null,
         path: img.image_path || img.path || '',

@@ -123,6 +123,7 @@ export default function App() {
           wrestler_id: current.id || null,
           title: '',
           download_url: '',
+          source_game: 'WWE 2K25',
           screenshots: [],
           pendingScreenshotUploads: []
         }
@@ -766,7 +767,8 @@ export default function App() {
           wrestler_id: wrestlerId,
           owner_id: session.user.id,
           title: (titantron.title || '').trim(),
-          download_url: (titantron.download_url || '').trim()
+          download_url: (titantron.download_url || '').trim(),
+          source_game: titantron.source_game || 'WWE 2K25'
         }
 
         let titantronRowId = titantron.id

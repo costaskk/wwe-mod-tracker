@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { SOURCE_GAMES } from '../lib/utils'
 
 function WemAudioList({ title, items = [], type, onUploadAudio, onRemoveAudio, uploading }) {
   const [failedIds, setFailedIds] = useState({})
@@ -144,7 +145,22 @@ function TitantronEditorList({
                     disabled={uploading}
                   />
                 </label>
-
+                <label>
+                  Source game
+                  <select
+                    value={item.source_game || 'WWE 2K25'}
+                    onChange={(e) =>
+                      onUpdateTitantron(item.id, { source_game: e.target.value })
+                    }
+                    disabled={uploading}
+                  >
+                    {SOURCE_GAMES.map((game) => (
+                      <option key={game} value={game}>
+                        {game}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label>
                   Download links
                   <textarea
