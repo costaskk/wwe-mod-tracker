@@ -758,6 +758,7 @@ export default function App() {
         if (error) throw error
       }
 
+
       const titantrons = wrestlerForm.titantrons || []
 
       for (const titantron of titantrons) {
