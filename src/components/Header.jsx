@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase'
 
 export default function Header({
   onAddWrestler,
+  onAddArena,
   onBrowseCollections,
   onBrowseArenas,
   onBrowseAdmin,
@@ -80,9 +81,7 @@ export default function Header({
           </div>
 
           <span className="user-chip subtle-chip">
-            {session ? 
-              `${currentProfile?.role || 'account'} mode` 
-              : 'Public browse mode'}
+            {session ? `${currentProfile?.role || 'user'} mode` : 'Public browse mode'}
           </span>
 
           {session ? (
@@ -100,8 +99,8 @@ export default function Header({
           ) : null}
         </div>
 
-        {currentPage === 'mods' ? (
-          <div className="hero-actions">
+        <div className="hero-actions">
+          {currentPage === 'mods' ? (
             <button
               className="primary-button hero-primary"
               onClick={onAddWrestler}
@@ -110,8 +109,19 @@ export default function Header({
             >
               Add wrestler
             </button>
-          </div>
-        ) : null}
+          ) : null}
+
+          {currentPage === 'arenas' ? (
+            <button
+              className="primary-button hero-primary"
+              onClick={onAddArena}
+              disabled={!canContribute}
+              type="button"
+            >
+              Add arena
+            </button>
+          ) : null}
+        </div>
       </div>
     </header>
   )

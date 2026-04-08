@@ -32,7 +32,8 @@ export default function ArenaPage({
   onAddCreator,
   addingCreator,
   openNotice,
-  onOpenCollectionPicker
+  onOpenCollectionPicker,
+  arenaCreateSignal
 }) {
   const [query, setQuery] = useState('')
   const [creatorFilter, setCreatorFilter] = useState('all')
@@ -125,9 +126,21 @@ export default function ArenaPage({
     }
   }, [visibleArenas, selectedArenaId])
 
+  useEffect(() => {
+    if (!arenaCreateSignal > 0) {
+        openAddArena()
+    }
+  }, [arenaCreateSignal])
+
   function openAddArena() {
     if (!canContribute) return
-    setArenaForm(emptyArena())
+    setArenaForm({
+        ...emptyArena(),
+        images: [],
+        pendingImageUploads: [],
+        temp_upload_id: '',
+        profile_json_text: ''
+    })
     setArenaModalOpen(true)
   }
 

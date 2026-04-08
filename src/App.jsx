@@ -93,6 +93,8 @@ export default function App() {
   const isAdmin = currentProfile?.role === 'admin'
   const isStaff = isModerator || isAdmin
 
+  const [arenaCreateSignal, setArenaCreateSignal] = useState(0)
+
   //const isApproved = Boolean(session && currentProfile?.approval_status === 'approved')
 
   // 🔥 NEW: unified permission flag
@@ -289,6 +291,13 @@ export default function App() {
       busy: false,
       onConfirm: config.onConfirm || null
     })
+  }
+
+  function openAddArenaFromHeader() {
+    if (!canContribute) return
+    setCurrentPage('arenas')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=arenas`)
+    setArenaCreateSignal((current) => current + 1)
   }
 
   function closeConfirmAction() {
@@ -1681,6 +1690,7 @@ export default function App() {
       <div className="app-shell">
         <Header
           onAddWrestler={() => {}}
+          onAddArena={() => {}}
           session={null}
           onBrowseCollections={() => {}}
           onBrowseArenas={() => {}}
@@ -1700,6 +1710,7 @@ export default function App() {
     <div className="app-shell">
       <Header
         onAddWrestler={openAddWrestler}
+        onAddArena={openAddArenaFromHeader}
         session={session}
         onBrowseCollections={goCollectionsPage}
         onBrowseArenas={goArenasPage}
@@ -1779,6 +1790,7 @@ export default function App() {
             addingCreator={addingCreator}
             openNotice={openNotice}
             onOpenCollectionPicker={openCollectionPicker}
+            arenaCreateSignal={arenaCreateSignal}
           />
         ) : currentPage === 'admin' ? (
           <AdminPanel

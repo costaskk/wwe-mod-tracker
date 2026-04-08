@@ -76,6 +76,7 @@ export default function ArenaDetailPanel({
   canContribute,
   canManageContent,
   installedArenaIds,
+  onAddArena,
   onEditArena,
   onDeleteArena,
   onToggleInstalled,
@@ -94,13 +95,26 @@ export default function ArenaDetailPanel({
 
   if (!arena) {
     return (
-      <section className="detail-stack">
+        <section className="detail-stack">
         <div className="panel soft-panel empty-state">
-          Select an arena to view its details.
+            <div>
+            <div>Select an arena to view its details.</div>
+            {canContribute && onAddArena ? (
+                <div style={{ marginTop: '12px' }}>
+                <button
+                    type="button"
+                    className="primary-button small-btn"
+                    onClick={onAddArena}
+                >
+                    Add arena
+                </button>
+                </div>
+            ) : null}
+            </div>
         </div>
-      </section>
+        </section>
     )
-  }
+    }
 
   const images = (arena.images || arena.arena_images || []).map((img) => ({
     ...img,
