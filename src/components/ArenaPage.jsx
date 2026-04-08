@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ArenaDetailPanel from './ArenaDetailPanel'
 import ArenaEditorModal from './ArenaEditorModal'
 import ArenaFilters from './ArenaFilters'
@@ -126,10 +126,16 @@ export default function ArenaPage({
     }
   }, [visibleArenas, selectedArenaId])
 
+  const lastArenaCreateSignal = useRef(arenaCreateSignal)
+
   useEffect(() => {
-    if (!arenaCreateSignal > 0) {
-        openAddArena()
-    }
+    if (arenaCreateSignal === lastArenaCreateSignal.current) return
+
+    lastArenaCreateSignal.current = arenaCreateSignal
+
+    if (!arenaCreateSignal) return
+
+    openAddArena()
   }, [arenaCreateSignal])
 
   function openAddArena() {
