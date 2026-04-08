@@ -110,6 +110,56 @@ function AudioSection({ files = [] }) {
   )
 }
 
+function DdsPreview({ url, name, onPreview }) {
+  const [failed, setFailed] = useState(false)
+
+  if (!url) {
+    return (
+      <div className="render-placeholder">
+        <div className="render-badge">DDS</div>
+        <div className="muted-text">No DDS render uploaded</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="dds-display improved-dds-display">
+      {!failed ? (
+        <button
+          type="button"
+          className="gallery-button-reset dds-preview-button"
+          onClick={() => onPreview(url)}
+        >
+          <img
+            className="upload-preview dds-inline-preview"
+            src={url}
+            alt={name || 'DDS render'}
+            onError={() => setFailed(true)}
+          />
+        </button>
+      ) : (
+        <div className="render-placeholder">
+          <div className="render-badge">DDS</div>
+          <div className="muted-text">Preview not available in this browser</div>
+        </div>
+      )}
+
+      <div className="muted-text small-text dds-file-name">
+        {name || 'DDS render uploaded'}
+      </div>
+
+      <a
+        className="ghost-button small-btn"
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Open file
+      </a>
+    </div>
+  )
+}
+
 export default function TitleBeltDetailPanel({
   title,
   session,
@@ -299,75 +349,72 @@ export default function TitleBeltDetailPanel({
         <DownloadLinks value={title.download_url} canViewLinks={isApprovedViewer} />
 
         <div className="wrap-actions">
-          {canContribute ? (
-            <>
-              {hasMissingDownload ? (
+            {canContribute ? (
+                <>
+                {hasMissingDownload ? (
+                    <button
+                    type="button"
+                    className="ghost-button small-btn"
+                    onClick={() =>
+                        onCreateRequest?.(
+                        title,
+                        'missing_link',
+                        'Please add a download link for this title belt.'
+                        )
+                    }
+                    >
+                    Request download link
+                    </button>
+                ) : null}
+
                 <button
-                  type="button"
-                  className="ghost-button small-btn"
-                  onClick={() =>
+                    type="button"
+                    className="ghost-button small-btn"
+                    onClick={() =>
                     onCreateRequest?.(
-                      title.id,
-                      'missing_link',
-                      title.name,
-                      'Please add a download link for this title belt.'
+                        title,
+                        'dead_link',
+                        'Please check this title belt download link.'
                     )
-                  }
+                    }
                 >
-                  Request download link
+                    Report dead link
                 </button>
-              ) : null}
 
-              <button
-                type="button"
-                className="ghost-button small-btn"
-                onClick={() =>
-                  onCreateRequest?.(
-                    title.id,
-                    'dead_link',
-                    title.name,
-                    'Please check this title belt download link.'
-                  )
-                }
-              >
-                Report dead link
-              </button>
-
-              <button
-                type="button"
-                className="ghost-button small-btn"
-                onClick={() =>
-                  onCreateRequest?.(
-                    title.id,
-                    'general_request',
-                    title.name,
-                    ''
-                  )
-                }
-              >
-                Request update
-              </button>
-
-              {canManageContent(title.owner_id) && hasDeadLink && onResolveLink ? (
                 <button
-                  type="button"
-                  className="secondary-button small-btn"
-                  onClick={() => onResolveLink(title, title.download_url || '', '')}
+                    type="button"
+                    className="ghost-button small-btn"
+                    onClick={() =>
+                    onCreateRequest?.(
+                        title,
+                        'general_request',
+                        ''
+                    )
+                    }
                 >
-                  Resolve link
+                    Request update
                 </button>
-              ) : null}
 
-              {canManageContent(title.owner_id) && hasMissingDownload ? (
-                <div className="pill danger-pill">Missing download link</div>
-              ) : null}
+                {canManageContent(title.owner_id) && (hasDeadLink || hasMissingDownload) && onResolveLink ? (
+                    <button
+                    type="button"
+                    className="secondary-button small-btn"
+                    onClick={() => onResolveLink(title, hasDeadLink ? 'dead_link' : 'missing_link')}
+                    >
+                    Resolve link
+                    </button>
+                ) : null}
 
-              {canManageContent(title.owner_id) && hasDeadLink ? (
-                <div className="pill warning-pill">Dead link needs review</div>
-              ) : null}
-            </>
-          ) : null}
-        </div>
+                {canManageContent(title.owner_id) && hasMissingDownload ? (
+                    <div className="pill danger-pill">Missing download link</div>
+                ) : null}
+
+                {canManageContent(title.owner_id) && hasDeadLink ? (
+                    <div className="pill warning-pill">Dead link needs review</div>
+                ) : null}
+                </>
+            ) : null}
+            </div>
       </div>
 
       <div className="panel soft-panel improved-attire-card">
@@ -378,29 +425,11 @@ export default function TitleBeltDetailPanel({
           </div>
         </div>
 
-        {title.render_dds_url ? (
-          <div className="dds-display">
-            <button
-              type="button"
-              className="gallery-button-reset"
-              onClick={() => setPreviewImage(title.render_dds_url)}
-            >
-              <img
-                className="upload-preview dds-inline-preview"
-                src={title.render_dds_url}
-                alt={title.render_dds_name || `${title.name} render`}
-              />
-            </button>
-            <div className="muted-text small-text">
-              {title.render_dds_name || 'DDS render uploaded'}
-            </div>
-          </div>
-        ) : (
-          <div className="render-placeholder">
-            <div className="render-badge">DDS</div>
-            <div className="muted-text">No DDS render uploaded</div>
-          </div>
-        )}
+        <DdsPreview
+            url={title.render_dds_url}
+            name={title.render_dds_name || `${title.name} render`}
+            onPreview={setPreviewImage}
+        />
       </div>
 
       <div className="panel soft-panel improved-attire-card">

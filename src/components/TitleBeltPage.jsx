@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import TitleBeltDetailPanel from './TitleBeltDetailPanel'
 import TitleBeltEditorModal from './TitleBeltEditorModal'
 import TitleBeltFilters from './TitleBeltFilters'
@@ -33,7 +33,8 @@ export default function TitleBeltPage({
   openNotice,
   onOpenCollectionPicker,
   titleCreateSignal,
-  titleSelectSignal
+  titleSelectSignal,
+  onConsumeTitleCreateSignal
 }) {
   const [query, setQuery] = useState('')
   const [creatorFilter, setCreatorFilter] = useState('all')
@@ -136,15 +137,12 @@ export default function TitleBeltPage({
     }
   }, [titleSelectSignal, filteredTitles])
 
-  const lastCreateSignal = useRef(0)
 
   useEffect(() => {
     if (!titleCreateSignal) return
-    if (titleCreateSignal === lastCreateSignal.current) return
-
-    lastCreateSignal.current = titleCreateSignal
     openAdd()
-  }, [titleCreateSignal])
+    onConsumeTitleCreateSignal?.()
+  }, [titleCreateSignal, onConsumeTitleCreateSignal])
 
   function openAdd() {
     if (!canContribute) return

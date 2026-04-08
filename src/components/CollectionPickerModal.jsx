@@ -12,21 +12,25 @@ export default function CollectionPickerModal({
   if (!open || !item) return null
 
   const itemTypeLabel =
-  item.modType === 'arena'
-    ? 'Arena'
-    : item.modType === 'attire'
-      ? 'Attire'
-      : item.modType === 'title'
-        ? 'Title Belt'
-        : 'Item'
+    item.modType === 'arena'
+      ? 'Arena'
+      : item.modType === 'attire'
+        ? 'Attire'
+        : item.modType === 'title'
+          ? 'Title belt'
+          : 'Item'
 
   return (
-    <div className="modal-backdrop modal-backdrop-front">
-      <div className="panel modal-card request-modal">
-        <div className="modal-header">
+    <div className="modal-backdrop modal-backdrop-front" onClick={onClose}>
+      <div
+        className="panel modal-card request-modal collection-picker-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="modal-header collection-picker-header">
           <h2>Save to collection</h2>
-          <p className="subtle-copy">
-            {item.name} · {itemTypeLabel}
+          <p className="subtle-copy collection-picker-subtitle">
+            <strong>{item.name}</strong>
+            <span> · {itemTypeLabel}</span>
           </p>
         </div>
 
@@ -48,33 +52,34 @@ export default function CollectionPickerModal({
                   key={collection.id}
                   className={`picker-row ${isIn ? 'picker-row-active' : ''}`}
                 >
-                  <div>
-                    <strong>{collection.name}</strong>
+                  <div className="picker-row-main">
+                    <strong className="picker-row-title">{collection.name}</strong>
 
-                    <div className="muted-text small-text">
+                    <div className="picker-row-meta muted-text small-text">
                       <span className="pill subtle-pill">
                         {collection.visibility === 'private' ? 'Private' : 'Public'}
                       </span>
-                      {' '}
-                      {itemCount} item{itemCount === 1 ? '' : 's'}
+                      <span>{itemCount} item{itemCount === 1 ? '' : 's'}</span>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    className={isIn ? 'primary-button small-btn' : 'secondary-button small-btn'}
-                    onClick={() => onToggle(collection, isIn)}
-                    disabled={saving}
-                  >
-                    {saving ? 'Saving…' : isIn ? 'Remove' : 'Add'}
-                  </button>
+                  <div className="picker-row-actions">
+                    <button
+                      type="button"
+                      className={isIn ? 'primary-button small-btn' : 'secondary-button small-btn'}
+                      onClick={() => onToggle(collection, isIn)}
+                      disabled={saving}
+                    >
+                      {saving ? 'Saving…' : isIn ? 'Remove' : 'Add'}
+                    </button>
+                  </div>
                 </div>
               )
             })}
           </div>
         )}
 
-        <div className="modal-footer">
+        <div className="modal-footer collection-picker-footer">
           <button
             className="ghost-button"
             type="button"

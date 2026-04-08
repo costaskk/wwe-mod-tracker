@@ -2069,6 +2069,7 @@ export default function App() {
             onOpenCollectionPicker={openCollectionPicker}
             arenaCreateSignal={arenaCreateSignal}
             arenaSelectSignal={arenaSelectSignal}
+            onConsumeArenaCreateSignal={() => setArenaCreateSignal(0)}
           />
         ) : currentPage === 'titles' ? (
           <TitleBeltPage
@@ -2091,6 +2092,7 @@ export default function App() {
             onOpenCollectionPicker={openCollectionPicker}
             titleCreateSignal={titleCreateSignal}
             titleSelectSignal={titleSelectSignal}
+            onConsumeTitleCreateSignal={() => setTitleCreateSignal(0)}
           />
         ) : currentPage === 'admin' ? (
           <AdminPanel

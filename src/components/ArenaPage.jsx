@@ -34,7 +34,8 @@ export default function ArenaPage({
   openNotice,
   onOpenCollectionPicker,
   arenaCreateSignal,
-  arenaSelectSignal
+  arenaSelectSignal,
+  onConsumeArenaCreateSignal
 }) {
   const [query, setQuery] = useState('')
   const [creatorFilter, setCreatorFilter] = useState('all')
@@ -138,15 +139,11 @@ export default function ArenaPage({
     }
   }, [arenaSelectSignal, filteredArenas, arenasPerPage])
 
-  const lastArenaCreateSignal = useRef(0)
-
   useEffect(() => {
     if (!arenaCreateSignal) return
-    if (arenaCreateSignal === lastArenaCreateSignal.current) return
-
-    lastArenaCreateSignal.current = arenaCreateSignal
     openAddArena()
-  }, [arenaCreateSignal])
+    onConsumeArenaCreateSignal?.()
+  }, [arenaCreateSignal, onConsumeArenaCreateSignal])
 
   function openAddArena() {
     if (!canContribute) return
