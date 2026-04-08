@@ -201,6 +201,7 @@ export default function CollectionView({
                 type="button"
                 className="ghost-button small-btn"
                 onClick={toggleSelectAll}
+                disabled={!items.length}
               >
                 {selectedIds.length === items.length ? 'Clear selection' : 'Select all'}
               </button>
@@ -250,7 +251,7 @@ export default function CollectionView({
                       />
                     ) : null}
 
-                    <strong>{displayName || 'Unknown item'}</strong>
+                    <strong title={displayName}>{displayName}</strong>
 
                     <span className="pill subtle-pill">
                       {getModTypeLabel(target.mod_type)}
@@ -264,7 +265,7 @@ export default function CollectionView({
                   </div>
 
                   <div className="compact-meta-line">
-                    <span>{subtitle}</span>
+                    <span className="collection-item-subtitle">{subtitle}</span>
                     {creatorName ? (
                       <span className="creator-badge small-creator-badge">{creatorName}</span>
                     ) : null}
@@ -376,7 +377,7 @@ export default function CollectionView({
                 )}
 
                 <div className="collection-item-body">
-                  <h3>{displayName}</h3>
+                  <h3 title={displayName}>{displayName}</h3>
 
                   <div className="muted-text small-text">{subtitle}</div>
 

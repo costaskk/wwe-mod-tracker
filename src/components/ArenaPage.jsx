@@ -136,7 +136,7 @@ export default function ArenaPage({
         setArenaPage(nextPage)
         setSelectedArenaId(arenaSelectSignal.arenaId)
     }
-  }, [arenaSelectSignal, filteredArenas])
+  }, [arenaSelectSignal, filteredArenas, arenasPerPage])
 
   const lastArenaCreateSignal = useRef(0)
 

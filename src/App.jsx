@@ -94,6 +94,7 @@ export default function App() {
   const isStaff = isModerator || isAdmin
 
   const [arenaCreateSignal, setArenaCreateSignal] = useState(0)
+  const [arenaSelectSignal, setArenaSelectSignal] = useState(null)
 
   //const isApproved = Boolean(session && currentProfile?.approval_status === 'approved')
 
