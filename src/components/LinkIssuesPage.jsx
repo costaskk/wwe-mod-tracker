@@ -1,0 +1,135 @@
+import {
+  requestSummary,
+  parseDownloadLinks,
+  getDownloadProvider,
+  getDownloadProviderLabel,
+  getDownloadProviderMark
+} from '../lib/utils'
+
+export default function LinkIssuesPage({
+  wrestlers = [],
+  onResolveLink,
+  onCreateRequest,
+  canManageContent,
+  onEditAttire
+}) {
+  const issues = wrestlers.flatMap((wrestler) =>
+    (wrestler.attires || []).flatMap((attire) => {
+      const requestInfo = requestSummary(wrestler.requests || [], 'attire_id', attire.id)
+      const links = parseDownloadLinks(attire.download_url || '')
+      const missing = links.length === 0
+      const dead = requestInfo.deadLinks > 0
+
+      if (!missing && !dead) return []
+
+      return [
+        {
+          wrestler,
+          attire,
+          issueType: dead ? 'dead_link' : 'missing_link',
+          requestInfo,
+          links
+        }
+      ]
+    })
+  )
+
+  return (
+    <section className="panel soft-panel">
+      <div className="panel-header">
+        <div>
+          <div className="eyebrow">Maintenance</div>
+          <h2>Link Issues</h2>
+          <p className="subtle-copy">Browse missing and dead links across all wrestler mods.</p>
+        </div>
+      </div>
+
+      {issues.length === 0 ? (
+        <div className="empty-state">No issues found 🎉</div>
+      ) : (
+        <div className="link-issues-list">
+          {issues.map((item) => (
+            <div className="link-issue-card" key={item.attire.id}>
+              <div className="link-issue-main">
+                <div className="link-issue-title-row">
+                  <strong>{item.wrestler.wrestler_name}</strong>
+                  <span className={`pill ${item.issueType === 'dead_link' ? 'danger-pill' : ''}`}>
+                    {item.issueType === 'dead_link' ? 'Dead link' : 'Missing link'}
+                  </span>
+                </div>
+
+                <h3>{item.attire.name}</h3>
+
+                <div className="muted-text small-text">
+                  {item.requestInfo.deadLinks > 0
+                    ? `${item.requestInfo.deadLinks} dead link report${item.requestInfo.deadLinks === 1 ? '' : 's'}`
+                    : 'No download link added'}
+                </div>
+
+                <div className="download-links-list">
+                  {item.links.length ? (
+                    item.links.map((link, index) => {
+                      const provider = getDownloadProvider(link)
+                      return (
+                        <div
+                          className={`download-link-chip provider-${provider}`}
+                          key={`${link}-${index}`}
+                        >
+                          <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
+                          <span className="provider-label">
+                            {getDownloadProviderLabel(provider)}
+                          </span>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <span className="muted-text">No link</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="link-issue-actions">
+                <button
+                  type="button"
+                  className="secondary-button small-btn"
+                  onClick={() => onResolveLink(item.wrestler, item.attire, item.issueType)}
+                >
+                  Fix
+                </button>
+
+                <button
+                  type="button"
+                  className="ghost-button small-btn"
+                  onClick={() =>
+                    onCreateRequest(
+                      item.wrestler.id,
+                      item.attire.id,
+                      item.issueType,
+                      item.wrestler.wrestler_name,
+                      item.attire.name,
+                      item.issueType === 'dead_link'
+                        ? 'Please review the reported dead link(s).'
+                        : 'Please add a working download link.'
+                    )
+                  }
+                >
+                  Add note
+                </button>
+
+                {canManageContent(item.attire.owner_id) ? (
+                  <button
+                    type="button"
+                    className="ghost-button small-btn"
+                    onClick={() => onEditAttire(item.attire)}
+                  >
+                    Edit
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
