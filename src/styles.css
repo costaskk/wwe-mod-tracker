@@ -20,7 +20,7 @@
 html,
 body,
 #root {
-  min-height: 100%;
+  min-height: 100vh;
   margin: 0;
   background:
     radial-gradient(circle at top left, rgba(63, 166, 255, 0.16), transparent 28%),
@@ -799,6 +799,73 @@ select option {
 .titantron-editor-card .download-links-list,
 .titantron-display-grid .download-links-list {
   align-items: flex-start;
+}
+
+.titantron-card {
+  gap: 1rem;
+}
+
+.titantron-card-top {
+  align-items: flex-start;
+}
+
+.titantron-card-top .attire-title-stack h3 {
+  margin-bottom: 0;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.titantron-meta-row {
+  margin-top: 0.65rem;
+  gap: 0.55rem;
+}
+
+.titantron-meta-row .subtle-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.titantron-visual-block {
+  margin-top: 0.35rem;
+}
+
+.titantron-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.titantron-stat-card {
+  padding: 1rem 1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 104px;
+  justify-content: center;
+}
+
+.titantron-source-value {
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #eef5ff;
+}
+
+.titantron-count-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+@media (max-width: 900px) {
+  .titantron-stats-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .placeholder-thumb,
@@ -1978,15 +2045,8 @@ select option {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-    .hero-id-wrap {
-      align-items: flex-start;
-    }
-  }
-
-@media (max-width: 560px) {
-  .gallery-grid,
-  .modal-gallery-grid {
-    grid-template-columns: 1fr;
+  .hero-id-wrap {
+    align-items: flex-start;
   }
 }
 
@@ -2361,6 +2421,11 @@ select option {
   .auth-card {
     padding: 18px;
     border-radius: 24px;
+  }
+
+  .gallery-grid,
+  .modal-gallery-grid {
+    grid-template-columns: 1fr;
   }
 }
 

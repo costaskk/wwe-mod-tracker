@@ -207,7 +207,7 @@ function WrestlerTitantronSection({ wrestler, canContribute, onPreviewImage }) {
       <div className="panel-header">
         <div>
           <h2>Titantrons</h2>
-          <p className="subtle-copy">Titantron packs attached directly to this wrestler.</p>
+          <p className="subtle-copy">Entrance video packs with screenshots, source game info, and download links.</p>
         </div>
       </div>
 
@@ -217,14 +217,14 @@ function WrestlerTitantronSection({ wrestler, canContribute, onPreviewImage }) {
           const validScreenshots = screenshots.filter((image) => image.image_url || image.url)
 
           return (
-            <article className="attire-card improved-attire-card elevated-card" key={item.id}>
+            <article className="attire-card improved-attire-card elevated-card titantron-card" key={item.id}>
               <div className="attire-card-top">
                 <div className="attire-title-stack">
                   <h3>{item.title || 'Untitled titantron'}</h3>
                 </div>
               </div>
 
-              <div className="visual-block">
+              <div className="visual-block titantron-visual-block">
                 <div className="visual-label">Screenshots</div>
                 <div className="gallery-grid detail-gallery-grid">
                   {validScreenshots.length ? (
@@ -249,20 +249,26 @@ function WrestlerTitantronSection({ wrestler, canContribute, onPreviewImage }) {
               </div>
 
               {canContribute ? (
-                <div className="split-meta">
-                  <div>
+                <div className="titantron-stats-grid">
+                  <div className="titantron-stat-card">
                     <span className="muted-text">Download links</span>
                     <div className="meta-value break-line">
                       <DownloadLinks value={item.download_url} />
                     </div>
                   </div>
-                  <div>
+
+                  <div className="titantron-stat-card">
                     <span className="muted-text">Source game</span>
-                    <div className="meta-value break-line">{item.source_game || 'WWE 2K25'}</div>
+                    <div className="meta-value break-line titantron-source-value">
+                      {item.source_game || 'WWE 2K25'}
+                    </div>
                   </div>
-                  <div>
+
+                  <div className="titantron-stat-card">
                     <span className="muted-text">Screenshots</span>
-                    <div className="meta-value break-line">{validScreenshots.length}</div>
+                    <div className="meta-value break-line titantron-count-value">
+                      {validScreenshots.length}
+                    </div>
                   </div>
                 </div>
               ) : null}

@@ -396,7 +396,7 @@ export default function WrestlerEditorModal({
                     <button
                       className="ghost-button"
                       onClick={onAutoMatchHeadshot}
-                      disabled={!form.wrestler_name.trim() || uploading}
+                      disabled={!(form.wrestler_name || '').trim() || uploading}
                       type="button"
                     >
                       Try auto-match
