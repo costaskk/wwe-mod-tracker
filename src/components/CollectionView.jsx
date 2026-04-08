@@ -87,10 +87,17 @@ export default function CollectionView({
 }) {
   const [viewMode, setViewMode] = useState('grid')
   const [selectedIds, setSelectedIds] = useState([])
+  const [previewImage, setPreviewImage] = useState(null)
 
   const items = collection?.items || []
 
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds])
+
+  useEffect(() => {
+    setSelectedIds((current) =>
+      current.filter((id) => items.some((item) => item.id === id))
+    )
+  }, [items])
 
   useEffect(() => {
     setSelectedIds([])
@@ -372,15 +379,21 @@ export default function CollectionView({
                   <button
                     type="button"
                     className="collection-thumb-button"
+                    onClick={() => setPreviewImage(thumbUrl)}
+                  >
+                    <img className="collection-item-thumb" src={thumbUrl} alt={displayName} />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="collection-thumb-button collection-item-thumb collection-cover-placeholder"
                     onClick={() => {
                       if (isAttire && entity?.wrestler) {
                         onSelectWrestler?.({
                           wrestlerId: entity.wrestler.id,
                           wrestlerName: entity.wrestler.wrestler_name
                         })
-                      }
-
-                      if (isArena) {
+                      } else if (isArena) {
                         onSelectArena?.({
                           arenaId: entity.id,
                           arenaName: entity.name
@@ -388,12 +401,8 @@ export default function CollectionView({
                       }
                     }}
                   >
-                    <img className="collection-item-thumb" src={thumbUrl} alt={displayName} />
-                  </button>
-                ) : (
-                  <div className="collection-item-thumb collection-cover-placeholder">
                     {displayName.slice(0, 2).toUpperCase()}
-                  </div>
+                  </button>
                 )}
 
                 <div className="collection-item-body">
@@ -462,6 +471,20 @@ export default function CollectionView({
           })}
         </div>
       )}
+
+      {previewImage ? (
+        <div
+          className="image-modal-backdrop image-modal-backdrop-open"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="image-modal-content image-modal-content-open"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img src={previewImage} alt="Collection preview" />
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }
