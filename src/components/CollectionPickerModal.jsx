@@ -30,19 +30,31 @@ export default function CollectionPickerModal({
 
         {collections.length === 0 ? (
           <div className="empty-state small-empty">
-            Create a collection first, then return here to save this {itemTypeLabel.toLowerCase()}.
+            <div>No collections yet.</div>
+            <div className="muted-text small-text">
+              Create a collection first, then return here to save this {itemTypeLabel.toLowerCase()}.
+            </div>
           </div>
         ) : (
           <div className="collection-picker-list">
             {collections.map((collection) => {
               const isIn = selected.has(collection.id)
+              const itemCount = (collection.items || []).length
 
               return (
-                <label key={collection.id} className="picker-row">
+                <div
+                  key={collection.id}
+                  className={`picker-row ${isIn ? 'picker-row-active' : ''}`}
+                >
                   <div>
                     <strong>{collection.name}</strong>
+
                     <div className="muted-text small-text">
-                      {collection.visibility} · {(collection.items || []).length} items
+                      <span className="pill subtle-pill">
+                        {collection.visibility === 'private' ? 'Private' : 'Public'}
+                      </span>
+                      {' '}
+                      {itemCount} item{itemCount === 1 ? '' : 's'}
                     </div>
                   </div>
 
@@ -52,16 +64,21 @@ export default function CollectionPickerModal({
                     onClick={() => onToggle(collection, isIn)}
                     disabled={saving}
                   >
-                    {isIn ? 'Remove' : 'Add'}
+                    {saving ? 'Saving…' : isIn ? 'Remove' : 'Add'}
                   </button>
-                </label>
+                </div>
               )
             })}
           </div>
         )}
 
         <div className="modal-footer">
-          <button className="ghost-button" type="button" onClick={onClose}>
+          <button
+            className="ghost-button"
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+          >
             Close
           </button>
         </div>

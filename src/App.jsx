@@ -392,6 +392,14 @@ export default function App() {
             arena:arenas (
               *,
               arena_images (*)
+            ),
+            title_belt:title_belts (
+              *,
+              title_belt_images (*)
+            ),
+            other_mod:other_mods (
+              *,
+              other_mod_images (*)
             )
           )
         `)
@@ -413,6 +421,14 @@ export default function App() {
                 arena:arenas (
                   *,
                   arena_images (*)
+                ),
+                title_belt:title_belts (
+                  *,
+                  title_belt_images (*)
+                ),
+                other_mod:other_mods (
+                  *,
+                  other_mod_images (*)
                 )
               )
             `)
@@ -550,9 +566,27 @@ export default function App() {
                 : (item.attire.wrestler.headshot_external_url || '')
             } : null
           } : null,
+
           arena: item.arena ? {
             ...item.arena,
             arena_images: (item.arena.arena_images || []).map((img) => ({
+              ...img,
+              image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+            }))
+          } : null,
+
+          title_belt: item.title_belt ? {
+            ...item.title_belt,
+            render_dds_url: item.title_belt.render_dds_path ? getAssetUrl(item.title_belt.render_dds_path) : '',
+            title_belt_images: (item.title_belt.title_belt_images || []).map((img) => ({
+              ...img,
+              image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+            }))
+          } : null,
+
+          other_mod: item.other_mod ? {
+            ...item.other_mod,
+            other_mod_images: (item.other_mod.other_mod_images || []).map((img) => ({
               ...img,
               image_url: img.image_path ? getAssetUrl(img.image_path) : ''
             }))
@@ -1731,6 +1765,7 @@ export default function App() {
               <CollectionView
                 collection={selectedCollection}
                 canContribute={canContribute}
+                canManageCollection={canManageContent(selectedCollection?.owner_id)}
                 onClose={goCollectionsPage}
                 onSelectWrestler={(payload) => {
                   const wrestlerId = payload?.wrestlerId
@@ -1752,6 +1787,50 @@ export default function App() {
 
                   setSelectedId(wrestlerId)
                   goHome()
+                }}
+                onSelectArena={(payload) => {
+                  const arenaId = payload?.arenaId
+                  if (!arenaId) return
+
+                  setArenaSelectSignal({
+                    arenaId,
+                    ts: Date.now()
+                  })
+
+                  setCurrentPage('arenas')
+                  window.history.replaceState({}, '', `${window.location.pathname}?page=arenas`)
+                }}
+                onRemoveItem={async (item) => {
+                  if (!canManageContent(selectedCollection?.owner_id)) return
+
+                  const { error } = await supabase
+                    .from('collection_items')
+                    .delete()
+                    .eq('id', item.id)
+
+                  if (error) {
+                    openNotice('error', 'Could not remove item', error.message || 'Failed to remove item.')
+                    return
+                  }
+
+                  openNotice('success', 'Item removed', 'The mod was removed from the collection.')
+                  await fetchAll()
+                }}
+                onBulkRemoveItems={async (itemIds) => {
+                  if (!canManageContent(selectedCollection?.owner_id) || !itemIds?.length) return
+
+                  const { error } = await supabase
+                    .from('collection_items')
+                    .delete()
+                    .in('id', itemIds)
+
+                  if (error) {
+                    openNotice('error', 'Could not remove items', error.message || 'Failed to remove selected items.')
+                    return
+                  }
+
+                  openNotice('success', 'Items removed', `${itemIds.length} item(s) were removed from the collection.`)
+                  await fetchAll()
                 }}
               />
             ) : (
@@ -1791,6 +1870,7 @@ export default function App() {
             openNotice={openNotice}
             onOpenCollectionPicker={openCollectionPicker}
             arenaCreateSignal={arenaCreateSignal}
+            arenaSelectSignal={arenaSelectSignal}
           />
         ) : currentPage === 'admin' ? (
           <AdminPanel

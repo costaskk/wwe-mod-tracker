@@ -197,7 +197,7 @@ export function normalizeWrestlerForEditor(wrestler) {
       wrestler_id: item.wrestler_id || wrestler.id,
       title: item.title || '',
       download_url: item.download_url || '',
-      source_game: 'WWE 2K25',
+      source_game: item.source_game || 'WWE 2K25',
       screenshots: (item.titantron_images || item.screenshots || []).map((img) => ({
         id: img.id || null,
         path: img.image_path || img.path || '',
@@ -279,6 +279,7 @@ export function normalizeTitleBeltForEditor(titleBelt) {
     id: titleBelt.id,
     persisted: true,
     name: titleBelt.name || '',
+    temp_upload_id: '',
     creator_name: titleBelt.creator_name || '',
     download_url: titleBelt.download_url || '',
     source_game: titleBelt.source_game || 'WWE 2K25',
@@ -311,6 +312,7 @@ export function normalizeOtherModForEditor(otherMod) {
     id: otherMod.id,
     persisted: true,
     name: otherMod.name || '',
+    temp_upload_id: '',
     creator_name: otherMod.creator_name || '',
     subtype: otherMod.subtype || '',
     download_url: otherMod.download_url || '',
@@ -492,10 +494,12 @@ export function findDuplicateOtherMod(otherMods = [], name = '') {
 }
 
 export function parseDownloadLinks(value = '') {
-  return String(value)
-    .split(/\r?\n|,/)
-    .map((item) => item.trim())
-    .filter(Boolean)
+  return [...new Set(
+    String(value)
+      .split(/\r?\n|,/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+  )]
 }
 
 export function hasMissingDownload(url = '') {
@@ -559,10 +563,21 @@ export function getDownloadProviderMark(provider = '') {
 }
 
 export function getCollectionItemTarget(item = {}) {
-  if (item.attire_id || item.attire) return { mod_type: 'attire', mod_subtype: item.mod_subtype || '' }
-  if (item.arena_id || item.arena) return { mod_type: 'arena', mod_subtype: item.mod_subtype || '' }
-  if (item.title_id || item.title || item.title_belt) return { mod_type: 'title', mod_subtype: item.mod_subtype || '' }
-  if (item.other_mod_id || item.other_mod) return { mod_type: 'other', mod_subtype: item.mod_subtype || '' }
+  if (item.attire_id || item.attire || item.attires) {
+    return { mod_type: 'attire', mod_subtype: item.mod_subtype || '' }
+  }
+
+  if (item.arena_id || item.arena || item.arenas) {
+    return { mod_type: 'arena', mod_subtype: item.mod_subtype || '' }
+  }
+
+  if (item.title_id || item.title_belt_id || item.title || item.title_belt || item.titleBelt) {
+    return { mod_type: 'title', mod_subtype: item.mod_subtype || '' }
+  }
+
+  if (item.other_mod_id || item.other_mod || item.other || item.otherMods) {
+    return { mod_type: 'other', mod_subtype: item.mod_subtype || '' }
+  }
 
   return {
     mod_type: item.mod_type || '',

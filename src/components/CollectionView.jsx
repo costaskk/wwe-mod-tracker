@@ -1,13 +1,124 @@
+import { useEffect, useMemo, useState } from 'react'
 import {
   formatDate,
   titleCase,
   parseDownloadLinks,
   getCollectionItemTarget,
-  getModTypeLabel
+  getModTypeLabel,
+  getOtherModSubtypeLabel
 } from '../lib/utils'
 
-export default function CollectionView({ collection, canContribute, onClose, onSelectWrestler }) {
+function getCollectionItemData(item) {
+  const target = getCollectionItemTarget(item)
+
+  const attire = item.attire || item.attires || null
+  const arena = item.arena || item.arenas || null
+  const titleBelt = item.title_belt || item.title || item.titleBelt || null
+  const otherMod = item.other_mod || item.otherMods || item.other || null
+
+  const isAttire = target.mod_type === 'attire'
+  const isArena = target.mod_type === 'arena'
+  const isTitle = target.mod_type === 'title'
+  const isOther = target.mod_type === 'other'
+
+  const entity = isAttire
+    ? attire
+    : isArena
+      ? arena
+      : isTitle
+        ? titleBelt
+        : isOther
+          ? otherMod
+          : null
+
+  const displayName = entity?.name || 'Unknown item'
+
+  const subtitle = isAttire
+    ? `${attire?.wrestler?.wrestler_name || 'Unknown wrestler'} · ${attire?.source_game || '—'}`
+    : isArena
+      ? `Arena · ${arena?.source_game || '—'}`
+      : isTitle
+        ? `Title Belt · ${titleBelt?.source_game || '—'}`
+        : isOther
+          ? `${getOtherModSubtypeLabel(target.mod_subtype)} · ${otherMod?.source_game || '—'}`
+          : getModTypeLabel(target.mod_type)
+
+  const creatorName = entity?.creator_name || ''
+
+  const image = isAttire
+    ? attire?.attire_images?.[0]
+    : isArena
+      ? arena?.arena_images?.[0]
+      : isTitle
+        ? titleBelt?.title_belt_images?.[0]
+        : isOther
+          ? otherMod?.other_mod_images?.[0]
+          : null
+
+  const thumbUrl = image?.image_url || image?.url || ''
+  const downloadUrl = entity?.download_url || ''
+  const linkCount = parseDownloadLinks(downloadUrl).length
+
+  return {
+    target,
+    entity,
+    isAttire,
+    isArena,
+    isTitle,
+    isOther,
+    displayName,
+    subtitle,
+    creatorName,
+    thumbUrl,
+    downloadUrl,
+    linkCount
+  }
+}
+
+export default function CollectionView({
+  collection,
+  canContribute,
+  canManageCollection,
+  onClose,
+  onSelectWrestler,
+  onSelectArena,
+  onRemoveItem,
+  onBulkRemoveItems
+}) {
+  const [viewMode, setViewMode] = useState('grid')
+  const [selectedIds, setSelectedIds] = useState([])
+
+  const items = collection?.items || []
+
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds])
+
+  useEffect(() => {
+    setSelectedIds([])
+  }, [collection?.id])
+
   if (!collection) return null
+
+  function toggleSelected(itemId) {
+    setSelectedIds((current) =>
+      current.includes(itemId)
+        ? current.filter((id) => id !== itemId)
+        : [...current, itemId]
+    )
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.length === items.length) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(items.map((item) => item.id))
+    }
+  }
+
+  async function handleBulkRemove() {
+    if (!selectedIds.length || !onBulkRemoveItems) return
+    await onBulkRemoveItems(selectedIds)
+    setSelectedIds([])
+  }
 
   return (
     <section className="panel detail-hero collection-view-panel">
@@ -17,9 +128,12 @@ export default function CollectionView({ collection, canContribute, onClose, onS
           <h2>{collection.name}</h2>
           <p className="subtle-copy">{collection.description || 'No description added yet.'}</p>
         </div>
-        <button className="ghost-button" onClick={onClose} type="button">
-          Back to collections
-        </button>
+
+        <div className="wrap-actions">
+          <button className="ghost-button" onClick={onClose} type="button">
+            Back to collections
+          </button>
+        </div>
       </div>
 
       <div className="collection-hero-grid">
@@ -39,7 +153,7 @@ export default function CollectionView({ collection, canContribute, onClose, onS
             </div>
             <div>
               <span>Items</span>
-              <strong>{collection.items?.length || 0}</strong>
+              <strong>{items.length}</strong>
             </div>
             <div>
               <span>Updated</span>
@@ -49,51 +163,210 @@ export default function CollectionView({ collection, canContribute, onClose, onS
         </div>
       </div>
 
-      <div className="collection-items-grid">
-        {(collection.items || []).length === 0 ? (
-          <div className="empty-state small-empty">This collection has no items yet.</div>
-        ) : (
-          collection.items.map((item) => {
-            const target = getCollectionItemTarget(item)
-            const attire = item.attire || item.attires || null
-            const arena = item.arena || item.arenas || null
+      <div className="panel-header with-actions">
+        <div>
+          <h3>Collection items</h3>
+          <p className="subtle-copy">
+            Browse all saved mods with category tags, quick links, and removal tools.
+          </p>
+        </div>
 
-            const isAttire = target.mod_type === 'attire'
-            const isArena = target.mod_type === 'arena'
+        <div className="wrap-actions">
+          <div className="view-toggle">
+            <button
+              type="button"
+              className={viewMode === 'grid' ? 'active' : ''}
+              onClick={() => setViewMode('grid')}
+            >
+              Grid
+            </button>
+            <button
+              type="button"
+              className={viewMode === 'compact' ? 'active' : ''}
+              onClick={() => setViewMode('compact')}
+            >
+              Compact
+            </button>
+          </div>
 
-            const displayName = isAttire
-              ? (attire?.name || 'Unknown attire')
-              : isArena
-                ? (arena?.name || 'Unknown arena')
-                : 'Unknown item'
+          {canManageCollection && items.length ? (
+            <>
+            {selectedIds.length > 0 ? (
+              <span className="pill subtle-pill">
+                {selectedIds.length} selected
+              </span>
+            ) : null}
 
-            const subtitle = isAttire
-              ? `${attire?.wrestler?.wrestler_name || 'Unknown wrestler'} · ${attire?.source_game || '—'}`
-              : isArena
-                ? `${getModTypeLabel(target.mod_type)} · ${arena?.source_game || '—'}`
-                : getModTypeLabel(target.mod_type)
+              <button
+                type="button"
+                className="ghost-button small-btn"
+                onClick={toggleSelectAll}
+              >
+                {selectedIds.length === items.length ? 'Clear selection' : 'Select all'}
+              </button>
 
-            const creatorName = isAttire
-              ? attire?.creator_name
-              : isArena
-                ? arena?.creator_name
-                : ''
+              <button
+                type="button"
+                className="ghost-button small-btn"
+                disabled={!selectedIds.length}
+                onClick={handleBulkRemove}
+              >
+                Remove selected
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
 
-            const image = isAttire
-              ? attire?.attire_images?.[0]
-              : isArena
-                ? arena?.arena_images?.[0]
-                : null
-
-            const thumbUrl = image?.image_url || image?.url || ''
-            const downloadUrl = isAttire
-              ? attire?.download_url
-              : isArena
-                ? arena?.download_url
-                : ''
+      {items.length === 0 ? (
+        <div className="empty-state small-empty">This collection has no items yet.</div>
+      ) : viewMode === 'compact' ? (
+        <div className="compact-attire-table">
+          {items.map((item) => {
+            const {
+              target,
+              entity,
+              isAttire,
+              isArena,
+              subtitle,
+              creatorName,
+              displayName,
+              linkCount
+            } = getCollectionItemData(item)
 
             return (
-              <article className="collection-item-card" key={item.id}>
+              <article className="compact-attire-row" key={item.id}>
+                <div className="compact-main">
+                  <div className="compact-title-row">
+                    {canManageCollection ? (
+                      <input
+                        type="checkbox"
+                        checked={selectedIdSet.has(item.id)}
+                        onChange={(e) => {
+                          e.stopPropagation()
+                          toggleSelected(item.id)
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : null}
+
+                    <strong>{displayName || 'Unknown item'}</strong>
+
+                    <span className="pill subtle-pill">
+                      {getModTypeLabel(target.mod_type)}
+                    </span>
+
+                    {target.mod_type === 'other' && target.mod_subtype ? (
+                      <span className="pill subtle-pill">
+                        {getOtherModSubtypeLabel(target.mod_subtype)}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="compact-meta-line">
+                    <span>{subtitle}</span>
+                    {creatorName ? (
+                      <span className="creator-badge small-creator-badge">{creatorName}</span>
+                    ) : null}
+                    {canContribute ? (
+                      linkCount ? (
+                        <span className="pill">{linkCount} link(s)</span>
+                      ) : (
+                        <span className="pill danger-pill">No link</span>
+                      )
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="compact-side">
+                  <div className="compact-actions-row">
+                    {isAttire && entity?.wrestler ? (
+                      <button
+                        className="secondary-button small-btn"
+                        onClick={() =>
+                          onSelectWrestler?.({
+                            wrestlerId: entity.wrestler.id,
+                            wrestlerName: entity.wrestler.wrestler_name
+                          })
+                        }
+                        type="button"
+                      >
+                        Open wrestler
+                      </button>
+                    ) : null}
+
+                    {isArena ? (
+                      <button
+                        className="secondary-button small-btn"
+                        onClick={() =>
+                          onSelectArena?.({
+                            arenaId: entity.id,
+                            arenaName: entity.name
+                          })
+                        }
+                        type="button"
+                      >
+                        Open arena
+                      </button>
+                    ) : null}
+
+                    {canManageCollection && onRemoveItem ? (
+                      <button
+                        className="ghost-button small-btn"
+                        onClick={() => onRemoveItem(item)}
+                        type="button"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="collection-items-grid">
+          {items.map((item) => {
+            const {
+              target,
+              entity,
+              isAttire,
+              isArena,
+              subtitle,
+              creatorName,
+              thumbUrl,
+              displayName,
+              linkCount
+            } = getCollectionItemData(item)
+
+            return (
+              <article className="collection-item-card enhanced-collection-item-card" key={item.id}>
+                <div className="collection-item-topbar">
+                  <div className="wrap-actions">
+                    <span className="pill subtle-pill">{getModTypeLabel(target.mod_type)}</span>
+                    {target.mod_type === 'other' && target.mod_subtype ? (
+                      <span className="pill subtle-pill">
+                        {getOtherModSubtypeLabel(target.mod_subtype)}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {canManageCollection ? (
+                    <label className="collection-select-check">
+                      <input
+                        type="checkbox"
+                        checked={selectedIdSet.has(item.id)}
+                        onChange={(e) => {
+                          e.stopPropagation()
+                          toggleSelected(item.id)
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </label>
+                  ) : null}
+                </div>
+
                 {thumbUrl ? (
                   <img className="collection-item-thumb" src={thumbUrl} alt={displayName} />
                 ) : (
@@ -105,26 +378,30 @@ export default function CollectionView({ collection, canContribute, onClose, onS
                 <div className="collection-item-body">
                   <h3>{displayName}</h3>
 
-                  <div className="muted-text small-text">
-                    {subtitle}
-                  </div>
-
-                  <div className="muted-text small-text">
-                    {getModTypeLabel(target.mod_type)}
-                  </div>
+                  <div className="muted-text small-text">{subtitle}</div>
 
                   {creatorName ? (
                     <div className="creator-badge prominent-creator-badge">{creatorName}</div>
                   ) : null}
 
+                  <div className="collection-item-meta-row">
+                    {canContribute ? (
+                      linkCount ? (
+                        <span className="pill">{linkCount} link(s)</span>
+                      ) : (
+                        <span className="pill danger-pill">No link</span>
+                      )
+                    ) : null}
+                  </div>
+
                   <div className="collection-actions wrap-actions">
-                    {isAttire && attire?.wrestler ? (
+                    {isAttire && entity?.wrestler ? (
                       <button
                         className="secondary-button small-btn"
                         onClick={() =>
-                          onSelectWrestler({
-                            wrestlerId: attire.wrestler.id,
-                            wrestlerName: attire.wrestler.wrestler_name
+                          onSelectWrestler?.({
+                            wrestlerId: entity.wrestler.id,
+                            wrestlerName: entity.wrestler.wrestler_name
                           })
                         }
                         type="button"
@@ -133,20 +410,37 @@ export default function CollectionView({ collection, canContribute, onClose, onS
                       </button>
                     ) : null}
 
-                    {canContribute ? (
-                      parseDownloadLinks(downloadUrl).length ? (
-                        <span className="pill">{parseDownloadLinks(downloadUrl).length} link(s)</span>
-                      ) : (
-                        <span className="pill danger-pill">No link</span>
-                      )
+                    {isArena ? (
+                      <button
+                        className="secondary-button small-btn"
+                        onClick={() =>
+                          onSelectArena?.({
+                            arenaId: entity.id,
+                            arenaName: entity.name
+                          })
+                        }
+                        type="button"
+                      >
+                        Open arena
+                      </button>
+                    ) : null}
+
+                    {canManageCollection && onRemoveItem ? (
+                      <button
+                        className="ghost-button small-btn"
+                        onClick={() => onRemoveItem(item)}
+                        type="button"
+                      >
+                        Remove
+                      </button>
                     ) : null}
                   </div>
                 </div>
               </article>
             )
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
     </section>
   )
 }
