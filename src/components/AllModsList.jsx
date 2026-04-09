@@ -393,11 +393,13 @@ function CarouselSection({
 
               <div className="collection-actions wrap-actions">
                 <ActionButtons
-                  item={item}
-                  onOpenAttire={onOpenAttire}
-                  onOpenArena={onOpenArena}
-                  onOpenTitle={onOpenTitle}
-                  onOpenOtherMod={onOpenOtherMod}
+                    item={item}
+                    onOpenAttire={onOpenAttire}
+                    onOpenArena={onOpenArena}
+                    onOpenTitle={onOpenTitle}
+                    onOpenOtherMod={onOpenOtherMod}
+                    onToggleInstalled={onToggleInstalled}
+                    onAddToCollection={onAddToCollection}
                 />
               </div>
             </div>

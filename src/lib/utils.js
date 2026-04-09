@@ -659,31 +659,32 @@ export function getUnifiedModTypeOrder(modType = '') {
 }
 
 export function getUnifiedModPreview(item = {}) {
+  const firstImage = item.images?.[0] || null
+  const firstImageUrl = firstImage?.image_url || firstImage?.url || ''
+
   if (item.modType === 'attire') {
     return (
       item.render_dds_url ||
-      item.images?.[0]?.image_url ||
-      item.images?.[0]?.url ||
+      firstImageUrl ||
       item.wrestlerHeadshotUrl ||
       ''
     )
   }
 
   if (item.modType === 'arena') {
-    return item.images?.[0]?.image_url || item.images?.[0]?.url || ''
+    return firstImageUrl
   }
 
   if (item.modType === 'title') {
     return (
+      firstImageUrl ||
       item.render_dds_url ||
-      item.images?.[0]?.image_url ||
-      item.images?.[0]?.url ||
       ''
     )
   }
 
   if (item.modType === 'other') {
-    return item.images?.[0]?.image_url || item.images?.[0]?.url || ''
+    return firstImageUrl
   }
 
   return ''
@@ -701,8 +702,9 @@ export function buildUnifiedModsFeed({
       const links = parseDownloadLinks(attire.download_url || '')
 
       return {
-        key: `attire-${attire.id}`,
+        id: attire.id,
         entityId: attire.id,
+        key: `attire-${attire.id}`,
         modType: 'attire',
         modSubtype: '',
         title: attire.name || 'Unknown attire',
@@ -714,6 +716,8 @@ export function buildUnifiedModsFeed({
         ownerId: attire.owner_id || '',
         hasDownload: links.length > 0,
         linkCount: links.length,
+        downloadCount: links.length,
+        installCount: 0,
         previewUrl: getUnifiedModPreview({
           modType: 'attire',
           render_dds_url: attire.render_dds_url,
@@ -743,8 +747,9 @@ export function buildUnifiedModsFeed({
     const links = parseDownloadLinks(arena.download_url || '')
 
     return {
-      key: `arena-${arena.id}`,
+      id: arena.id,
       entityId: arena.id,
+      key: `arena-${arena.id}`,
       modType: 'arena',
       modSubtype: '',
       title: arena.name || 'Unknown arena',
@@ -756,6 +761,8 @@ export function buildUnifiedModsFeed({
       ownerId: arena.owner_id || '',
       hasDownload: links.length > 0,
       linkCount: links.length,
+      downloadCount: links.length,
+      installCount: 0,
       previewUrl: getUnifiedModPreview({
         modType: 'arena',
         images
@@ -779,8 +786,9 @@ export function buildUnifiedModsFeed({
     const links = parseDownloadLinks(title.download_url || '')
 
     return {
-      key: `title-${title.id}`,
+      id: title.id,
       entityId: title.id,
+      key: `title-${title.id}`,
       modType: 'title',
       modSubtype: '',
       title: title.name || 'Unknown title belt',
@@ -792,6 +800,8 @@ export function buildUnifiedModsFeed({
       ownerId: title.owner_id || '',
       hasDownload: links.length > 0,
       linkCount: links.length,
+      downloadCount: links.length,
+      installCount: 0,
       previewUrl: getUnifiedModPreview({
         modType: 'title',
         render_dds_url: title.render_dds_url,
@@ -815,8 +825,9 @@ export function buildUnifiedModsFeed({
     const links = parseDownloadLinks(otherMod.download_url || '')
 
     return {
-      key: `other-${otherMod.id}`,
+      id: otherMod.id,
       entityId: otherMod.id,
+      key: `other-${otherMod.id}`,
       modType: 'other',
       modSubtype: otherMod.subtype || '',
       title: otherMod.name || 'Unknown mod',
@@ -828,6 +839,8 @@ export function buildUnifiedModsFeed({
       ownerId: otherMod.owner_id || '',
       hasDownload: links.length > 0,
       linkCount: links.length,
+      downloadCount: links.length,
+      installCount: 0,
       previewUrl: getUnifiedModPreview({
         modType: 'other',
         images
@@ -840,6 +853,7 @@ export function buildUnifiedModsFeed({
         otherMod.notes,
         otherMod.source_game,
         otherMod.subtype,
+        getOtherModSubtypeLabel(otherMod.subtype || ''),
         JSON.stringify(otherMod.profile_json || {})
       ]
         .join(' ')
@@ -867,23 +881,26 @@ export function sortUnifiedMods(items = [], sortBy = 'newest') {
     )
   }
 
-  if (mode === 'trending') {
-    return [...items].sort((a, b) => {
+  if (sortBy === 'trending') {
+    return sorted.sort((a, b) => {
       const aScore = Number(a.downloadCount || 0) + Number(a.installCount || 0)
       const bScore = Number(b.downloadCount || 0) + Number(b.installCount || 0)
 
       if (bScore !== aScore) return bScore - aScore
 
-      return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)
+      return (
+        new Date(b.updatedAt || b.createdAt || 0).getTime() -
+        new Date(a.updatedAt || a.createdAt || 0).getTime()
+      )
     })
   }
 
   if (sortBy === 'az') {
-    return sorted.sort((a, b) => a.title.localeCompare(b.title))
+    return sorted.sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')))
   }
 
   if (sortBy === 'za') {
-    return sorted.sort((a, b) => b.title.localeCompare(a.title))
+    return sorted.sort((a, b) => String(b.title || '').localeCompare(String(a.title || '')))
   }
 
   return sorted.sort(

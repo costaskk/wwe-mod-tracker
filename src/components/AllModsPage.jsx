@@ -303,6 +303,7 @@ export default function AllModsPage({
 
   const visibleFeaturedItems = !hasActiveFilters && page === 1 ? featuredItems : []
   const visibleLatestItems = !hasActiveFilters && page === 1 ? latestItems : []
+  const visibleTrendingItems = !hasActiveFilters && page === 1 ? trendingItems : []
 
   useEffect(() => {
     setPage(1)
@@ -350,7 +351,7 @@ export default function AllModsPage({
             onOpenArena={onOpenArena}
             onOpenTitle={onOpenTitle}
             onOpenOtherMod={onOpenOtherMod}
-            trendingItems={trendingItems}
+            trendingItems={visibleTrendingItems}
             onToggleInstalled={toggleInstalled}
             onAddToCollection={addToCollection}
         />
