@@ -71,14 +71,6 @@ export default function Header({
               Other Mods
             </button>
 
-            <button
-              type="button"
-              className={`nav-chip ${currentPage === 'issues' ? 'active' : ''}`}
-              onClick={onBrowseIssues}
-            >
-              Issues
-            </button>
-
             {session ? (
               <button
                 type="button"
@@ -88,6 +80,14 @@ export default function Header({
                 Collections
               </button>
             ) : null}
+
+            <button
+              type="button"
+              className={`nav-chip ${currentPage === 'issues' ? 'active' : ''}`}
+              onClick={onBrowseIssues}
+            >
+              Issues
+            </button>
 
             {currentProfile?.role === 'admin' ? (
               <button

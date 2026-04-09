@@ -622,6 +622,22 @@ export function getModTypeLabel(type = '') {
   }
 }
 
+export function getSubtypeIcon(subtype = '') {
+  switch (subtype) {
+    case 'music': return '🎵'
+    case 'ui': return '🖥'
+    case 'camera': return '🎥'
+    case 'lighting': return '💡'
+    case 'referee': return '🧑'
+    case 'crowd': return '👥'
+    case 'match_type': return '🥊'
+    case 'weapons': return '⚔'
+    case 'moves': return '🕺'
+    case 'gameplay': return '🎮'
+    default: return '📦'
+  }
+}
+
 export function getOtherModSubtypeLabel(subtype = '') {
   if (!subtype) return 'Other'
   return titleCase(subtype)

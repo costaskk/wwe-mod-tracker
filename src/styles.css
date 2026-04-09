@@ -222,6 +222,107 @@ code {
   background: linear-gradient(180deg, rgba(90, 186, 255, 0.95), rgba(145, 135, 255, 0.92));
 }
 
+/* Base subtype pill */
+.pill.subtype-pill {
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  opacity: 0.95;
+}
+
+/* ===== INDIVIDUAL SUBTYPE COLORS ===== */
+
+/* 🎮 Gameplay */
+.subtype-gameplay {
+  background: rgba(255, 122, 122, 0.16);
+  color: #ffb3b3;
+  border: 1px solid rgba(255, 122, 122, 0.35);
+}
+
+/* 🎵 Music */
+.subtype-music {
+  background: rgba(255, 196, 87, 0.16);
+  color: #ffe3a3;
+  border: 1px solid rgba(255, 196, 87, 0.35);
+}
+
+/* 🖥 UI */
+.subtype-ui {
+  background: rgba(87, 166, 255, 0.16);
+  color: #cfe6ff;
+  border: 1px solid rgba(87, 166, 255, 0.35);
+}
+
+/* 🎥 Camera */
+.subtype-camera {
+  background: rgba(139, 214, 255, 0.16);
+  color: #d9f3ff;
+  border: 1px solid rgba(139, 214, 255, 0.35);
+}
+
+/* 💡 Lighting */
+.subtype-lighting {
+  background: rgba(255, 235, 140, 0.16);
+  color: #fff3c4;
+  border: 1px solid rgba(255, 235, 140, 0.35);
+}
+
+/* 🧑 Referee */
+.subtype-referee {
+  background: rgba(160, 255, 210, 0.16);
+  color: #d7ffe9;
+  border: 1px solid rgba(160, 255, 210, 0.35);
+}
+
+/* 👥 Crowd */
+.subtype-crowd {
+  background: rgba(200, 200, 255, 0.16);
+  color: #e0e0ff;
+  border: 1px solid rgba(200, 200, 255, 0.35);
+}
+
+/* 🥊 Match Type */
+.subtype-match_type {
+  background: rgba(255, 109, 180, 0.16);
+  color: #ffc6e2;
+  border: 1px solid rgba(255, 109, 180, 0.35);
+}
+
+/* ⚔ Weapons */
+.subtype-weapons {
+  background: rgba(255, 160, 120, 0.16);
+  color: #ffd8c7;
+  border: 1px solid rgba(255, 160, 120, 0.35);
+}
+
+/* 🕺 Moves */
+.subtype-moves {
+  background: rgba(120, 255, 170, 0.16);
+  color: #ccffe3;
+  border: 1px solid rgba(120, 255, 170, 0.35);
+}
+
+/* 📦 Misc */
+.subtype-misc {
+  background: rgba(180, 180, 180, 0.16);
+  color: #e0e0e0;
+  border: 1px solid rgba(180, 180, 180, 0.35);
+}
+
+/* optional: make pills slightly tighter */
+.pill {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.pill-icon {
+  margin-right: 6px;
+  opacity: 0.85;
+}
+
 .user-chip,
 .pill,
 .status-pill {
@@ -819,6 +920,8 @@ select option {
   background: rgba(77,163,255,0.15);
   color: #4da3ff;
 }
+
+
 
 .titantron-visual-block {
   margin-top: 0.35rem;

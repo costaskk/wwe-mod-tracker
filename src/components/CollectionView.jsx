@@ -283,7 +283,8 @@ export default function CollectionView({
                     </span>
 
                     {target.mod_type === 'other' && target.mod_subtype ? (
-                      <span className="pill subtle-pill">
+                      <span className={`pill subtype-pill subtype-${target.mod_subtype}`}>
+                        <span className="pill-icon">{getSubtypeIcon(target.mod_subtype)}</span>
                         {getOtherModSubtypeLabel(target.mod_subtype)}
                       </span>
                     ) : null}
@@ -404,7 +405,8 @@ export default function CollectionView({
                   <div className="wrap-actions">
                     <span className="pill subtle-pill">{getModTypeLabel(target.mod_type)}</span>
                     {target.mod_type === 'other' && target.mod_subtype ? (
-                      <span className="pill subtle-pill">
+                      <span className={`pill subtype-pill subtype-${target.mod_subtype}`}>
+                        <span className="pill-icon">{getSubtypeIcon(target.mod_subtype)}</span>
                         {getOtherModSubtypeLabel(target.mod_subtype)}
                       </span>
                     ) : null}
