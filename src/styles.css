@@ -2359,6 +2359,34 @@ select option {
   outline-offset: -2px;
 }
 
+.link-issues-grid {
+  margin-top: 18px;
+}
+
+.link-issue-collection-card {
+  min-height: 100%;
+}
+
+.link-issue-collection-card .collection-item-body {
+  gap: 14px;
+}
+
+.link-issue-collection-card .download-links-list {
+  margin-top: 4px;
+}
+
+.subtype-pill {
+  background: rgba(84, 169, 255, 0.12);
+  border-color: rgba(84, 169, 255, 0.22);
+  color: #8ec5ff;
+}
+
+.link-issue-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .link-issues-list {
   display: grid;
   gap: 14px;

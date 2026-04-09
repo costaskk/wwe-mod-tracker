@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   requestSummary,
   parseDownloadLinks,
@@ -11,10 +11,10 @@ import {
 
 function CategoryBadge({ modType, modSubtype }) {
   return (
-    <div className="link-issue-category-row wrap-actions">
+    <div className="wrap-actions">
       <span className="pill subtle-pill">{getModTypeLabel(modType)}</span>
       {modType === 'other' && modSubtype ? (
-        <span className="pill subtle-pill">{getOtherModSubtypeLabel(modSubtype)}</span>
+        <span className="pill subtype-pill">{getOtherModSubtypeLabel(modSubtype)}</span>
       ) : null}
     </div>
   )
@@ -52,65 +52,66 @@ function IssueCard({ issue, canManageContent, canContribute }) {
   const canEdit = canManageContent?.(issue.ownerId) && issue.onEdit
 
   return (
-    <article className="link-issue-card elevated-card">
-      <div className="link-issue-main">
-        <div className="link-issue-title-row">
-          <strong>{issue.parentLabel}</strong>
-
+    <article className="collection-item-card enhanced-collection-item-card link-issue-collection-card">
+      <div className="collection-item-topbar">
+        <div className="wrap-actions">
           <span className={`pill ${issue.issueType === 'dead_link' ? 'danger-pill' : 'warning-pill'}`}>
             {issue.issueType === 'dead_link' ? 'Dead link' : 'Missing link'}
           </span>
+          <CategoryBadge modType={issue.modType} modSubtype={issue.modSubtype} />
         </div>
+      </div>
 
-        <CategoryBadge modType={issue.modType} modSubtype={issue.modSubtype} />
+      <div className="collection-item-body">
+        <div className="muted-text small-text">{issue.parentLabel}</div>
+
+        <h3 title={issue.itemName}>{issue.itemName}</h3>
 
         {issue.sourceGame ? (
-          <div className="link-issue-meta muted-text small-text">
-            {issue.sourceGame ? <span>{issue.sourceGame}</span> : null}
-          </div>
+          <div className="muted-text small-text">{issue.sourceGame}</div>
         ) : null}
 
-        <h3>{issue.itemName}</h3>
-
-        <div className="muted-text small-text">
-          {issue.issueType === 'dead_link'
-            ? `${issue.requestInfo.deadLinks} dead link report${issue.requestInfo.deadLinks === 1 ? '' : 's'}`
-            : 'No working download link added yet'}
+        <div className="collection-item-meta-row">
+          <span className="muted-text small-text">
+            {issue.issueType === 'dead_link'
+              ? `${issue.requestInfo.deadLinks} dead link report${issue.requestInfo.deadLinks === 1 ? '' : 's'}`
+              : 'No working download link added yet'}
+          </span>
         </div>
 
         <ProviderList links={issue.links} />
-      </div>
 
-      <div className="link-issue-actions">
-        {canContribute && issue.onFix ? (
-          <button
-            type="button"
-            className="secondary-button small-btn"
-            onClick={issue.onFix}
-          >
-            Fix
-          </button>
-        ) : null}
+        <div className="collection-actions wrap-actions">
+          {canContribute && issue.onFix ? (
+            <button
+              type="button"
+              className="secondary-button small-btn"
+              onClick={issue.onFix}
+            >
+              Fix
+            </button>
+          ) : null}
 
-        {canContribute && issue.onRequestNote ? (
-          <button
-            type="button"
-            className="ghost-button small-btn"
-            onClick={issue.onRequestNote}
-          >
-            Add note
-          </button>
-        ) : null}
+          {canContribute && issue.onRequestNote ? (
+            <button
+              type="button"
+              className="ghost-button small-btn"
+              onClick={issue.onRequestNote}
+            >
+              Add note
+            </button>
+          ) : null}
 
-        {canEdit ? (
-          <button
-            type="button"
-            className="ghost-button small-btn"
-            onClick={issue.onEdit}
-          >
-            Edit
-          </button>
-        ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              className="ghost-button small-btn"
+              onClick={issue.onEdit}
+            >
+              Edit
+            </button>
+          ) : null}
+        </div>
       </div>
     </article>
   )
@@ -136,6 +137,8 @@ export default function LinkIssuesPage({
   onEditTitleBelt,
   onEditOtherMod
 }) {
+  const [query, setQuery] = useState('')
+
   const issues = useMemo(() => {
     const attireIssues = wrestlers.flatMap((wrestler) =>
       (wrestler.attires || []).flatMap((attire) => {
@@ -153,19 +156,14 @@ export default function LinkIssuesPage({
           modType: 'attire',
           modSubtype: '',
           parentLabel: wrestler.wrestler_name || 'Unknown wrestler',
-          item: attire,
           itemName: attire.name || 'Unknown attire',
           ownerId: attire.owner_id,
           sourceGame: attire.source_game || '',
           issueType,
           requestInfo,
           links,
-          onEdit: onEditAttire
-            ? () => onEditAttire(attire)
-            : null,
-          onFix: onResolveLink
-            ? () => onResolveLink(wrestler, attire, issueType)
-            : null,
+          onEdit: onEditAttire ? () => onEditAttire(attire) : null,
+          onFix: onResolveLink ? () => onResolveLink(wrestler, attire, issueType) : null,
           onRequestNote: onCreateRequest
             ? () =>
                 onCreateRequest(
@@ -204,12 +202,8 @@ export default function LinkIssuesPage({
         issueType,
         requestInfo,
         links,
-        onEdit: onEditArena
-          ? () => onEditArena(arena)
-          : null,
-        onFix: onResolveArenaLink
-          ? () => onResolveArenaLink(arena, issueType)
-          : null,
+        onEdit: onEditArena ? () => onEditArena(arena) : null,
+        onFix: onResolveArenaLink ? () => onResolveArenaLink(arena, issueType) : null,
         onRequestNote: onCreateArenaRequest
           ? () =>
               onCreateArenaRequest(
@@ -244,12 +238,8 @@ export default function LinkIssuesPage({
         issueType,
         requestInfo,
         links,
-        onEdit: onEditTitleBelt
-          ? () => onEditTitleBelt(titleBelt)
-          : null,
-        onFix: onResolveTitleBeltLink
-          ? () => onResolveTitleBeltLink(titleBelt, issueType)
-          : null,
+        onEdit: onEditTitleBelt ? () => onEditTitleBelt(titleBelt) : null,
+        onFix: onResolveTitleBeltLink ? () => onResolveTitleBeltLink(titleBelt, issueType) : null,
         onRequestNote: onCreateTitleBeltRequest
           ? () =>
               onCreateTitleBeltRequest(
@@ -284,12 +274,8 @@ export default function LinkIssuesPage({
         issueType,
         requestInfo,
         links,
-        onEdit: onEditOtherMod
-          ? () => onEditOtherMod(otherMod)
-          : null,
-        onFix: onResolveOtherModLink
-          ? () => onResolveOtherModLink(otherMod, issueType)
-          : null,
+        onEdit: onEditOtherMod ? () => onEditOtherMod(otherMod) : null,
+        onFix: onResolveOtherModLink ? () => onResolveOtherModLink(otherMod, issueType) : null,
         onRequestNote: onCreateOtherModRequest
           ? () =>
               onCreateOtherModRequest(
@@ -343,11 +329,34 @@ export default function LinkIssuesPage({
     onEditOtherMod
   ])
 
-  const deadCount = issues.filter((item) => item.issueType === 'dead_link').length
-  const missingCount = issues.filter((item) => item.issueType === 'missing_link').length
+  const filteredIssues = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return issues
+
+    return issues.filter((issue) => {
+      const haystack = [
+        issue.parentLabel,
+        issue.itemName,
+        issue.modType,
+        issue.modSubtype,
+        issue.sourceGame,
+        issue.issueType,
+        getModTypeLabel(issue.modType),
+        issue.modSubtype ? getOtherModSubtypeLabel(issue.modSubtype) : '',
+        ...issue.links
+      ]
+        .join(' ')
+        .toLowerCase()
+
+      return haystack.includes(q)
+    })
+  }, [issues, query])
+
+  const deadCount = filteredIssues.filter((item) => item.issueType === 'dead_link').length
+  const missingCount = filteredIssues.filter((item) => item.issueType === 'missing_link').length
 
   return (
-    <section className="panel soft-panel">
+    <section className="panel detail-hero collection-view-panel">
       <div className="panel-header with-actions">
         <div>
           <div className="eyebrow">Maintenance</div>
@@ -358,27 +367,40 @@ export default function LinkIssuesPage({
         </div>
 
         <div className="wrap-actions">
-          <span className="pill subtle-pill">{issues.length} total</span>
+          <span className="pill subtle-pill">{filteredIssues.length} total</span>
           <span className="pill danger-pill">{deadCount} dead</span>
           <span className="pill warning-pill">{missingCount} missing</span>
-          {!canContribute ? (
-            <span className="pill subtle-pill">View only</span>
-          ) : null}
+          {!canContribute ? <span className="pill subtle-pill">View only</span> : null}
         </div>
       </div>
 
-      {issues.length === 0 ? (
-        <div className="empty-state">
+      <div className="panel soft-panel elevated-card">
+        <div className="form-grid">
+          <label>
+            Search issues
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by mod name, category, subtype, source game, creator, or provider"
+            />
+          </label>
+        </div>
+      </div>
+
+      {filteredIssues.length === 0 ? (
+        <div className="empty-state small-empty">
           <div>
-            <strong>No issues found</strong>
+            <strong>{issues.length === 0 ? 'No issues found' : 'No matching issues'}</strong>
             <div className="muted-text small-text" style={{ marginTop: '8px' }}>
-              Everything currently looks good.
+              {issues.length === 0
+                ? 'Everything currently looks good.'
+                : 'Try a different search term.'}
             </div>
           </div>
         </div>
       ) : (
-        <div className="link-issues-list">
-          {issues.map((issue) => (
+        <div className="collection-items-grid link-issues-grid">
+          {filteredIssues.map((issue) => (
             <IssueCard
               key={issue.key}
               issue={issue}
