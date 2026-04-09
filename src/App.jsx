@@ -1,5 +1,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
+import AllModsPage from './components/AllModsPage'
 import AdminPanel from './components/AdminPanel'
 import AuthPanel from './components/AuthPanel'
 import ArenaPage from './components/ArenaPage'
@@ -72,7 +73,7 @@ export default function App() {
   const [deadLinkOnly, setDeadLinkOnly] = useState(false)
   const [wrestlerViewMode, setWrestlerViewMode] = useState('cards')
   const [attireViewMode, setAttireViewMode] = useState('gallery')
-  const [currentPage, setCurrentPage] = useState('mods')
+  const [currentPage, setCurrentPage] = useState('all_mods')
   const [modsPage, setModsPage] = useState(1)
   const modsPerPage = 14
 
@@ -377,8 +378,10 @@ export default function App() {
         setCurrentPage('admin')
       } else if (page === 'issues') {
         setCurrentPage('issues')
+      } else if (page === 'all_mods') {
+        setCurrentPage('all_mods')
       } else {
-        setCurrentPage('mods')
+        setCurrentPage('all_mods')
       }
 
       if (!slug) {
@@ -1800,8 +1803,20 @@ export default function App() {
 
   function goHome() {
     setSelectedCollection(null)
-    setCurrentPage('mods')
+    setCurrentPage('all_mods')
     window.history.replaceState({}, '', window.location.pathname)
+  }
+
+  function goAllModsPage() {
+    setSelectedCollection(null)
+    setCurrentPage('all_mods')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=all_mods`)
+  }
+
+  function goWrestlersPage() {
+    setSelectedCollection(null)
+    setCurrentPage('mods')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=mods`)
   }
 
   function goCollectionsPage() {
@@ -1843,6 +1858,60 @@ export default function App() {
     window.history.replaceState({}, '', `${window.location.pathname}?page=other_mods`)
 
     setOtherModsCreateSignal((current) => current + 1)
+  }
+
+  function openAttireFromAllMods(item) {
+    const wrestlerId = item?.raw?.wrestler_id
+    if (!wrestlerId) return
+
+    const index = filteredWrestlers.findIndex((entry) => entry.id === wrestlerId)
+    if (index >= 0) {
+      const nextPage = Math.floor(index / modsPerPage) + 1
+      setModsPage(nextPage)
+    }
+
+    setSelectedId(wrestlerId)
+    setCurrentPage('mods')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=mods`)
+  }
+
+  function openArenaFromAllMods(item) {
+    const arenaId = item?.entityId
+    if (!arenaId) return
+
+    setArenaSelectSignal({
+      arenaId,
+      ts: Date.now()
+    })
+
+    setCurrentPage('arenas')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=arenas`)
+  }
+
+  function openTitleFromAllMods(item) {
+    const titleId = item?.entityId
+    if (!titleId) return
+
+    setTitleSelectSignal({
+      titleId,
+      ts: Date.now()
+    })
+
+    setCurrentPage('titles')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=titles`)
+  }
+
+  function openOtherModFromAllMods(item) {
+    const otherModId = item?.entityId
+    if (!otherModId) return
+
+    setOtherModsSelectSignal({
+      otherModId,
+      ts: Date.now()
+    })
+
+    setCurrentPage('other_mods')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=other_mods`)
   }
 
   function goIssuesPage() {
@@ -2119,7 +2188,7 @@ export default function App() {
         onBrowseTitles={goTitlesPage}
         onBrowseIssues={goIssuesPage}
         onBrowseOtherMods={goOtherModsPage}
-        onGoHome={goHome}
+        onGoHome={goAllModsPage}
         currentPage={currentPage}
         currentProfile={currentProfile}
         canContribute={canContribute}
@@ -2270,6 +2339,18 @@ export default function App() {
             arenaCreateSignal={arenaCreateSignal}
             arenaSelectSignal={arenaSelectSignal}
             onConsumeArenaCreateSignal={() => setArenaCreateSignal(0)}
+          />
+        ) : currentPage === 'all_mods' ? (
+          <AllModsPage
+            wrestlers={wrestlers}
+            arenas={arenas}
+            titleBelts={titleBelts}
+            otherMods={otherMods}
+            creators={creators}
+            onOpenAttire={openAttireFromAllMods}
+            onOpenArena={openArenaFromAllMods}
+            onOpenTitle={openTitleFromAllMods}
+            onOpenOtherMod={openOtherModFromAllMods}
           />
         ) : currentPage === 'titles' ? (
           <TitleBeltPage

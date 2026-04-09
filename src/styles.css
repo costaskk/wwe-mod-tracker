@@ -222,6 +222,31 @@ code {
   background: linear-gradient(180deg, rgba(90, 186, 255, 0.95), rgba(145, 135, 255, 0.92));
 }
 
+.subtype-pill .pill-icon {
+  margin-right: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.collection-items-grid .collection-item-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 18px;
+}
+
+.collection-item-body h3 {
+  margin-bottom: 8px;
+}
+
+.collection-item-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
+
 /* Base subtype pill */
 .pill.subtype-pill {
   border-radius: 999px;
@@ -2373,12 +2398,6 @@ select option {
 
 .link-issue-collection-card .download-links-list {
   margin-top: 4px;
-}
-
-.subtype-pill {
-  background: rgba(84, 169, 255, 0.12);
-  border-color: rgba(84, 169, 255, 0.22);
-  color: #8ec5ff;
 }
 
 .link-issue-meta {

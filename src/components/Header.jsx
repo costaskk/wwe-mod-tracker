@@ -12,7 +12,7 @@ export default function Header({
   onBrowseAdmin = () => {},
   onBrowseIssues = () => {},
   onGoHome = () => {},
-  currentPage = 'mods',
+  currentPage = 'all_mods',
   session,
   currentProfile,
   canContribute
@@ -24,6 +24,15 @@ export default function Header({
       console.error('Sign out failed', err)
     }
   }
+
+  const roleLabel = session ? `${currentProfile?.role || 'user'} mode` : 'Public browse mode'
+  const approvalLabel = currentProfile?.approval_status || 'pending'
+  const isAdmin = currentProfile?.role === 'admin'
+  const showAllModsAction = currentPage === 'all_mods'
+  const showCharactersAction = currentPage === 'mods'
+  const showArenaAction = currentPage === 'arenas'
+  const showTitleAction = currentPage === 'titles'
+  const showOtherModAction = currentPage === 'other_mods'
 
   return (
     <header className="hero-card hero-card-improved">
@@ -41,10 +50,18 @@ export default function Header({
           <div className="page-nav-chips">
             <button
               type="button"
-              className={`nav-chip ${currentPage === 'mods' ? 'active' : ''}`}
+              className={`nav-chip ${currentPage === 'all_mods' ? 'active' : ''}`}
               onClick={onGoHome}
             >
-              Mod list
+              All Mods
+            </button>
+
+            <button
+              type="button"
+              className={`nav-chip ${currentPage === 'mods' ? 'active' : ''}`}
+              onClick={onAddWrestler}
+            >
+              Characters
             </button>
 
             <button
@@ -89,7 +106,7 @@ export default function Header({
               Issues
             </button>
 
-            {currentProfile?.role === 'admin' ? (
+            {isAdmin ? (
               <button
                 type="button"
                 className={`nav-chip ${currentPage === 'admin' ? 'active' : ''}`}
@@ -101,16 +118,18 @@ export default function Header({
           </div>
 
           <span className="user-chip subtle-chip">
-            {session ? `${currentProfile?.role || 'user'} mode` : 'Public browse mode'}
+            {roleLabel}
           </span>
 
           {session ? (
             <details className="account-menu">
               <summary>{session.user.email}</summary>
+
               <div className="account-menu-inner">
                 <div className="muted-text small-text">
-                  Status: {currentProfile?.approval_status || 'pending'}
+                  Status: {approvalLabel}
                 </div>
+
                 <button
                   className="ghost-button small-btn"
                   onClick={handleSignOut}
@@ -124,7 +143,7 @@ export default function Header({
         </div>
 
         <div className="hero-actions">
-          {currentPage === 'mods' ? (
+          {showAllModsAction ? (
             <button
               className="primary-button hero-primary"
               onClick={onAddWrestler}
@@ -135,7 +154,18 @@ export default function Header({
             </button>
           ) : null}
 
-          {currentPage === 'arenas' ? (
+          {showCharactersAction ? (
+            <button
+              className="primary-button hero-primary"
+              onClick={onAddWrestler}
+              disabled={!canContribute}
+              type="button"
+            >
+              Add wrestler
+            </button>
+          ) : null}
+
+          {showArenaAction ? (
             <button
               className="primary-button hero-primary"
               onClick={onAddArena}
@@ -146,7 +176,7 @@ export default function Header({
             </button>
           ) : null}
 
-          {currentPage === 'titles' ? (
+          {showTitleAction ? (
             <button
               className="primary-button hero-primary"
               onClick={onAddTitle}
@@ -157,7 +187,7 @@ export default function Header({
             </button>
           ) : null}
 
-          {currentPage === 'other_mods' ? (
+          {showOtherModAction ? (
             <button
               className="primary-button hero-primary"
               onClick={onAddOtherMod}

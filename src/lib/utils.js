@@ -642,3 +642,241 @@ export function getOtherModSubtypeLabel(subtype = '') {
   if (!subtype) return 'Other'
   return titleCase(subtype)
 }
+
+export function getUnifiedModTypeOrder(modType = '') {
+  switch (modType) {
+    case 'attire':
+      return 1
+    case 'arena':
+      return 2
+    case 'title':
+      return 3
+    case 'other':
+      return 4
+    default:
+      return 99
+  }
+}
+
+export function getUnifiedModPreview(item = {}) {
+  if (item.modType === 'attire') {
+    return (
+      item.render_dds_url ||
+      item.images?.[0]?.image_url ||
+      item.images?.[0]?.url ||
+      item.wrestlerHeadshotUrl ||
+      ''
+    )
+  }
+
+  if (item.modType === 'arena') {
+    return item.images?.[0]?.image_url || item.images?.[0]?.url || ''
+  }
+
+  if (item.modType === 'title') {
+    return (
+      item.render_dds_url ||
+      item.images?.[0]?.image_url ||
+      item.images?.[0]?.url ||
+      ''
+    )
+  }
+
+  if (item.modType === 'other') {
+    return item.images?.[0]?.image_url || item.images?.[0]?.url || ''
+  }
+
+  return ''
+}
+
+export function buildUnifiedModsFeed({
+  wrestlers = [],
+  arenas = [],
+  titleBelts = [],
+  otherMods = []
+}) {
+  const attireItems = wrestlers.flatMap((wrestler) =>
+    (wrestler.attires || []).map((attire) => {
+      const images = attire.attire_images || attire.images || []
+      const links = parseDownloadLinks(attire.download_url || '')
+
+      return {
+        key: `attire-${attire.id}`,
+        entityId: attire.id,
+        modType: 'attire',
+        modSubtype: '',
+        title: attire.name || 'Unknown attire',
+        parentTitle: wrestler.wrestler_name || 'Unknown wrestler',
+        creatorName: attire.creator_name || '',
+        sourceGame: attire.source_game || 'WWE 2K25',
+        createdAt: attire.created_at || '',
+        updatedAt: attire.updated_at || '',
+        ownerId: attire.owner_id || '',
+        hasDownload: links.length > 0,
+        linkCount: links.length,
+        previewUrl: getUnifiedModPreview({
+          modType: 'attire',
+          render_dds_url: attire.render_dds_url,
+          images,
+          wrestlerHeadshotUrl: wrestler.headshot_url || ''
+        }),
+        images,
+        raw: attire,
+        searchText: [
+          attire.name,
+          wrestler.wrestler_name,
+          attire.era,
+          attire.creator_name,
+          attire.notes,
+          attire.source_game,
+          JSON.stringify(attire.moveset_json || {}),
+          JSON.stringify(attire.profile_json || {})
+        ]
+          .join(' ')
+          .toLowerCase()
+      }
+    })
+  )
+
+  const arenaItems = arenas.map((arena) => {
+    const images = arena.arena_images || arena.images || []
+    const links = parseDownloadLinks(arena.download_url || '')
+
+    return {
+      key: `arena-${arena.id}`,
+      entityId: arena.id,
+      modType: 'arena',
+      modSubtype: '',
+      title: arena.name || 'Unknown arena',
+      parentTitle: '',
+      creatorName: arena.creator_name || '',
+      sourceGame: arena.source_game || 'WWE 2K25',
+      createdAt: arena.created_at || '',
+      updatedAt: arena.updated_at || '',
+      ownerId: arena.owner_id || '',
+      hasDownload: links.length > 0,
+      linkCount: links.length,
+      previewUrl: getUnifiedModPreview({
+        modType: 'arena',
+        images
+      }),
+      images,
+      raw: arena,
+      searchText: [
+        arena.name,
+        arena.creator_name,
+        arena.notes,
+        arena.source_game,
+        JSON.stringify(arena.profile_json || {})
+      ]
+        .join(' ')
+        .toLowerCase()
+    }
+  })
+
+  const titleItems = titleBelts.map((title) => {
+    const images = title.title_belt_images || title.images || []
+    const links = parseDownloadLinks(title.download_url || '')
+
+    return {
+      key: `title-${title.id}`,
+      entityId: title.id,
+      modType: 'title',
+      modSubtype: '',
+      title: title.name || 'Unknown title belt',
+      parentTitle: '',
+      creatorName: title.creator_name || '',
+      sourceGame: title.source_game || 'WWE 2K25',
+      createdAt: title.created_at || '',
+      updatedAt: title.updated_at || '',
+      ownerId: title.owner_id || '',
+      hasDownload: links.length > 0,
+      linkCount: links.length,
+      previewUrl: getUnifiedModPreview({
+        modType: 'title',
+        render_dds_url: title.render_dds_url,
+        images
+      }),
+      images,
+      raw: title,
+      searchText: [
+        title.name,
+        title.creator_name,
+        title.notes,
+        title.source_game
+      ]
+        .join(' ')
+        .toLowerCase()
+    }
+  })
+
+  const otherItems = otherMods.map((otherMod) => {
+    const images = otherMod.other_mod_images || otherMod.images || []
+    const links = parseDownloadLinks(otherMod.download_url || '')
+
+    return {
+      key: `other-${otherMod.id}`,
+      entityId: otherMod.id,
+      modType: 'other',
+      modSubtype: otherMod.subtype || '',
+      title: otherMod.name || 'Unknown mod',
+      parentTitle: '',
+      creatorName: otherMod.creator_name || '',
+      sourceGame: otherMod.source_game || 'WWE 2K25',
+      createdAt: otherMod.created_at || '',
+      updatedAt: otherMod.updated_at || '',
+      ownerId: otherMod.owner_id || '',
+      hasDownload: links.length > 0,
+      linkCount: links.length,
+      previewUrl: getUnifiedModPreview({
+        modType: 'other',
+        images
+      }),
+      images,
+      raw: otherMod,
+      searchText: [
+        otherMod.name,
+        otherMod.creator_name,
+        otherMod.notes,
+        otherMod.source_game,
+        otherMod.subtype,
+        JSON.stringify(otherMod.profile_json || {})
+      ]
+        .join(' ')
+        .toLowerCase()
+    }
+  })
+
+  return [...attireItems, ...arenaItems, ...titleItems, ...otherItems]
+}
+
+export function sortUnifiedMods(items = [], sortBy = 'newest') {
+  const sorted = [...items]
+
+  if (sortBy === 'oldest') {
+    return sorted.sort(
+      (a, b) =>
+        new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+    )
+  }
+
+  if (sortBy === 'updated') {
+    return sorted.sort(
+      (a, b) =>
+        new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
+    )
+  }
+
+  if (sortBy === 'az') {
+    return sorted.sort((a, b) => a.title.localeCompare(b.title))
+  }
+
+  if (sortBy === 'za') {
+    return sorted.sort((a, b) => b.title.localeCompare(a.title))
+  }
+
+  return sorted.sort(
+    (a, b) =>
+      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+  )
+}
