@@ -867,6 +867,17 @@ export function sortUnifiedMods(items = [], sortBy = 'newest') {
     )
   }
 
+  if (mode === 'trending') {
+    return [...items].sort((a, b) => {
+      const aScore = Number(a.downloadCount || 0) + Number(a.installCount || 0)
+      const bScore = Number(b.downloadCount || 0) + Number(b.installCount || 0)
+
+      if (bScore !== aScore) return bScore - aScore
+
+      return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)
+    })
+  }
+
   if (sortBy === 'az') {
     return sorted.sort((a, b) => a.title.localeCompare(b.title))
   }
@@ -880,3 +891,4 @@ export function sortUnifiedMods(items = [], sortBy = 'newest') {
       new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
   )
 }
+

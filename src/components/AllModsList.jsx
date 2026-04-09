@@ -1,3 +1,4 @@
+import { useMemo, useRef, useState } from 'react'
 import {
   formatDate,
   getModTypeLabel,
@@ -34,80 +35,9 @@ function buildPageNumbers(page, totalPages) {
   return pages
 }
 
-function CategoryPills({ item }) {
-  return (
-    <div className="wrap-actions">
-      <span className="pill subtle-pill">{getModTypeLabel(item.modType)}</span>
-
-      {item.modType === 'other' && item.modSubtype ? (
-        <span className={`pill subtype-pill subtype-${item.modSubtype}`}>
-          <span className="pill-icon">{getSubtypeIcon(item.modSubtype)}</span>
-          {getOtherModSubtypeLabel(item.modSubtype)}
-        </span>
-      ) : null}
-    </div>
-  )
-}
-
-function OpenButton({
-  item,
-  onOpenAttire,
-  onOpenArena,
-  onOpenTitle,
-  onOpenOtherMod
-}) {
-  if (item.modType === 'attire') {
-    return (
-      <button
-        type="button"
-        className="secondary-button small-btn"
-        onClick={() => onOpenAttire?.(item)}
-      >
-        Open wrestler
-      </button>
-    )
-  }
-
-  if (item.modType === 'arena') {
-    return (
-      <button
-        type="button"
-        className="secondary-button small-btn"
-        onClick={() => onOpenArena?.(item)}
-      >
-        Open arena
-      </button>
-    )
-  }
-
-  if (item.modType === 'title') {
-    return (
-      <button
-        type="button"
-        className="secondary-button small-btn"
-        onClick={() => onOpenTitle?.(item)}
-      >
-        Open title
-      </button>
-    )
-  }
-
-  if (item.modType === 'other') {
-    return (
-      <button
-        type="button"
-        className="secondary-button small-btn"
-        onClick={() => onOpenOtherMod?.(item)}
-      >
-        Open other mod
-      </button>
-    )
-  }
-
-  return null
-}
-
 function openUnifiedItem(item, onOpenAttire, onOpenArena, onOpenTitle, onOpenOtherMod) {
+  if (!item) return
+
   if (item.modType === 'attire') {
     onOpenAttire?.(item)
     return
@@ -128,103 +58,307 @@ function openUnifiedItem(item, onOpenAttire, onOpenArena, onOpenTitle, onOpenOth
   }
 }
 
+function CategoryPills({ item }) {
+  return (
+    <div className="wrap-actions">
+      <span className="pill subtle-pill">{getModTypeLabel(item.modType)}</span>
+
+      {item.modType === 'other' && item.modSubtype ? (
+        <span className={`pill subtype-pill subtype-${item.modSubtype}`}>
+          <span className="pill-icon">{getSubtypeIcon(item.modSubtype)}</span>
+          {getOtherModSubtypeLabel(item.modSubtype)}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
 function ResultStats({ items = [] }) {
-  const stats = items.reduce(
-    (acc, item) => {
-      acc.total += 1
+  const stats = useMemo(
+    () =>
+      items.reduce(
+        (acc, item) => {
+          acc.total += 1
 
-      if (item.modType === 'attire') acc.attires += 1
-      if (item.modType === 'arena') acc.arenas += 1
-      if (item.modType === 'title') acc.titles += 1
-      if (item.modType === 'other') acc.otherMods += 1
-      if (!item.hasDownload) acc.noLinks += 1
+          if (item.modType === 'attire') acc.attires += 1
+          if (item.modType === 'arena') acc.arenas += 1
+          if (item.modType === 'title') acc.titles += 1
+          if (item.modType === 'other') acc.otherMods += 1
+          if (!item.hasDownload) acc.noLinks += 1
 
-      return acc
-    },
-    {
-      total: 0,
-      attires: 0,
-      arenas: 0,
-      titles: 0,
-      otherMods: 0,
-      noLinks: 0
-    }
+          return acc
+        },
+        {
+          total: 0,
+          attires: 0,
+          arenas: 0,
+          titles: 0,
+          otherMods: 0,
+          noLinks: 0
+        }
+      ),
+    [items]
   )
 
   return (
-    <div className="mini-stats mini-stats-three allmods-mini-stats">
-      <div>
-        <span>Total results</span>
-        <strong>{stats.total}</strong>
+    <div className="allmods-stats-grid">
+      <div className="stat-card panel soft-panel">
+        <div className="stat-label">Total results</div>
+        <div className="stat-value">{stats.total}</div>
       </div>
-      <div>
-        <span>Attires / Arenas</span>
-        <strong>{stats.attires} / {stats.arenas}</strong>
+
+      <div className="stat-card panel soft-panel">
+        <div className="stat-label">Attires</div>
+        <div className="stat-value">{stats.attires}</div>
       </div>
-      <div>
-        <span>Titles / Other Mods</span>
-        <strong>{stats.titles} / {stats.otherMods}</strong>
+
+      <div className="stat-card panel soft-panel">
+        <div className="stat-label">Arenas</div>
+        <div className="stat-value">{stats.arenas}</div>
       </div>
-      <div>
-        <span>No download link</span>
-        <strong>{stats.noLinks}</strong>
+
+      <div className="stat-card panel soft-panel">
+        <div className="stat-label">Titles</div>
+        <div className="stat-value">{stats.titles}</div>
+      </div>
+
+      <div className="stat-card panel soft-panel">
+        <div className="stat-label">Other Mods</div>
+        <div className="stat-value">{stats.otherMods}</div>
+      </div>
+
+      <div className="stat-card panel soft-panel">
+        <div className="stat-label">No download link</div>
+        <div className="stat-value">{stats.noLinks}</div>
       </div>
     </div>
   )
 }
 
-function FeaturedStrip({
-  title,
-  subtitle,
-  items,
+function ItemThumb({ item, onOpenAttire, onOpenArena, onOpenTitle, onOpenOtherMod }) {
+  const titleText = item?.title || 'Unknown mod'
+  const thumb = item?.previewUrl || ''
+
+  return (
+    <button
+      type="button"
+      className="collection-thumb-button"
+      onClick={() =>
+        openUnifiedItem(item, onOpenAttire, onOpenArena, onOpenTitle, onOpenOtherMod)
+      }
+    >
+      {thumb ? (
+        <img
+          className="collection-item-thumb"
+          src={thumb}
+          alt={titleText}
+        />
+      ) : (
+        <div className="collection-item-thumb collection-cover-placeholder">
+          {titleText.slice(0, 2).toUpperCase()}
+        </div>
+      )}
+    </button>
+  )
+}
+
+function ActionButtons({
+  item,
+  onOpenAttire,
+  onOpenArena,
+  onOpenTitle,
+  onOpenOtherMod,
+  onToggleInstalled,
+  onAddToCollection
+}) {
+  return (
+    <div className="wrap-actions">
+      {item.modType === 'attire' ? (
+        <button
+          type="button"
+          className="secondary-button small-btn"
+          onClick={() => onOpenAttire?.(item)}
+        >
+          Open wrestler
+        </button>
+      ) : null}
+
+      {item.modType === 'arena' ? (
+        <button
+          type="button"
+          className="secondary-button small-btn"
+          onClick={() => onOpenArena?.(item)}
+        >
+          Open arena
+        </button>
+      ) : null}
+
+      {item.modType === 'title' ? (
+        <button
+          type="button"
+          className="secondary-button small-btn"
+          onClick={() => onOpenTitle?.(item)}
+        >
+          Open title
+        </button>
+      ) : null}
+
+      {item.modType === 'other' ? (
+        <button
+          type="button"
+          className="secondary-button small-btn"
+          onClick={() => onOpenOtherMod?.(item)}
+        >
+          Open other mod
+        </button>
+      ) : null}
+
+      {onToggleInstalled ? (
+        <button
+          type="button"
+          className="ghost-button small-btn"
+          onClick={() => onToggleInstalled(item)}
+        >
+          Mark installed
+        </button>
+      ) : null}
+
+      {onAddToCollection ? (
+        <button
+          type="button"
+          className="ghost-button small-btn"
+          onClick={() => onAddToCollection(item)}
+        >
+          Add to collection
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
+function CompactActionButtons({
+  item,
+  onOpenAttire,
+  onOpenArena,
+  onOpenTitle,
+  onOpenOtherMod,
+  onToggleInstalled,
+  onAddToCollection
+}) {
+  return (
+    <div className="compact-actions-row wrap-actions">
+      <ActionButtons
+        item={item}
+        onOpenAttire={onOpenAttire}
+        onOpenArena={onOpenArena}
+        onOpenTitle={onOpenTitle}
+        onOpenOtherMod={onOpenOtherMod}
+        onToggleInstalled={onToggleInstalled}
+        onAddToCollection={onAddToCollection}
+      />
+    </div>
+  )
+}
+
+function CarouselSection({
+  mode,
+  setMode,
+  featuredItems = [],
+  latestItems = [],
+  trendingItems = [],
   onOpenAttire,
   onOpenArena,
   onOpenTitle,
   onOpenOtherMod
 }) {
+  const railRef = useRef(null)
+
+  const items =
+    mode === 'latest'
+      ? featuredItems
+      : mode === 'updated'
+        ? latestItems
+        : trendingItems
+
+  function scrollRail(direction) {
+    if (!railRef.current) return
+    const amount = Math.max(320, Math.floor(railRef.current.clientWidth * 0.82))
+    railRef.current.scrollBy({
+      left: direction === 'left' ? -amount : amount,
+      behavior: 'smooth'
+    })
+  }
+
+  const title =
+    mode === 'latest'
+      ? 'Latest uploads'
+      : mode === 'updated'
+        ? 'Recently updated'
+        : 'Trending'
+
+  const subtitle =
+    mode === 'latest'
+      ? 'Newest items across attires, arenas, title belts, and other mods.'
+      : mode === 'updated'
+        ? 'Recently edited entries across the full mod database.'
+        : 'Popular picks based on your feed ranking.'
+
   if (!items.length) return null
 
   return (
     <section className="panel soft-panel list-panel">
-      <div className="panel-header">
+      <div className="panel-header with-actions">
         <div>
           <h2>{title}</h2>
           <p className="subtle-copy">{subtitle}</p>
         </div>
+
+        <div className="wrap-actions">
+          <Toggle
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'latest', label: 'Latest' },
+              { value: 'updated', label: 'Updated' },
+              { value: 'trending', label: 'Trending' }
+            ]}
+          />
+
+          <button
+            type="button"
+            className="ghost-button small-btn"
+            onClick={() => scrollRail('left')}
+          >
+            ←
+          </button>
+
+          <button
+            type="button"
+            className="ghost-button small-btn"
+            onClick={() => scrollRail('right')}
+          >
+            →
+          </button>
+        </div>
       </div>
 
-      <div className="collection-items-grid">
+      <div className="allmods-carousel-rail" ref={railRef}>
         {items.map((item) => (
-          <article className="collection-item-card enhanced-collection-item-card" key={item.key}>
+          <article
+            className="allmods-carousel-card collection-item-card enhanced-collection-item-card"
+            key={item.key}
+          >
             <div className="collection-item-topbar">
               <CategoryPills item={item} />
             </div>
 
-            <button
-              type="button"
-              className="collection-thumb-button"
-              onClick={() =>
-                openUnifiedItem(
-                  item,
-                  onOpenAttire,
-                  onOpenArena,
-                  onOpenTitle,
-                  onOpenOtherMod
-                )
-              }
-            >
-              {item.previewUrl ? (
-                <img
-                  className="collection-item-thumb"
-                  src={item.previewUrl}
-                  alt={item.title || 'Mod preview'}
-                />
-              ) : (
-                <div className="collection-item-thumb collection-cover-placeholder">
-                  {(item.title || '?').slice(0, 2).toUpperCase()}
-                </div>
-              )}
-            </button>
+            <ItemThumb
+              item={item}
+              onOpenAttire={onOpenAttire}
+              onOpenArena={onOpenArena}
+              onOpenTitle={onOpenTitle}
+              onOpenOtherMod={onOpenOtherMod}
+            />
 
             <div className="collection-item-body">
               <h3 title={item.title}>{item.title}</h3>
@@ -242,7 +376,10 @@ function FeaturedStrip({
               ) : null}
 
               <div className="collection-item-meta-row">
-                <span className="pill subtle-pill">{formatDate(item.createdAt)}</span>
+                <span className="pill subtle-pill">
+                  {formatDate(item.updatedAt || item.createdAt)}
+                </span>
+
                 {item.hasDownload ? (
                   <span className="pill">
                     {item.linkCount} link{item.linkCount === 1 ? '' : 's'}
@@ -253,7 +390,7 @@ function FeaturedStrip({
               </div>
 
               <div className="collection-actions wrap-actions">
-                <OpenButton
+                <ActionButtons
                   item={item}
                   onOpenAttire={onOpenAttire}
                   onOpenArena={onOpenArena}
@@ -274,6 +411,7 @@ export default function AllModsList({
   summaryItems = [],
   featuredItems = [],
   latestItems = [],
+  trendingItems = [],
   viewMode,
   setViewMode,
   pagination,
@@ -281,8 +419,12 @@ export default function AllModsList({
   onOpenAttire,
   onOpenArena,
   onOpenTitle,
-  onOpenOtherMod
+  onOpenOtherMod,
+  onToggleInstalled,
+  onAddToCollection
 }) {
+  const [featuredMode, setFeaturedMode] = useState('latest')
+
   const pageStart = pagination ? (pagination.page - 1) * pagination.perPage + 1 : 0
   const pageEnd = pagination
     ? Math.min(pagination.page * pagination.perPage, pagination.totalItems)
@@ -291,20 +433,12 @@ export default function AllModsList({
 
   return (
     <>
-      <FeaturedStrip
-        title="Latest uploads"
-        subtitle="Newest items across attires, arenas, title belts, and other mods."
-        items={featuredItems}
-        onOpenAttire={onOpenAttire}
-        onOpenArena={onOpenArena}
-        onOpenTitle={onOpenTitle}
-        onOpenOtherMod={onOpenOtherMod}
-      />
-
-      <FeaturedStrip
-        title="Recently updated"
-        subtitle="Recently edited entries across the full mod database."
-        items={latestItems}
+      <CarouselSection
+        mode={featuredMode}
+        setMode={setFeaturedMode}
+        featuredItems={featuredItems}
+        latestItems={latestItems}
+        trendingItems={trendingItems}
         onOpenAttire={onOpenAttire}
         onOpenArena={onOpenArena}
         onOpenTitle={onOpenTitle}
@@ -332,7 +466,7 @@ export default function AllModsList({
           />
         </div>
 
-        <ResultStats items={summaryItems} />
+        <ResultStats items={summaryItems.length ? summaryItems : items} />
 
         {items.length === 0 ? (
           <div className="empty-state small-empty">
@@ -361,7 +495,9 @@ export default function AllModsList({
                       </span>
                     ) : null}
 
-                    <span className="pill subtle-pill">{formatDate(item.createdAt)}</span>
+                    <span className="pill subtle-pill">
+                      {formatDate(item.updatedAt || item.createdAt)}
+                    </span>
 
                     {item.hasDownload ? (
                       <span className="pill">
@@ -371,18 +507,16 @@ export default function AllModsList({
                       <span className="pill danger-pill">No link</span>
                     )}
                   </div>
-                </div>
 
-                <div className="compact-side">
-                  <div className="compact-actions-row">
-                    <OpenButton
-                      item={item}
-                      onOpenAttire={onOpenAttire}
-                      onOpenArena={onOpenArena}
-                      onOpenTitle={onOpenTitle}
-                      onOpenOtherMod={onOpenOtherMod}
-                    />
-                  </div>
+                  <CompactActionButtons
+                    item={item}
+                    onOpenAttire={onOpenAttire}
+                    onOpenArena={onOpenArena}
+                    onOpenTitle={onOpenTitle}
+                    onOpenOtherMod={onOpenOtherMod}
+                    onToggleInstalled={onToggleInstalled}
+                    onAddToCollection={onAddToCollection}
+                  />
                 </div>
               </article>
             ))}
@@ -390,36 +524,21 @@ export default function AllModsList({
         ) : (
           <div className="collection-items-grid">
             {items.map((item) => (
-              <article className="collection-item-card enhanced-collection-item-card" key={item.key}>
+              <article
+                className="collection-item-card enhanced-collection-item-card"
+                key={item.key}
+              >
                 <div className="collection-item-topbar">
                   <CategoryPills item={item} />
                 </div>
 
-                <button
-                  type="button"
-                  className="collection-thumb-button"
-                  onClick={() =>
-                    openUnifiedItem(
-                      item,
-                      onOpenAttire,
-                      onOpenArena,
-                      onOpenTitle,
-                      onOpenOtherMod
-                    )
-                  }
-                >
-                  {item.previewUrl ? (
-                    <img
-                      className="collection-item-thumb"
-                      src={item.previewUrl}
-                      alt={item.title || 'Mod preview'}
-                    />
-                  ) : (
-                    <div className="collection-item-thumb collection-cover-placeholder">
-                      {(item.title || '?').slice(0, 2).toUpperCase()}
-                    </div>
-                  )}
-                </button>
+                <ItemThumb
+                  item={item}
+                  onOpenAttire={onOpenAttire}
+                  onOpenArena={onOpenArena}
+                  onOpenTitle={onOpenTitle}
+                  onOpenOtherMod={onOpenOtherMod}
+                />
 
                 <div className="collection-item-body">
                   <h3 title={item.title}>{item.title}</h3>
@@ -437,7 +556,10 @@ export default function AllModsList({
                   ) : null}
 
                   <div className="collection-item-meta-row">
-                    <span className="pill subtle-pill">{formatDate(item.createdAt)}</span>
+                    <span className="pill subtle-pill">
+                      {formatDate(item.updatedAt || item.createdAt)}
+                    </span>
+
                     {item.hasDownload ? (
                       <span className="pill">
                         {item.linkCount} link{item.linkCount === 1 ? '' : 's'}
@@ -448,12 +570,14 @@ export default function AllModsList({
                   </div>
 
                   <div className="collection-actions wrap-actions">
-                    <OpenButton
+                    <ActionButtons
                       item={item}
                       onOpenAttire={onOpenAttire}
                       onOpenArena={onOpenArena}
                       onOpenTitle={onOpenTitle}
                       onOpenOtherMod={onOpenOtherMod}
+                      onToggleInstalled={onToggleInstalled}
+                      onAddToCollection={onAddToCollection}
                     />
                   </div>
                 </div>
