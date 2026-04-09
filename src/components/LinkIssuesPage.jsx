@@ -6,20 +6,28 @@ import {
   getDownloadProviderLabel,
   getDownloadProviderMark,
   getModTypeLabel,
-  getOtherModSubtypeLabel
+  getOtherModSubtypeLabel,
+  getSubtypeIcon
 } from '../lib/utils'
 
 function CategoryBadge({ modType, modSubtype }) {
   return (
     <div className="wrap-actions">
-      <span className="pill subtle-pill">{getModTypeLabel(modType)}</span>
+      <span className="pill subtle-pill">
+        {getModTypeLabel(modType)}
+      </span>
+
       {modType === 'other' && modSubtype ? (
-        <span className="pill subtype-pill">{getOtherModSubtypeLabel(modSubtype)}</span>
+        <span className={`pill subtype-pill subtype-${modSubtype}`}>
+          <span className="pill-icon">
+            {getSubtypeIcon(modSubtype)}
+          </span>
+          {getOtherModSubtypeLabel(modSubtype)}
+        </span>
       ) : null}
     </div>
   )
 }
-
 function ProviderList({ links = [] }) {
   if (!links.length) {
     return <span className="muted-text small-text">No link added yet.</span>
