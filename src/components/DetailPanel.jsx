@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   formatDate,
   requestSummary,
@@ -446,6 +446,20 @@ export default function DetailPanel({
 }) {
   const [previewImage, setPreviewImage] = useState(null)
 
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setPreviewImage(null)
+      }
+    }
+
+    if (previewImage) {
+      window.addEventListener('keydown', handleKeyDown)
+    }
+
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [previewImage])
+
   if (!wrestler) {
     return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
   }
@@ -467,7 +481,7 @@ export default function DetailPanel({
               </button>
             ) : (
               <div className="hero-headshot hero-headshot-placeholder">
-                {wrestler.wrestler_name.slice(0, 2).toUpperCase()}
+                {(wrestler.wrestler_name || '?').slice(0, 2).toUpperCase()}
               </div>
             )}
 
@@ -535,7 +549,7 @@ export default function DetailPanel({
               <div className="empty-state small-empty">No attire mods added yet.</div>
             ) : (
               (wrestler.attires || []).map((attire) => {
-                const installed = installedIds.has(attire.id)
+                const installed = installedIds?.has ? installedIds.has(attire.id) : false
                 const requestInfo = requestSummary(wrestler.requests || [], 'attire_id', attire.id)
 
                 return (
@@ -565,7 +579,7 @@ export default function DetailPanel({
               <div className="empty-state small-empty">No attire mods added yet.</div>
             ) : (
               (wrestler.attires || []).map((attire) => {
-                const installed = installedIds.has(attire.id)
+                const installed = installedIds?.has ? installedIds.has(attire.id) : false
                 const requestInfo = requestSummary(wrestler.requests || [], 'attire_id', attire.id)
                 const screenshots = attire.attire_images || []
                 const validScreenshots = screenshots.filter((image) => image.image_url || image.url)

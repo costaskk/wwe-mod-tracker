@@ -34,7 +34,8 @@ export default function TitleBeltPage({
   onOpenCollectionPicker,
   titleCreateSignal,
   titleSelectSignal,
-  onConsumeTitleCreateSignal
+  onConsumeTitleCreateSignal,
+  openConfirmAction
 }) {
   const [query, setQuery] = useState('')
   const [creatorFilter, setCreatorFilter] = useState('all')
@@ -557,45 +558,51 @@ export default function TitleBeltPage({
     }
   }
 
-  async function deleteTitle(title) {
+  function deleteTitle(title) {
     if (!canDeleteContent) return
 
-    try {
-      setSaving(true)
+    openConfirmAction({
+        title: 'Delete title belt?',
+        message: `This will permanently delete ${title.name}.`,
+        confirmLabel: 'Delete title belt',
+        tone: 'danger',
+        onConfirm: async () => {
+        try {
+            setSaving(true)
 
-      const imagePaths = (title.title_belt_images || [])
-        .map((img) => img.image_path)
-        .filter(Boolean)
+            const imagePaths = (title.title_belt_images || [])
+            .map((img) => img.image_path)
+            .filter(Boolean)
 
-      const audioPaths = (title.audio_files || title.title_belt_audio_files || [])
-        .map((file) => file.file_path)
-        .filter(Boolean)
+            const audioPaths = (title.audio_files || title.title_belt_audio_files || [])
+            .map((file) => file.file_path)
+            .filter(Boolean)
 
-      const paths = [
-        title.render_dds_path,
-        ...imagePaths,
-        ...audioPaths
-      ].filter(Boolean)
+            const paths = [
+            title.render_dds_path,
+            ...imagePaths,
+            ...audioPaths
+            ].filter(Boolean)
 
-      if (paths.length) {
-        await removeAssets(paths)
-      }
+            if (paths.length) {
+            await removeAssets(paths)
+            }
 
-      const { error } = await supabase
-        .from('title_belts')
-        .delete()
-        .eq('id', title.id)
+            const { error } = await supabase
+            .from('title_belts')
+            .delete()
+            .eq('id', title.id)
 
-      if (error) throw error
+            if (error) throw error
 
-      openNotice('success', 'Title belt deleted', `${title.name} was deleted.`)
-      await fetchAll()
-    } catch (err) {
-      openNotice('error', 'Could not delete title belt', err.message || 'Could not delete title belt.')
-    } finally {
-      setSaving(false)
+            openNotice('success', 'Title belt deleted', `${title.name} was deleted.`)
+            await fetchAll()
+        } finally {
+            setSaving(false)
+        }
+        }
+    })
     }
-  }
 
   return (
     <>

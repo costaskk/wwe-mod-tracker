@@ -35,7 +35,8 @@ export default function ArenaPage({
   onOpenCollectionPicker,
   arenaCreateSignal,
   arenaSelectSignal,
-  onConsumeArenaCreateSignal
+  onConsumeArenaCreateSignal,
+  openConfirmAction
 }) {
   const [query, setQuery] = useState('')
   const [creatorFilter, setCreatorFilter] = useState('all')
@@ -433,34 +434,40 @@ export default function ArenaPage({
     }
   }
 
-  async function deleteArena(arena) {
+  function deleteArena(arena) {
     if (!canDeleteContent) return
 
-    try {
-      setSaving(true)
+    openConfirmAction({
+        title: 'Delete arena?',
+        message: `This will permanently delete ${arena.name}.`,
+        confirmLabel: 'Delete arena',
+        tone: 'danger',
+        onConfirm: async () => {
+        try {
+            setSaving(true)
 
-      const paths = (arena.arena_images || [])
-        .map((img) => img.image_path)
-        .filter(Boolean)
+            const paths = (arena.arena_images || [])
+            .map((img) => img.image_path)
+            .filter(Boolean)
 
-      if (paths.length) {
-        await removeAssets(paths)
-      }
+            if (paths.length) {
+            await removeAssets(paths)
+            }
 
-      const { error } = await supabase
-        .from('arenas')
-        .delete()
-        .eq('id', arena.id)
+            const { error } = await supabase
+            .from('arenas')
+            .delete()
+            .eq('id', arena.id)
 
-      if (error) throw error
+            if (error) throw error
 
-      openNotice('success', 'Arena deleted', `${arena.name} was deleted.`)
-      await fetchAll()
-    } catch (err) {
-      openNotice('error', 'Could not delete arena', err.message || 'Could not delete arena.')
-    } finally {
-      setSaving(false)
-    }
+            openNotice('success', 'Arena deleted', `${arena.name} was deleted.`)
+            await fetchAll()
+        } finally {
+            setSaving(false)
+        }
+        }
+    })
   }
 
   return (

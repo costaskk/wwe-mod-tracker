@@ -35,7 +35,8 @@ export default function OtherModPage({
   onOpenCollectionPicker,
   otherModsCreateSignal,
   otherModsSelectSignal,
-  onConsumeOtherModsCreateSignal
+  onConsumeOtherModsCreateSignal,
+  openConfirmAction
 }) {
   const [query, setQuery] = useState('')
   const [creatorFilter, setCreatorFilter] = useState('all')
@@ -461,35 +462,41 @@ export default function OtherModPage({
     }
   }
 
-  async function deleteOtherMod(otherMod) {
+  function deleteOtherMod(otherMod) {
     if (!canDeleteContent) return
 
-    try {
-      setSaving(true)
+    openConfirmAction({
+        title: 'Delete other mod?',
+        message: `This will permanently delete ${otherMod.name}.`,
+        confirmLabel: 'Delete mod',
+        tone: 'danger',
+        onConfirm: async () => {
+        try {
+            setSaving(true)
 
-      const imagePaths = (otherMod.other_mod_images || otherMod.images || [])
-        .map((img) => img.image_path || img.path)
-        .filter(Boolean)
+            const imagePaths = (otherMod.other_mod_images || otherMod.images || [])
+            .map((img) => img.image_path || img.path)
+            .filter(Boolean)
 
-      if (imagePaths.length) {
-        await removeAssets(imagePaths)
-      }
+            if (imagePaths.length) {
+            await removeAssets(imagePaths)
+            }
 
-      const { error } = await supabase
-        .from('other_mods')
-        .delete()
-        .eq('id', otherMod.id)
+            const { error } = await supabase
+            .from('other_mods')
+            .delete()
+            .eq('id', otherMod.id)
 
-      if (error) throw error
+            if (error) throw error
 
-      openNotice('success', 'Other mod deleted', `${otherMod.name} was deleted.`)
-      await fetchAll()
-    } catch (err) {
-      openNotice('error', 'Could not delete other mod', err.message || 'Could not delete other mod.')
-    } finally {
-      setSaving(false)
+            openNotice('success', 'Other mod deleted', `${otherMod.name} was deleted.`)
+            await fetchAll()
+        } finally {
+            setSaving(false)
+        }
+        }
+    })
     }
-  }
 
   return (
     <>

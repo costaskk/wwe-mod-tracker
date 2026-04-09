@@ -1991,7 +1991,7 @@ export default function App() {
     }
   }
   
-  async function deleteAttire(attire) {
+  function deleteAttire(attire) {
     if (!canDeleteContent) return
 
     openConfirmAction({
@@ -2000,10 +2000,22 @@ export default function App() {
       confirmLabel: 'Delete attire',
       tone: 'danger',
       onConfirm: async () => {
-        const paths = [attire.render_dds_path, ...(attire.attire_images || []).map((img) => img.image_path)]
-        await removeAssets(paths)
-        const { error } = await supabase.from('attires').delete().eq('id', attire.id)
+        const paths = [
+          attire.render_dds_path,
+          ...(attire.attire_images || []).map((img) => img.image_path)
+        ].filter(Boolean)
+
+        if (paths.length) {
+          await removeAssets(paths)
+        }
+
+        const { error } = await supabase
+          .from('attires')
+          .delete()
+          .eq('id', attire.id)
+
         if (error) throw error
+
         openNotice('success', 'Attire deleted', `${attire.name} was deleted.`)
         await fetchAll()
       }
@@ -2250,6 +2262,7 @@ export default function App() {
             addingCreator={addingCreator}
             openNotice={openNotice}
             onOpenCollectionPicker={openCollectionPicker}
+            openConfirmAction={openConfirmAction}
             arenaCreateSignal={arenaCreateSignal}
             arenaSelectSignal={arenaSelectSignal}
             onConsumeArenaCreateSignal={() => setArenaCreateSignal(0)}
@@ -2272,6 +2285,7 @@ export default function App() {
             onAddCreator={addAttireCreator}
             addingCreator={addingCreator}
             openNotice={openNotice}
+            openConfirmAction={openConfirmAction}
             onOpenCollectionPicker={openCollectionPicker}
             titleCreateSignal={titleCreateSignal}
             titleSelectSignal={titleSelectSignal}
@@ -2295,6 +2309,7 @@ export default function App() {
             onAddCreator={addArenaCreator}
             addingCreator={addingCreator}
             openNotice={openNotice}
+            openConfirmAction={openConfirmAction}
             onOpenCollectionPicker={openCollectionPicker}
             otherModCreateSignal={otherModsCreateSignal}
             otherModSelectSignal={otherModsSelectSignal}
