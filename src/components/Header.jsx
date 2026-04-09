@@ -1,17 +1,17 @@
 import { supabase } from '../lib/supabase'
 
 export default function Header({
-  onAddWrestler,
-  onAddArena,
-  onAddTitle,
-  onAddOtherMod,
-  onBrowseCollections,
-  onBrowseArenas,
-  onBrowseTitles,
-  onBrowseOtherMods,
-  onBrowseAdmin,
-  onBrowseIssues,
-  onGoHome,
+  onAddWrestler = () => {},
+  onAddArena = () => {},
+  onAddTitle = () => {},
+  onAddOtherMod = () => {},
+  onBrowseCollections = () => {},
+  onBrowseArenas = () => {},
+  onBrowseTitles = () => {},
+  onBrowseOtherMods = () => {},
+  onBrowseAdmin = () => {},
+  onBrowseIssues = () => {},
+  onGoHome = () => {},
   currentPage = 'mods',
   session,
   currentProfile,
@@ -31,7 +31,7 @@ export default function Header({
         <div className="eyebrow">Public community database</div>
         <h1>WWE 2K26 Mod Database</h1>
         <p className="hero-copy">
-          Browse wrestler pages, compare attire, arena, and title belt mods, build collections,
+          Browse wrestler pages, compare attire, arena, title belt, and other mods, build collections,
           track missing or dead links, and contribute after approval.
         </p>
       </div>

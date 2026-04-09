@@ -41,7 +41,7 @@ function getCollectionItemData(item) {
       : isTitle
         ? `Title Belt · ${titleBelt?.source_game || '—'}`
         : isOther
-          ? `${getOtherModSubtypeLabel(target.mod_subtype)} · ${otherMod?.source_game || '—'}`
+          ? `${getOtherModSubtypeLabel(target.mod_subtype || otherMod?.subtype || '')} · ${otherMod?.source_game || '—'}`
           : getModTypeLabel(target.mod_type)
 
   const creatorName = entity?.creator_name || ''
@@ -84,6 +84,7 @@ export default function CollectionView({
   onSelectWrestler,
   onSelectArena,
   onSelectTitle,
+  onSelectOtherMod,
   onRemoveItem,
   onBulkRemoveItems
 }) {
@@ -160,7 +161,7 @@ export default function CollectionView({
           <img className="collection-hero-cover" src={collection.cover_url} alt={collection.name} />
         ) : (
           <div className="collection-hero-cover collection-cover-placeholder">
-            {collection.name.slice(0, 2).toUpperCase()}
+            {(collection.name || '?').slice(0, 2).toUpperCase()}
           </div>
         )}
 
@@ -249,6 +250,7 @@ export default function CollectionView({
               isAttire,
               isArena,
               isTitle,
+              isOther,
               subtitle,
               creatorName,
               displayName,
@@ -349,6 +351,21 @@ export default function CollectionView({
                       </button>
                     ) : null}
 
+                    {isOther ? (
+                      <button
+                        className="secondary-button small-btn"
+                        onClick={() =>
+                          onSelectOtherMod?.({
+                            otherModId: entity.id,
+                            otherModName: entity.name
+                          })
+                        }
+                        type="button"
+                      >
+                        Open other mod
+                      </button>
+                    ) : null}
+
                     {canManageCollection && onRemoveItem ? (
                       <button
                         className="ghost-button small-btn"
@@ -368,17 +385,18 @@ export default function CollectionView({
         <div className="collection-items-grid">
           {items.map((item) => {
             const {
-              target,
-              entity,
-              isAttire,
-              isArena,
-              isTitle,
-              subtitle,
-              creatorName,
-              thumbUrl,
-              displayName,
-              linkCount
-            } = getCollectionItemData(item)
+            target,
+            entity,
+            isAttire,
+            isArena,
+            isTitle,
+            isOther,
+            subtitle,
+            creatorName,
+            thumbUrl,
+            displayName,
+            linkCount
+          } = getCollectionItemData(item)
 
             return (
               <article className="collection-item-card enhanced-collection-item-card" key={item.id}>
@@ -436,10 +454,15 @@ export default function CollectionView({
                           titleId: entity.id,
                           titleName: entity.name
                         })
+                      } else if (isOther) {
+                        onSelectOtherMod?.({
+                          otherModId: entity.id,
+                          otherModName: entity.name
+                        })
                       }
                     }}
                   >
-                    {displayName.slice(0, 2).toUpperCase()}
+                    {(displayName || '?').slice(0, 2).toUpperCase()}
                   </button>
                 )}
 
@@ -505,6 +528,21 @@ export default function CollectionView({
                         type="button"
                       >
                         Open title
+                      </button>
+                    ) : null}
+
+                    {isOther ? (
+                      <button
+                        className="secondary-button small-btn"
+                        onClick={() =>
+                          onSelectOtherMod?.({
+                            otherModId: entity.id,
+                            otherModName: entity.name
+                          })
+                        }
+                        type="button"
+                      >
+                        Open other mod
                       </button>
                     ) : null}
 

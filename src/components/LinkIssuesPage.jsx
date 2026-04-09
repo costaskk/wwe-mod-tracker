@@ -64,6 +64,12 @@ function IssueCard({ issue, canManageContent, canContribute }) {
 
         <CategoryBadge modType={issue.modType} modSubtype={issue.modSubtype} />
 
+        {issue.sourceGame ? (
+          <div className="link-issue-meta muted-text small-text">
+            {issue.sourceGame ? <span>{issue.sourceGame}</span> : null}
+          </div>
+        ) : null}
+
         <h3>{issue.itemName}</h3>
 
         <div className="muted-text small-text">
@@ -297,10 +303,25 @@ export default function LinkIssuesPage({
       }]
     })
 
+    const modTypeOrder = {
+      attire: 1,
+      arena: 2,
+      title: 3,
+      other: 4
+    }
+
     return [...attireIssues, ...arenaIssues, ...titleIssues, ...otherModIssues].sort((a, b) => {
       if (a.issueType !== b.issueType) {
         return a.issueType === 'dead_link' ? -1 : 1
       }
+
+      const aType = modTypeOrder[a.modType] || 99
+      const bType = modTypeOrder[b.modType] || 99
+
+      if (aType !== bType) {
+        return aType - bType
+      }
+
       return a.itemName.localeCompare(b.itemName)
     })
   }, [

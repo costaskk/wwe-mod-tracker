@@ -13,7 +13,9 @@ export default function CollectionModal({
 
   const busy = saving || uploading
   const shareUrl = form.slug
-    ? `${window.location.origin}/?page=collections&collection=${encodeURIComponent(form.slug)}`
+    ? form.visibility === 'private'
+      ? 'Private collections are only visible on your profile.'
+      : `${window.location.origin}${window.location.pathname}?page=collections&collection=${encodeURIComponent(form.slug)}`
     : 'A unique public share link will be generated automatically when you save.'
 
   function updateField(field, value) {
@@ -48,7 +50,7 @@ export default function CollectionModal({
                 </label>
 
                 <label>
-                  Share link
+                  {form.visibility === 'private' ? 'Collection link' : 'Share link'}
                   <input
                     value={shareUrl}
                     readOnly
@@ -119,7 +121,7 @@ export default function CollectionModal({
                   {(form.cover_path || form.cover_url) ? (
                     <button
                       className="ghost-button"
-                      onClick={onRemoveCover}
+                      onClick={() => onRemoveCover()}
                       type="button"
                       disabled={busy}
                     >

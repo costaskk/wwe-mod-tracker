@@ -30,13 +30,8 @@ function getContextTitle(context = {}) {
 }
 
 function getContextSubtitle(context = {}) {
-  if (context.modCategory === 'arena') {
-    return 'Arena'
-  }
-
-  if (context.modCategory === 'title') {
-    return 'Title belt'
-  }
+  if (context.modCategory === 'arena') return 'Arena'
+  if (context.modCategory === 'title') return 'Title belt'
 
   if (context.modCategory === 'other') {
     const subtype = context.otherModSubtype || ''
@@ -69,18 +64,21 @@ export default function RequestModal({
   const [notes, setNotes] = useState('')
 
   useEffect(() => {
-    if (!open) {
+    if (!open || !context) {
       setNotes('')
       return
     }
 
-    setNotes(context?.prefillNotes || '')
+    setNotes(context.prefillNotes || '')
   }, [open, context])
 
-  const title = useMemo(() => getRequestTitle(context?.requestType), [context?.requestType])
-  const itemTitle = useMemo(() => getContextTitle(context), [context])
-  const itemSubtitle = useMemo(() => getContextSubtitle(context), [context])
-  const placeholder = useMemo(() => getPlaceholder(context), [context])
+  // ✅ SAFE: never pass null
+  const safeContext = context || {}
+
+  const title = useMemo(() => getRequestTitle(safeContext.requestType), [safeContext])
+  const itemTitle = useMemo(() => getContextTitle(safeContext), [safeContext])
+  const itemSubtitle = useMemo(() => getContextSubtitle(safeContext), [safeContext])
+  const placeholder = useMemo(() => getPlaceholder(safeContext), [safeContext])
 
   if (!open || !context) return null
 

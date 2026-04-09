@@ -1,18 +1,13 @@
 import { getModTypeLabel, getOtherModSubtypeLabel } from '../lib/utils'
 
 function getItemLabel(item) {
-  if (item?.modType === 'other') {
-    return 'Other mod'
-  }
-
-  return getModTypeLabel(item?.modType || '')
+  return getModTypeLabel(item?.modType || '') || 'Item'
 }
 
-function getItemSubtitle(item) {
+function getItemSubtype(item) {
   if (item?.modType === 'other' && item?.subtype) {
     return getOtherModSubtypeLabel(item.subtype)
   }
-
   return ''
 }
 
@@ -25,12 +20,12 @@ export default function CollectionPickerModal({
   onToggle,
   saving
 }) {
-  const selected = new Set(memberships || [])
+  const selected = new Set(memberships)
 
   if (!open || !item) return null
 
   const itemTypeLabel = getItemLabel(item)
-  const itemSubtypeLabel = getItemSubtitle(item)
+  const itemSubtypeLabel = getItemSubtype(item)
 
   return (
     <div className="modal-backdrop modal-backdrop-front" onClick={onClose}>
@@ -40,10 +35,15 @@ export default function CollectionPickerModal({
       >
         <div className="modal-header collection-picker-header">
           <h2>Save to collection</h2>
-          <p className="subtle-copy collection-picker-subtitle">
+
+          <p className="subtle-copy collection-picker-subtitle wrap-actions">
             <strong>{item.name || 'Untitled item'}</strong>
-            <span>{` · ${itemTypeLabel}`}</span>
-            {itemSubtypeLabel ? <span>{` · ${itemSubtypeLabel}`}</span> : null}
+
+            <span className="pill subtle-pill">{itemTypeLabel}</span>
+
+            {itemSubtypeLabel ? (
+              <span className="pill subtle-pill">{itemSubtypeLabel}</span>
+            ) : null}
           </p>
         </div>
 

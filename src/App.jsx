@@ -463,14 +463,14 @@ export default function App() {
         arenaResult,
         creatorResult,
         titleResult,
+        otherModsResult,
+        installedOtherModsResult,
         installsResult,
         installedArenasResult,
         installedTitlesResult,
         publicCollectionsResult,
         ownCollectionsResult,
-        profilesResult,
-        otherModsResult,
-        installedOtherModsResult
+        profilesResult
       ] = await Promise.all([
         supabase
           .from('wrestlers')
@@ -818,7 +818,7 @@ export default function App() {
             return entry.arena_id === collectionPicker.item.id
           }
           if (collectionPicker.item.modType === 'title') {
-            return entry.title_id === collectionPicker.item.id
+            return entry.title_belt_id === collectionPicker.item.id
           }
           if (collectionPicker.item.modType === 'other') {
             return entry.other_mod_id === collectionPicker.item.id
@@ -1933,7 +1933,7 @@ export default function App() {
             .from('collection_items')
             .delete()
             .eq('collection_id', collection.id)
-            .eq('title_id', item.id)
+            .eq('title_belt_id', item.id)
 
           if (error) throw error
 
@@ -1945,7 +1945,7 @@ export default function App() {
               collection_id: collection.id,
               mod_type: 'title',
               mod_subtype: '',
-              title_id: item.id
+              title_belt_id: item.id
             })
 
           if (error) throw error
@@ -2072,10 +2072,12 @@ export default function App() {
           onAddWrestler={() => {}}
           onAddArena={() => {}}
           onAddTitle={() => {}}
+          onAddOtherMod={() => {}}
           session={null}
           onBrowseCollections={() => {}}
           onBrowseArenas={() => {}}
           onBrowseTitles={() => {}}
+          onBrowseOtherMods={() => {}}
           onBrowseIssues={goIssuesPage}
           onGoHome={() => {}}
           currentPage="mods"
@@ -2094,11 +2096,13 @@ export default function App() {
         onAddWrestler={openAddWrestler}
         onAddArena={openAddArenaFromHeader}
         onAddTitle={openAddTitleFromHeader}
+        onAddOtherMod={openAddOtherModFromHeader}
         session={session}
         onBrowseCollections={goCollectionsPage}
         onBrowseArenas={goArenasPage}
         onBrowseTitles={goTitlesPage}
         onBrowseIssues={goIssuesPage}
+        onBrowseOtherMods={goOtherModsPage}
         onGoHome={goHome}
         currentPage={currentPage}
         currentProfile={currentProfile}
@@ -2162,6 +2166,19 @@ export default function App() {
 
                   setCurrentPage('titles')
                   window.history.replaceState({}, '', `${window.location.pathname}?page=titles`)
+                }}
+
+                onSelectOtherMod={(payload) => {
+                  const otherModId = payload?.otherModId
+                  if (!otherModId) return
+
+                  setOtherModsSelectSignal({
+                    otherModId,
+                    ts: Date.now()
+                  })
+
+                  setCurrentPage('other_mods')
+                  window.history.replaceState({}, '', `${window.location.pathname}?page=other_mods`)
                 }}
 
                 onRemoveItem={async (item) => {
@@ -2279,8 +2296,9 @@ export default function App() {
             addingCreator={addingCreator}
             openNotice={openNotice}
             onOpenCollectionPicker={openCollectionPicker}
-            otherModsCreateSignal={otherModsCreateSignal}
-            otherModsSelectSignal={otherModsSelectSignal}
+            otherModCreateSignal={otherModsCreateSignal}
+            otherModSelectSignal={otherModsSelectSignal}
+            onConsumeOtherModCreateSignal={() => setOtherModsCreateSignal(0)}
           />
         ) : currentPage === 'admin' ? (
           <AdminPanel

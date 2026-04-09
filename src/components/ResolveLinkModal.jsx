@@ -1,92 +1,99 @@
-export default function CollectionPickerModal({
+import { useEffect, useMemo, useState } from 'react'
+import { getOtherModSubtypeLabel } from '../lib/utils'
+
+export default function ResolveLinkModal({
   open,
-  item,
-  collections,
-  memberships,
+  context,
   onClose,
-  onToggle,
-  saving
+  onSubmit,
+  submitting
 }) {
-  const selected = new Set(memberships || [])
+  const [url, setUrl] = useState('')
+  const [notes, setNotes] = useState('')
 
-  if (!open || !item) return null
+  useEffect(() => {
+    if (!open) {
+      setUrl('')
+      setNotes('')
+      return
+    }
 
-  const itemTypeLabel =
-    item.modType === 'arena'
-      ? 'Arena'
-      : item.modType === 'attire'
-        ? 'Attire'
-        : item.modType === 'title'
-          ? 'Title belt'
-          : 'Item'
+    if (!context) return
+
+    setUrl(context.currentUrl || '')
+    setNotes('')
+  }, [open, context])
+
+  const contextLabel = useMemo(() => {
+    if (!context) return ''
+
+    if (context.modCategory === 'arena') {
+      return context.arenaName || 'Unknown arena'
+    }
+
+    if (context.modCategory === 'title') {
+      return context.titleName || 'Unknown title belt'
+    }
+
+    if (context.modCategory === 'other') {
+      const subtype = context.otherModSubtype
+        ? ` · ${getOtherModSubtypeLabel(context.otherModSubtype)}`
+        : ''
+      return `${context.otherModName || 'Unknown other mod'}${subtype}`
+    }
+
+    return `${context.wrestlerName || 'Unknown wrestler'} · ${context.attireName || 'Unknown attire'}`
+  }, [context])
+
+  if (!open || !context) return null
 
   return (
-    <div className="modal-backdrop modal-backdrop-front" onClick={onClose}>
-      <div
-        className="panel modal-card request-modal collection-picker-modal"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="modal-header collection-picker-header">
-          <h2>Save to collection</h2>
-          <p className="subtle-copy collection-picker-subtitle">
-            <strong>{item.name}</strong>
-            <span> · {itemTypeLabel}</span>
-          </p>
+    <div className="modal-backdrop modal-backdrop-front">
+      <div className="panel modal-card request-modal">
+        <div className="modal-header">
+          <h2>Fix link</h2>
+          <p className="subtle-copy">{contextLabel}</p>
         </div>
 
-        {collections.length === 0 ? (
-          <div className="empty-state small-empty">
-            <div>No collections yet.</div>
-            <div className="muted-text small-text">
-              Create a collection first, then return here to save this {itemTypeLabel.toLowerCase()}.
-            </div>
-          </div>
-        ) : (
-          <div className="collection-picker-list">
-            {collections.map((collection) => {
-              const isIn = selected.has(collection.id)
-              const itemCount = (collection.items || []).length
+        <div className="form-grid">
+          <label>
+            Correct download URL
+            <input
+              type="url"
+              autoFocus
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/mod-download"
+            />
+          </label>
 
-              return (
-                <div
-                  key={collection.id}
-                  className={`picker-row ${isIn ? 'picker-row-active' : ''}`}
-                >
-                  <div className="picker-row-main">
-                    <strong className="picker-row-title">{collection.name}</strong>
+          <label>
+            Notes
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional note about the new link or what was fixed."
+            />
+          </label>
+        </div>
 
-                    <div className="picker-row-meta muted-text small-text">
-                      <span className="pill subtle-pill">
-                        {collection.visibility === 'private' ? 'Private' : 'Public'}
-                      </span>
-                      <span>{itemCount} item{itemCount === 1 ? '' : 's'}</span>
-                    </div>
-                  </div>
-
-                  <div className="picker-row-actions">
-                    <button
-                      type="button"
-                      className={isIn ? 'primary-button small-btn' : 'secondary-button small-btn'}
-                      onClick={() => onToggle(collection, isIn)}
-                      disabled={saving}
-                    >
-                      {saving ? 'Saving…' : isIn ? 'Remove' : 'Add'}
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        <div className="modal-footer collection-picker-footer">
+        <div className="modal-footer">
           <button
             className="ghost-button"
             type="button"
             onClick={onClose}
-            disabled={saving}
+            disabled={submitting}
           >
-            Close
+            Cancel
+          </button>
+
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => onSubmit(url.trim(), notes.trim())}
+            disabled={submitting || !url.trim()}
+          >
+            {submitting ? 'Saving…' : 'Save and resolve'}
           </button>
         </div>
       </div>
