@@ -1836,8 +1836,11 @@ export default function App() {
 
   function openAddOtherModFromHeader() {
     if (!canContribute) return
+
     setCurrentPage('other_mods')
+
     window.history.replaceState({}, '', `${window.location.pathname}?page=other_mods`)
+
     setOtherModsCreateSignal((current) => current + 1)
   }
 
@@ -2311,9 +2314,9 @@ export default function App() {
             openNotice={openNotice}
             openConfirmAction={openConfirmAction}
             onOpenCollectionPicker={openCollectionPicker}
-            otherModCreateSignal={otherModsCreateSignal}
-            otherModSelectSignal={otherModsSelectSignal}
-            onConsumeOtherModCreateSignal={() => setOtherModsCreateSignal(0)}
+            otherModsCreateSignal={otherModsCreateSignal}
+            otherModsSelectSignal={otherModsSelectSignal}
+            onConsumeOtherModsCreateSignal={() => setOtherModsCreateSignal(0)}
           />
         ) : currentPage === 'admin' ? (
           <AdminPanel
