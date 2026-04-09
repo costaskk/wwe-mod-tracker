@@ -269,7 +269,9 @@ function CarouselSection({
   onOpenAttire,
   onOpenArena,
   onOpenTitle,
-  onOpenOtherMod
+  onOpenOtherMod,
+  onToggleInstalled,
+  onAddToCollection
 }) {
   const railRef = useRef(null)
 
@@ -443,6 +445,8 @@ export default function AllModsList({
         onOpenArena={onOpenArena}
         onOpenTitle={onOpenTitle}
         onOpenOtherMod={onOpenOtherMod}
+        onToggleInstalled={onToggleInstalled}
+        onAddToCollection={onAddToCollection}
       />
 
       <section className="panel soft-panel list-panel">
