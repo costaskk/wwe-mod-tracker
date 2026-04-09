@@ -547,6 +547,7 @@ button:disabled {
   .stats-inline-grid {
     grid-template-columns: 1fr;
   }
+}
 
 .account-menu {
   position: relative;
