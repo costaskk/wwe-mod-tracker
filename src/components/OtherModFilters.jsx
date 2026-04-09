@@ -1,0 +1,165 @@
+import { getOtherModSubtypeLabel } from '../lib/utils'
+
+export default function OtherModFilters({
+  query,
+  setQuery,
+  creatorFilter,
+  setCreatorFilter,
+  creators,
+  sourceGameFilter,
+  setSourceGameFilter,
+  subtypeFilter,
+  setSubtypeFilter,
+  subtypeOptions = [],
+  sourceGames,
+  installFilter,
+  setInstallFilter,
+  missingDownloadOnly,
+  setMissingDownloadOnly,
+  deadLinkOnly,
+  setDeadLinkOnly,
+  session,
+  canContribute,
+  newCreatorName,
+  setNewCreatorName,
+  onAddCreator,
+  addingCreator
+}) {
+  const normalizedSubtypeOptions = Array.from(
+    new Set((subtypeOptions || []).filter(Boolean))
+  )
+
+  return (
+    <section className="panel soft-panel filters-panel">
+      <div className="panel-header">
+        <div>
+          <h2>Search and filters</h2>
+          <p className="subtle-copy">
+            Find other mods by name, subtype, creator, notes, source game, install state,
+            missing links, or reported dead links.
+          </p>
+        </div>
+      </div>
+
+      <div className="form-grid">
+        <label>
+          Search mod, subtype, creator, notes
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="e.g. weapon pack, crowd signs, reshade, camera mod"
+          />
+        </label>
+
+        <div className="filter-row-grid filter-row-grid-two">
+          <label>
+            Creator
+            <select
+              value={creatorFilter}
+              onChange={(e) => setCreatorFilter(e.target.value)}
+            >
+              <option value="all">All creators</option>
+              {(creators || []).map((item) => (
+                <option key={item.id} value={item.name}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Subtype
+            <select
+              value={subtypeFilter}
+              onChange={(e) => setSubtypeFilter(e.target.value)}
+            >
+              <option value="all">All subtypes</option>
+              {normalizedSubtypeOptions.map((subtype) => (
+                <option key={subtype} value={subtype}>
+                  {getOtherModSubtypeLabel(subtype)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="filter-row-grid filter-row-grid-two">
+          <label>
+            Source game
+            <select
+              value={sourceGameFilter}
+              onChange={(e) => setSourceGameFilter(e.target.value)}
+            >
+              <option value="all">All games</option>
+              {(sourceGames || []).map((game) => (
+                <option key={game} value={game}>
+                  {game === 'WWE 2K26' ? 'WWE 2K26 • NEW' : game}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Installed state
+            <select
+              value={installFilter}
+              onChange={(e) => setInstallFilter(e.target.value)}
+              disabled={!session}
+            >
+              <option value="all">All other mods</option>
+              <option value="installed">Installed in my game</option>
+              <option value="not_installed">Not installed in my game</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="filter-checkbox-grid">
+          <label className="checkbox-row card-checkbox-row">
+            <input
+              type="checkbox"
+              checked={missingDownloadOnly}
+              onChange={(e) => setMissingDownloadOnly(e.target.checked)}
+            />
+            Only missing download links
+          </label>
+
+          <label className="checkbox-row card-checkbox-row">
+            <input
+              type="checkbox"
+              checked={deadLinkOnly}
+              onChange={(e) => setDeadLinkOnly(e.target.checked)}
+            />
+            Only dead links
+          </label>
+        </div>
+
+        {canContribute ? (
+          <div className="creator-quick-add elevated-card">
+            <div>
+              <strong>Add a mod creator</strong>
+              <div className="muted-text">
+                Add a creator once so everyone can select them from the dropdown.
+              </div>
+            </div>
+
+            <div className="inline-stack creator-inline-stack">
+              <input
+                value={newCreatorName}
+                onChange={(e) => setNewCreatorName(e.target.value)}
+                placeholder="Creator name"
+              />
+              <button
+                type="button"
+                className="secondary-button small-btn"
+                onClick={onAddCreator}
+                disabled={addingCreator || !newCreatorName.trim()}
+              >
+                {addingCreator ? 'Adding…' : 'Add creator'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  )
+}

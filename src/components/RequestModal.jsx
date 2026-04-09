@@ -1,4 +1,63 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+
+function getRequestTitle(requestType = '') {
+  switch (requestType) {
+    case 'dead_link':
+      return 'Report dead link'
+    case 'missing_link':
+      return 'Request missing link'
+    case 'general_request':
+      return 'Request update'
+    default:
+      return 'Submit request'
+  }
+}
+
+function getContextTitle(context = {}) {
+  if (context.modCategory === 'arena') {
+    return context.arenaName || 'Unknown arena'
+  }
+
+  if (context.modCategory === 'title') {
+    return context.titleName || 'Unknown title belt'
+  }
+
+  if (context.modCategory === 'other') {
+    return context.otherModName || 'Unknown other mod'
+  }
+
+  return context.attireName || 'Unknown attire'
+}
+
+function getContextSubtitle(context = {}) {
+  if (context.modCategory === 'arena') {
+    return 'Arena'
+  }
+
+  if (context.modCategory === 'title') {
+    return 'Title belt'
+  }
+
+  if (context.modCategory === 'other') {
+    const subtype = context.otherModSubtype || ''
+    return subtype ? `Other mod · ${subtype}` : 'Other mod'
+  }
+
+  return context.wrestlerName || 'Unknown wrestler'
+}
+
+function getPlaceholder(context = {}) {
+  switch (context.requestType) {
+    case 'dead_link':
+      return 'Add details about the dead link, what failed, or which provider/link is broken.'
+    case 'missing_link':
+      return 'Add any helpful details about the missing link or what should be added.'
+    case 'general_request':
+      return 'Add details about the update or request you want submitted.'
+    default:
+      return 'Add details here...'
+  }
+}
 
 export default function RequestModal({
   open,
@@ -14,23 +73,28 @@ export default function RequestModal({
       setNotes('')
       return
     }
+
     setNotes(context?.prefillNotes || '')
   }, [open, context])
 
+  const title = useMemo(() => getRequestTitle(context?.requestType), [context?.requestType])
+  const itemTitle = useMemo(() => getContextTitle(context), [context])
+  const itemSubtitle = useMemo(() => getContextSubtitle(context), [context])
+  const placeholder = useMemo(() => getPlaceholder(context), [context])
+
   if (!open || !context) return null
 
-  const label =
-    context.requestType === 'dead_link'
-      ? 'Report dead link'
-      : 'Request missing link'
-
   return (
-    <div className="modal-backdrop modal-backdrop-front">
-      <div className="panel modal-card request-modal">
+    <div className="modal-backdrop modal-backdrop-front" onClick={onClose}>
+      <div
+        className="panel modal-card request-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="modal-header">
-          <h2>{label}</h2>
+          <h2>{title}</h2>
           <p className="subtle-copy">
-            {context.wrestlerName || 'Unknown wrestler'} · {context.attireName || 'Unknown attire'}
+            <strong>{itemTitle}</strong>
+            <span>{` · ${itemSubtitle}`}</span>
           </p>
         </div>
 
@@ -41,15 +105,21 @@ export default function RequestModal({
               autoFocus
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add details here..."
+              placeholder={placeholder}
             />
           </label>
         </div>
 
         <div className="modal-footer">
-          <button className="ghost-button" type="button" onClick={onClose} disabled={submitting}>
+          <button
+            className="ghost-button"
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+          >
             Cancel
           </button>
+
           <button
             className="primary-button"
             type="button"

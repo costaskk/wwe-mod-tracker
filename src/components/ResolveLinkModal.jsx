@@ -1,66 +1,92 @@
+export default function CollectionPickerModal({
+  open,
+  item,
+  collections,
+  memberships,
+  onClose,
+  onToggle,
+  saving
+}) {
+  const selected = new Set(memberships || [])
 
-import { useEffect, useState } from 'react'
+  if (!open || !item) return null
 
-export default function ResolveLinkModal({ open, context, onClose, onSubmit, submitting }) {
-  const [url, setUrl] = useState('')
-  const [notes, setNotes] = useState('')
-
-  useEffect(() => {
-    if (!open) {
-      setUrl('')
-      setNotes('')
-      return
-    }
-
-    if (!context) return
-
-    setUrl(context.currentUrl || '')
-    setNotes('')
-  }, [open, context])
-
-  if (!open || !context) return null
+  const itemTypeLabel =
+    item.modType === 'arena'
+      ? 'Arena'
+      : item.modType === 'attire'
+        ? 'Attire'
+        : item.modType === 'title'
+          ? 'Title belt'
+          : 'Item'
 
   return (
-    <div className="modal-backdrop modal-backdrop-front">
-      <div className="panel modal-card request-modal">
-        <div className="modal-header">
-          <h2>Fix link</h2>
-          <p className="subtle-copy">
-            {context.wrestlerName || 'Unknown wrestler'} · {context.attireName || 'Unknown attire'}
+    <div className="modal-backdrop modal-backdrop-front" onClick={onClose}>
+      <div
+        className="panel modal-card request-modal collection-picker-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="modal-header collection-picker-header">
+          <h2>Save to collection</h2>
+          <p className="subtle-copy collection-picker-subtitle">
+            <strong>{item.name}</strong>
+            <span> · {itemTypeLabel}</span>
           </p>
         </div>
 
-        <label>
-          Correct download URL
-          <input
-            type="url"
-            autoFocus
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com/mod-download"
-          />
-        </label>
+        {collections.length === 0 ? (
+          <div className="empty-state small-empty">
+            <div>No collections yet.</div>
+            <div className="muted-text small-text">
+              Create a collection first, then return here to save this {itemTypeLabel.toLowerCase()}.
+            </div>
+          </div>
+        ) : (
+          <div className="collection-picker-list">
+            {collections.map((collection) => {
+              const isIn = selected.has(collection.id)
+              const itemCount = (collection.items || []).length
 
-        <label>
-          Notes
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Optional note about the new link or what was fixed."
-          />
-        </label>
+              return (
+                <div
+                  key={collection.id}
+                  className={`picker-row ${isIn ? 'picker-row-active' : ''}`}
+                >
+                  <div className="picker-row-main">
+                    <strong className="picker-row-title">{collection.name}</strong>
 
-        <div className="modal-footer">
-          <button className="ghost-button" type="button" onClick={onClose} disabled={submitting}>
-            Cancel
-          </button>
+                    <div className="picker-row-meta muted-text small-text">
+                      <span className="pill subtle-pill">
+                        {collection.visibility === 'private' ? 'Private' : 'Public'}
+                      </span>
+                      <span>{itemCount} item{itemCount === 1 ? '' : 's'}</span>
+                    </div>
+                  </div>
+
+                  <div className="picker-row-actions">
+                    <button
+                      type="button"
+                      className={isIn ? 'primary-button small-btn' : 'secondary-button small-btn'}
+                      onClick={() => onToggle(collection, isIn)}
+                      disabled={saving}
+                    >
+                      {saving ? 'Saving…' : isIn ? 'Remove' : 'Add'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        <div className="modal-footer collection-picker-footer">
           <button
-            className="primary-button"
+            className="ghost-button"
             type="button"
-            onClick={() => onSubmit(url.trim(), notes.trim())}
-            disabled={submitting || !url.trim()}
+            onClick={onClose}
+            disabled={saving}
           >
-            {submitting ? 'Saving…' : 'Save and resolve'}
+            Close
           </button>
         </div>
       </div>

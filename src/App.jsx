@@ -5,6 +5,7 @@ import AuthPanel from './components/AuthPanel'
 import ArenaPage from './components/ArenaPage'
 import TitleBeltPage from './components/TitleBeltPage'
 import LinkIssuesPage from './components/LinkIssuesPage'
+import OtherModPage from './components/OtherModPage'
 import AttireEditorModal from './components/AttireEditorModal'
 import CollectionModal from './components/CollectionModal'
 import CollectionPickerModal from './components/CollectionPickerModal'
@@ -29,9 +30,11 @@ import {
   emptyCollection,
   emptyWrestler,
   emptyTitantron,
+  emptyOtherMod,
   normalizeAttireForEditor,
   normalizeCollectionForEditor,
   normalizeWrestlerForEditor,
+  normalizeOtherModForEditor,
   parseJsonOrNull,
   parseTags,
   slugify,
@@ -40,7 +43,8 @@ import {
   uniqueCollectionSlug,
   paginateItems,
   findDuplicateWrestler,
-  findDuplicateAttire
+  findDuplicateAttire,
+  findDuplicateOtherMod
 } from './lib/utils'
 
 export default function App() {
@@ -102,7 +106,12 @@ export default function App() {
 
   const [titleCreateSignal, setTitleCreateSignal] = useState(0)
   const [titleSelectSignal, setTitleSelectSignal] = useState(null)
-  const [otherMods] = useState([])
+  
+  const [otherMods, setOtherMods] = useState([])
+  const [installedOtherModIds, setInstalledOtherModIds] = useState(new Set())
+
+  const [otherModsCreateSignal, setOtherModsCreateSignal] = useState(0)
+  const [otherModsSelectSignal, setOtherModsSelectSignal] = useState(null)
 
   //const isApproved = Boolean(session && currentProfile?.approval_status === 'approved')
 
@@ -362,6 +371,8 @@ export default function App() {
         setCurrentPage('arenas')
       } else if (page === 'titles') {
         setCurrentPage('titles')
+      } else if (page === 'other_mods') {
+        setCurrentPage('other_mods')
       } else if (page === 'admin') {
         setCurrentPage('admin')
       } else if (page === 'issues') {
@@ -457,7 +468,9 @@ export default function App() {
         installedTitlesResult,
         publicCollectionsResult,
         ownCollectionsResult,
-        profilesResult
+        profilesResult,
+        otherModsResult,
+        installedOtherModsResult
       ] = await Promise.all([
         supabase
           .from('wrestlers')
@@ -497,6 +510,19 @@ export default function App() {
           `)
           .order('name', { ascending: true }),
 
+        supabase
+          .from('other_mods')
+          .select(`
+            *,
+            other_mod_images (*),
+            other_mod_requests (*)
+          `)
+          .order('name', { ascending: true }),
+
+        session?.user?.id
+          ? supabase.from('user_installed_other_mods').select('other_mod_id').eq('user_id', session.user.id)
+          : Promise.resolve({ data: [], error: null }),
+
         session?.user?.id
           ? supabase.from('user_installed_attires').select('attire_id').eq('user_id', session.user.id)
           : Promise.resolve({ data: [], error: null }),
@@ -524,7 +550,9 @@ export default function App() {
         installedTitlesResult.error ||
         publicCollectionsResult.error ||
         ownCollectionsResult.error ||
-        profilesResult.error
+        profilesResult.error ||
+        otherModsResult.error ||
+        installedOtherModsResult.error
       ) {
         setError(
           wrestlerResult.error?.message ||
@@ -537,6 +565,8 @@ export default function App() {
           publicCollectionsResult.error?.message ||
           ownCollectionsResult.error?.message ||
           profilesResult.error?.message ||
+          otherModsResult.error?.message ||
+          installedOtherModsResult.error?.message ||
           'Failed to load data.'
         )
         return
@@ -591,6 +621,17 @@ export default function App() {
           file_url: file.file_path ? getAssetUrl(file.file_path) : ''
         })),
         requests: [...(title.title_belt_requests || [])].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        )
+      }))
+
+      const normalizedOtherMods = (otherModsResult.data || []).map((otherMod) => ({
+        ...otherMod,
+        other_mod_images: (otherMod.other_mod_images || []).map((img) => ({
+          ...img,
+          image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+        })),
+        requests: [...(otherMod.other_mod_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
         )
       }))
@@ -688,6 +729,8 @@ export default function App() {
       setInstalledIds(new Set((installsResult.data || []).map((item) => item.attire_id)))
       setInstalledArenaIds(new Set((installedArenasResult.data || []).map((item) => item.arena_id)))
       setInstalledTitleIds(new Set((installedTitlesResult.data || []).map((item) => item.title_belt_id)))
+      setOtherMods(normalizedOtherMods)
+      setInstalledOtherModIds(new Set((installedOtherModsResult.data || []).map((item) => item.other_mod_id)))
     } catch (err) {
       setError(err.message || 'Failed to load data.')
     } finally {
@@ -776,6 +819,9 @@ export default function App() {
           }
           if (collectionPicker.item.modType === 'title') {
             return entry.title_id === collectionPicker.item.id
+          }
+          if (collectionPicker.item.modType === 'other') {
+            return entry.other_mod_id === collectionPicker.item.id
           }
           return false
         })
@@ -1387,6 +1433,14 @@ export default function App() {
         })
 
         if (error) throw error
+      } else if (requestModal.context.modCategory === 'other') {
+        const { error } = await supabase.from('other_mod_requests').insert({
+          other_mod_id: requestModal.context.otherModId,
+          request_type: requestModal.context.requestType,
+          notes: (notes || '').trim()
+        })
+
+        if (error) throw error
       } else {
         const { error } = await supabase.from('mod_requests').insert({
           wrestler_id: requestModal.context.wrestlerId,
@@ -1438,6 +1492,21 @@ export default function App() {
     })
   }
 
+  function openOtherModIssueRequest(otherMod, requestType, prefillNotes = '') {
+    if (!canContribute) return
+
+    setRequestModal({
+      open: true,
+      context: {
+        modCategory: 'other',
+        otherModId: otherMod.id,
+        requestType,
+        otherModName: otherMod.name,
+        prefillNotes
+      }
+    })
+  }
+
   function openResolveArenaLink(arena, issueType) {
     if (!canContribute) return
 
@@ -1464,6 +1533,21 @@ export default function App() {
         titleName: titleBelt.name,
         issueType,
         currentUrl: titleBelt.download_url || ''
+      }
+    })
+  }
+
+  function openResolveOtherModLink(otherMod, issueType) {
+    if (!canContribute) return
+
+    setResolveModal({
+      open: true,
+      context: {
+        modCategory: 'other',
+        otherModId: otherMod.id,
+        otherModName: otherMod.name,
+        issueType,
+        currentUrl: otherMod.download_url || ''
       }
     })
   }
@@ -1535,6 +1619,30 @@ export default function App() {
             notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
           })
           .eq('title_belt_id', resolveModal.context.titleId)
+          .eq('status', 'open')
+          .in('request_type', requestTypes)
+
+        if (requestError) throw requestError
+      } else if (resolveModal.context.modCategory === 'other') {
+        const { error: otherError } = await supabase
+          .from('other_mods')
+          .update({ download_url: cleanUrl })
+          .eq('id', resolveModal.context.otherModId)
+
+        if (otherError) throw otherError
+
+        const requestTypes =
+          resolveModal.context.issueType === 'dead_link'
+            ? ['dead_link']
+            : ['missing_link', 'dead_link']
+
+        const { error: requestError } = await supabase
+          .from('other_mod_requests')
+          .update({
+            status: 'fulfilled',
+            notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
+          })
+          .eq('other_mod_id', resolveModal.context.otherModId)
           .eq('status', 'open')
           .in('request_type', requestTypes)
 
@@ -1647,6 +1755,24 @@ export default function App() {
     )
   }
 
+  function openEditOtherModFromIssues(otherMod) {
+    if (!otherMod?.id) return
+
+    setOtherModsSelectSignal({
+      otherModId: otherMod.id,
+      ts: Date.now()
+    })
+
+    setCurrentPage('other_mods')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=other_mods`)
+
+    openNotice(
+      'info',
+      'Other mod selected',
+      `Go to the Other Mods section and edit "${otherMod.name}".`
+    )
+  }
+
   function openCreateCollection() {
     if (!canContribute) return
     setCollectionForm(emptyCollection())
@@ -1695,11 +1821,24 @@ export default function App() {
     window.history.replaceState({}, '', `${window.location.pathname}?page=titles`)
   }
 
+  function goOtherModsPage() {
+    setSelectedCollection(null)
+    setCurrentPage('other_mods')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=other_mods`)
+  }
+
   function openAddTitleFromHeader() {
     if (!canContribute) return
     setCurrentPage('titles')
     window.history.replaceState({}, '', `${window.location.pathname}?page=titles`)
     setTitleCreateSignal((current) => current + 1)
+  }
+
+  function openAddOtherModFromHeader() {
+    if (!canContribute) return
+    setCurrentPage('other_mods')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=other_mods`)
+    setOtherModsCreateSignal((current) => current + 1)
   }
 
   function goIssuesPage() {
@@ -1813,7 +1952,34 @@ export default function App() {
 
           openNotice('success', 'Added to collection', `${item.name} was added to ${collection.name}.`)
         }
-      } else {
+      } else if (item.modType === 'other') {
+        if (isIn) {
+          const { error } = await supabase
+            .from('collection_items')
+            .delete()
+            .eq('collection_id', collection.id)
+            .eq('other_mod_id', item.id)
+
+          if (error) throw error
+
+          openNotice('success', 'Removed from collection', `${item.name} was removed from ${collection.name}.`)
+        } else {
+          const { error } = await supabase
+            .from('collection_items')
+            .insert({
+              collection_id: collection.id,
+              mod_type: 'other',
+              mod_subtype: item.subtype || '',
+              other_mod_id: item.id
+            })
+
+          if (error) throw error
+
+          openNotice('success', 'Added to collection', `${item.name} was added to ${collection.name}.`)
+        }
+      }
+      
+      else {
         throw new Error(`Unsupported collection item type: ${item.modType}`)
       }
 
@@ -2094,6 +2260,28 @@ export default function App() {
             titleSelectSignal={titleSelectSignal}
             onConsumeTitleCreateSignal={() => setTitleCreateSignal(0)}
           />
+        ) : currentPage === 'other_mods' ? (
+          <OtherModPage
+            otherMods={otherMods}
+            creators={creators}
+            session={session}
+            canContribute={canContribute}
+            canDeleteContent={canDeleteContent}
+            canManageContent={canManageContent}
+            installedOtherModIds={installedOtherModIds}
+            setInstalledOtherModIds={setInstalledOtherModIds}
+            currentProfile={currentProfile}
+            supabase={supabase}
+            fetchAll={fetchAll}
+            newCreatorName={newCreatorName}
+            setNewCreatorName={setNewCreatorName}
+            onAddCreator={addArenaCreator}
+            addingCreator={addingCreator}
+            openNotice={openNotice}
+            onOpenCollectionPicker={openCollectionPicker}
+            otherModsCreateSignal={otherModsCreateSignal}
+            otherModsSelectSignal={otherModsSelectSignal}
+          />
         ) : currentPage === 'admin' ? (
           <AdminPanel
             session={session}
@@ -2111,17 +2299,17 @@ export default function App() {
             onResolveLink={openResolveLink}
             onResolveArenaLink={openResolveArenaLink}
             onResolveTitleBeltLink={openResolveTitleBeltLink}
-            onResolveOtherModLink={null}
+            onResolveOtherModLink={onResolveOtherModLink}
             onCreateRequest={createRequest}
             onCreateArenaRequest={openArenaIssueRequest}
             onCreateTitleBeltRequest={openTitleBeltIssueRequest}
-            onCreateOtherModRequest={null}
+            onCreateOtherModRequest={openOtherModIssueRequest}
             canManageContent={canManageContent}
             canContribute={canContribute}
             onEditAttire={openEditAttire}
             onEditArena={openEditArenaFromIssues}
             onEditTitleBelt={openEditTitleBeltFromIssues}
-            onEditOtherMod={null}
+            onEditOtherMod={openEditOtherModFromIssues}
           />
         ) : (
         <>

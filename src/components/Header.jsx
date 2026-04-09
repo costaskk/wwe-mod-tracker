@@ -4,9 +4,11 @@ export default function Header({
   onAddWrestler,
   onAddArena,
   onAddTitle,
+  onAddOtherMod,
   onBrowseCollections,
   onBrowseArenas,
   onBrowseTitles,
+  onBrowseOtherMods,
   onBrowseAdmin,
   onBrowseIssues,
   onGoHome,
@@ -59,6 +61,14 @@ export default function Header({
               onClick={onBrowseTitles}
             >
               Titles
+            </button>
+
+            <button
+              type="button"
+              className={`nav-chip ${currentPage === 'other_mods' ? 'active' : ''}`}
+              onClick={onBrowseOtherMods}
+            >
+              Other Mods
             </button>
 
             <button
@@ -144,6 +154,17 @@ export default function Header({
               type="button"
             >
               Add title belt
+            </button>
+          ) : null}
+
+          {currentPage === 'other_mods' ? (
+            <button
+              className="primary-button hero-primary"
+              onClick={onAddOtherMod}
+              disabled={!canContribute}
+              type="button"
+            >
+              Add other mod
             </button>
           ) : null}
         </div>

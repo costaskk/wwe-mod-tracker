@@ -1,8 +1,26 @@
+import { getModTypeLabel, getOtherModSubtypeLabel } from '../lib/utils'
+
+function getItemLabel(item) {
+  if (item?.modType === 'other') {
+    return 'Other mod'
+  }
+
+  return getModTypeLabel(item?.modType || '')
+}
+
+function getItemSubtitle(item) {
+  if (item?.modType === 'other' && item?.subtype) {
+    return getOtherModSubtypeLabel(item.subtype)
+  }
+
+  return ''
+}
+
 export default function CollectionPickerModal({
   open,
   item,
-  collections,
-  memberships,
+  collections = [],
+  memberships = [],
   onClose,
   onToggle,
   saving
@@ -11,14 +29,8 @@ export default function CollectionPickerModal({
 
   if (!open || !item) return null
 
-  const itemTypeLabel =
-    item.modType === 'arena'
-      ? 'Arena'
-      : item.modType === 'attire'
-        ? 'Attire'
-        : item.modType === 'title'
-          ? 'Title belt'
-          : 'Item'
+  const itemTypeLabel = getItemLabel(item)
+  const itemSubtypeLabel = getItemSubtitle(item)
 
   return (
     <div className="modal-backdrop modal-backdrop-front" onClick={onClose}>
@@ -29,8 +41,9 @@ export default function CollectionPickerModal({
         <div className="modal-header collection-picker-header">
           <h2>Save to collection</h2>
           <p className="subtle-copy collection-picker-subtitle">
-            <strong>{item.name}</strong>
-            <span> · {itemTypeLabel}</span>
+            <strong>{item.name || 'Untitled item'}</strong>
+            <span>{` · ${itemTypeLabel}`}</span>
+            {itemSubtypeLabel ? <span>{` · ${itemSubtypeLabel}`}</span> : null}
           </p>
         </div>
 
@@ -55,12 +68,18 @@ export default function CollectionPickerModal({
                   <div className="picker-row-main">
                     <strong className="picker-row-title">{collection.name}</strong>
 
-                    <div className="picker-row-meta muted-text small-text">
+                    <div className="picker-row-meta muted-text small-text wrap-actions">
                       <span className="pill subtle-pill">
                         {collection.visibility === 'private' ? 'Private' : 'Public'}
                       </span>
                       <span>{itemCount} item{itemCount === 1 ? '' : 's'}</span>
                     </div>
+
+                    {collection.description ? (
+                      <div className="muted-text small-text picker-row-description">
+                        {collection.description}
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="picker-row-actions">
