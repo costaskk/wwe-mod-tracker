@@ -6,7 +6,8 @@ import {
   parseDownloadLinks,
   getCollectionItemTarget,
   getModTypeLabel,
-  getOtherModSubtypeLabel
+  getOtherModSubtypeLabel,
+  getSubtypeIcon
 } from '../lib/utils'
 
 function getCollectionItemData(item) {
