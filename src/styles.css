@@ -1452,9 +1452,34 @@ select option {
 
 .request-modal,
 .notice-modal {
-  width: min(560px, 100%);
+  width: min(560px, calc(100vw - 32px));
   border-radius: 28px;
   text-align: center;
+  padding: 28px;
+}
+
+.notice-modal .modal-header {
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.notice-modal h2 {
+  margin: 0;
+}
+
+.notice-modal .subtle-copy {
+  margin: 0;
+  max-width: 42ch;
+}
+
+.notice-footer {
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.notice-footer .primary-button {
+  min-width: 110px;
 }
 
 .request-modal textarea {
@@ -1472,6 +1497,7 @@ select option {
   font-size: 2rem;
   font-weight: 800;
   border: 1px solid var(--line);
+  flex-shrink: 0;
 }
 
 .notice-modal.error .notice-icon {
@@ -1489,9 +1515,6 @@ select option {
   color: #d9efff;
 }
 
-.notice-footer {
-  justify-content: center;
-}
 
 .json-grid {
   display: grid;
@@ -2051,6 +2074,21 @@ select option {
 }
 
 @media (max-width: 640px) {
+
+  .confirm-modal {
+    padding: 20px;
+  }
+
+  .confirm-modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .confirm-modal-footer .ghost-button,
+  .confirm-modal-footer .primary-button,
+  .confirm-modal-footer .danger-button {
+    width: 100%;
+  }
+
   .picker-row {
     flex-direction: column;
     align-items: stretch;
@@ -2944,11 +2982,63 @@ select option {
 }
 
 .confirm-modal {
-  width: min(560px, 100%);
+  width: min(520px, calc(100vw - 32px));
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-radius: 24px;
+}
+
+.confirm-modal-header {
+  text-align: center;
+  align-items: center;
+}
+
+.confirm-modal-header h2 {
+  margin: 0;
+}
+
+.confirm-modal-icon {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  font-weight: 800;
+}
+
+.confirm-modal-icon-danger {
+  background: rgba(255, 99, 132, 0.14);
+  color: #ff8ca3;
+  border: 1px solid rgba(255, 99, 132, 0.22);
+}
+
+.confirm-modal-icon-warning {
+  background: rgba(255, 196, 87, 0.14);
+  color: #ffd36e;
+  border: 1px solid rgba(255, 196, 87, 0.22);
+}
+
+.confirm-modal-footer {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.confirm-modal-footer .ghost-button,
+.confirm-modal-footer .primary-button,
+.confirm-modal-footer .danger-button {
+  min-width: 140px;
 }
 
 .danger-button {
-  background: linear-gradient(135deg, #ff6b86, #ff4e6f);
+  background: linear-gradient(135deg, #ff6b81, #ff4d6d);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: white;
 }
 
 .live-check-row {

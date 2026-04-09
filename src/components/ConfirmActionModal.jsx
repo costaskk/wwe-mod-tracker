@@ -18,42 +18,55 @@ export default function ConfirmActionModal({
       if (event.key === 'Escape' && !busy) {
         onClose?.()
       }
+
+      if (event.key === 'Enter' && !busy) {
+        const tag = document.activeElement?.tagName
+        const isTypingTarget =
+          tag === 'TEXTAREA' ||
+          tag === 'INPUT' ||
+          document.activeElement?.isContentEditable
+
+        if (!isTypingTarget) {
+          event.preventDefault()
+          onConfirm?.()
+        }
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [open, busy, onClose])
+  }, [open, busy, onConfirm, onClose])
 
   if (!open) return null
 
   const isDanger = tone === 'danger'
-  const icon = isDanger ? '⚠' : '?'
+  const icon = isDanger ? '!' : '?'
   const titleText = title || 'Are you sure?'
   const messageText = message || 'Please confirm this action.'
-  const confirmButtonClass = isDanger
-    ? 'primary-button danger-button'
-    : 'primary-button'
+  const titleId = 'confirm-action-title'
+  const messageId = 'confirm-action-message'
 
   return (
     <div
       className="modal-backdrop modal-backdrop-front"
-      onClick={!busy ? onClose : undefined}
+      onClick={busy ? undefined : () => onClose?.()}
     >
       <div
-        className={`panel modal-card notice-modal confirm-modal confirm-modal-${tone}`}
+        className={`panel modal-card confirm-modal confirm-modal-${tone}`}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="confirm-action-title"
-        aria-describedby="confirm-action-message"
+        aria-labelledby={titleId}
+        aria-describedby={messageId}
       >
-        <div className={`notice-icon confirm-notice-icon ${tone}`}>
+        <div className={`confirm-modal-icon confirm-modal-icon-${tone}`}>
           {icon}
         </div>
 
         <div className="modal-header confirm-modal-header">
-          <h2 id="confirm-action-title">{titleText}</h2>
-          <p className="subtle-copy" id="confirm-action-message">
+          <h2 id={titleId}>{titleText}</h2>
+
+          <p className="subtle-copy" id={messageId}>
             {messageText}
           </p>
 
@@ -64,20 +77,20 @@ export default function ConfirmActionModal({
           ) : null}
         </div>
 
-        <div className="modal-footer notice-footer confirm-modal-footer">
+        <div className="modal-footer confirm-modal-footer">
           <button
             className="ghost-button"
             type="button"
-            onClick={onClose}
+            onClick={() => onClose?.()}
             disabled={busy}
           >
             {cancelLabel}
           </button>
 
           <button
-            className={confirmButtonClass}
+            className={isDanger ? 'primary-button danger-button' : 'primary-button'}
             type="button"
-            onClick={onConfirm}
+            onClick={() => onConfirm?.()}
             disabled={busy}
           >
             {busy ? 'Working…' : confirmLabel}

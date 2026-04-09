@@ -818,7 +818,7 @@ export default function App() {
             return entry.arena_id === collectionPicker.item.id
           }
           if (collectionPicker.item.modType === 'title') {
-            return entry.title_belt_id === collectionPicker.item.id
+            return entry.title_id === collectionPicker.item.id
           }
           if (collectionPicker.item.modType === 'other') {
             return entry.other_mod_id === collectionPicker.item.id
@@ -1937,7 +1937,7 @@ export default function App() {
             .from('collection_items')
             .delete()
             .eq('collection_id', collection.id)
-            .eq('title_belt_id', item.id)
+            .eq('title_id', item.id)
 
           if (error) throw error
 
@@ -1949,7 +1949,7 @@ export default function App() {
               collection_id: collection.id,
               mod_type: 'title',
               mod_subtype: '',
-              title_belt_id: item.id
+              title_id: item.id
             })
 
           if (error) throw error
