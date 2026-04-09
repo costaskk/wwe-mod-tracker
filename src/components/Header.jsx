@@ -11,6 +11,7 @@ export default function Header({
   onBrowseOtherMods = () => {},
   onBrowseAdmin = () => {},
   onBrowseIssues = () => {},
+  onBrowseWrestlers = () => {},
   onGoHome = () => {},
   currentPage = 'all_mods',
   session,
@@ -59,7 +60,7 @@ export default function Header({
             <button
               type="button"
               className={`nav-chip ${currentPage === 'mods' ? 'active' : ''}`}
-              onClick={onAddWrestler}
+              onClick={onBrowseWrestlers}
             >
               Characters
             </button>
@@ -143,7 +144,7 @@ export default function Header({
         </div>
 
         <div className="hero-actions">
-          {showAllModsAction ? (
+          {(showAllModsAction || showCharactersAction) && (
             <button
               className="primary-button hero-primary"
               onClick={onAddWrestler}
@@ -152,18 +153,7 @@ export default function Header({
             >
               Add wrestler
             </button>
-          ) : null}
-
-          {showCharactersAction ? (
-            <button
-              className="primary-button hero-primary"
-              onClick={onAddWrestler}
-              disabled={!canContribute}
-              type="button"
-            >
-              Add wrestler
-            </button>
-          ) : null}
+          )}
 
           {showArenaAction ? (
             <button

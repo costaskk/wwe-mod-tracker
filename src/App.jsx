@@ -2163,6 +2163,7 @@ export default function App() {
           onBrowseArenas={() => {}}
           onBrowseTitles={() => {}}
           onBrowseOtherMods={() => {}}
+          onBrowseWrestlers={() => {}}
           onBrowseIssues={goIssuesPage}
           onGoHome={() => {}}
           currentPage="mods"
@@ -2183,12 +2184,13 @@ export default function App() {
         onAddTitle={openAddTitleFromHeader}
         onAddOtherMod={openAddOtherModFromHeader}
         session={session}
+        onGoHome={goAllModsPage}
+        onBrowseWrestlers={goWrestlersPage}
         onBrowseCollections={goCollectionsPage}
         onBrowseArenas={goArenasPage}
         onBrowseTitles={goTitlesPage}
-        onBrowseIssues={goIssuesPage}
         onBrowseOtherMods={goOtherModsPage}
-        onGoHome={goAllModsPage}
+        onBrowseIssues={goIssuesPage}
         currentPage={currentPage}
         currentProfile={currentProfile}
         canContribute={canContribute}
