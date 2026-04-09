@@ -1546,6 +1546,7 @@ export default function App() {
         modCategory: 'other',
         otherModId: otherMod.id,
         otherModName: otherMod.name,
+        otherModSubtype: otherMod.subtype || '',
         issueType,
         currentUrl: otherMod.download_url || ''
       }
@@ -2335,7 +2336,7 @@ export default function App() {
             onResolveLink={openResolveLink}
             onResolveArenaLink={openResolveArenaLink}
             onResolveTitleBeltLink={openResolveTitleBeltLink}
-            onResolveOtherModLink={onResolveOtherModLink}
+            onResolveOtherModLink={openResolveOtherModLink}
             onCreateRequest={createRequest}
             onCreateArenaRequest={openArenaIssueRequest}
             onCreateTitleBeltRequest={openTitleBeltIssueRequest}
