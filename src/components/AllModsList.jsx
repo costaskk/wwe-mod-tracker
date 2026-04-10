@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, useEffect } from 'react'
 import {
   formatDate,
   getModTypeLabel,
@@ -212,10 +212,11 @@ function ItemThumb({
 
   function startHoverRotation() {
     if (previewImages.length <= 1) return
-    if (hoverIntervalRef.current) return
+
+    clearInterval(hoverIntervalRef.current)
 
     hoverIntervalRef.current = setInterval(() => {
-      setActiveIndex((current) => (current + 1) % previewImages.length)
+        setActiveIndex((current) => (current + 1) % previewImages.length)
     }, 1000)
   }
 
