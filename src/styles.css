@@ -778,6 +778,7 @@ button:disabled {
   position: relative;
   min-height: 104px;
   border-radius: 24px;
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018)),
@@ -806,8 +807,14 @@ button:disabled {
   content: '';
   position: absolute;
   inset: 0;
+  border-radius: inherit;
   background: radial-gradient(circle at top right, rgba(63, 166, 255, 0.08), transparent 62%);
   pointer-events: none;
+}
+
+.stat-card::before,
+.stat-card::after {
+  border-radius: inherit;
 }
 
 .stat-card-primary {
