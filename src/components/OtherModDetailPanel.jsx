@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   formatDate,
@@ -46,21 +46,26 @@ function DownloadLinks({ value, canViewLinks }) {
   )
 }
 
-function OtherModGallery({ images = [], onPreviewImage }) {
+function OtherModGallery({ images = [], onOpenImageViewer }) {
   if (!images.length) {
     return <div className="upload-placeholder">No screenshots uploaded</div>
   }
 
+  const galleryImages = images
+    .map((image) => image.url || image.image_url || '')
+    .filter(Boolean)
+
   return (
     <div className="gallery-grid detail-gallery-grid">
-      {images.map((image) => {
+      {images.map((image, index) => {
         const src = image.url || image.image_url || ''
+
         return (
           <button
             type="button"
             className="gallery-tile gallery-button-reset"
-            key={image.id || image.path || image.url}
-            onClick={() => src && onPreviewImage(src)}
+            key={image.id || image.path || image.url || `other-mod-image-${index}`}
+            onClick={() => onOpenImageViewer?.(galleryImages, index)}
           >
             <img
               className="gallery-img"
@@ -112,9 +117,9 @@ export default function OtherModDetailPanel({
   onToggleInstalled,
   onCreateRequest,
   onResolveLink,
-  onOpenCollectionPicker
+  onOpenCollectionPicker,
+  onOpenImageViewer
 }) {
-  const [previewImage, setPreviewImage] = useState(null)
 
   const isApprovedViewer = Boolean(
     session && (
@@ -123,20 +128,6 @@ export default function OtherModDetailPanel({
       currentProfile?.role === 'admin'
     )
   )
-
-  useEffect(() => {
-    function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        setPreviewImage(null)
-      }
-    }
-
-    if (previewImage) {
-      window.addEventListener('keydown', handleKeyDown)
-    }
-
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [previewImage])
 
   if (!mod) {
     return (
@@ -169,7 +160,6 @@ export default function OtherModDetailPanel({
   const requests = mod.requests || []
   const openRequests = requests.filter((item) => item.status === 'open')
   const requestInfo = requestSummary(openRequests, 'other_mod_id', mod.id)
-  const installed = installedOtherModIds?.has ? installedOtherModIds.has(mod.id) : false
   const hasMissingDownload = !String(mod.download_url || '').trim()
   const hasDeadLink = openRequests.some((item) => item.request_type === 'dead_link')
 
@@ -378,7 +368,7 @@ export default function OtherModDetailPanel({
           </div>
         </div>
 
-        <OtherModGallery images={images} onPreviewImage={setPreviewImage} />
+        <OtherModGallery images={images} onOpenImageViewer={onOpenImageViewer} />
       </div>
 
       <div className="panel soft-panel improved-attire-card">
@@ -415,22 +405,6 @@ export default function OtherModDetailPanel({
           </div>
         </div>
       </div>
-
-      {previewImage &&
-        createPortal(
-          <div
-            className="image-modal-backdrop image-modal-backdrop-open"
-            onClick={() => setPreviewImage(null)}
-          >
-            <div
-              className="image-modal-content image-modal-content-open"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <img src={previewImage} alt="Other mod preview" />
-            </div>
-          </div>,
-          document.body
-        )}
     </section>
   )
 }

@@ -123,6 +123,12 @@ export default function App() {
 
   const canDeleteContent = Boolean(session && isStaff)
 
+  const [imageViewer, setImageViewer] = useState({
+    open: false,
+    images: [],
+    index: 0
+  })
+
   function canManageContent(ownerId) {
     if (!session) return false
     return session.user.id === ownerId || isStaff
@@ -335,6 +341,34 @@ export default function App() {
     }
   }
 
+  function openImageViewer(images, index = 0) {
+    if (!images || !images.length) return
+
+    setImageViewer({
+      open: true,
+      images,
+      index
+    })
+  }
+
+  function closeImageViewer() {
+    setImageViewer((prev) => ({ ...prev, open: false }))
+  }
+
+  function nextImage() {
+    setImageViewer((prev) => ({
+      ...prev,
+      index: (prev.index + 1) % prev.images.length
+    }))
+  }
+
+  function prevImage() {
+    setImageViewer((prev) => ({
+      ...prev,
+      index: (prev.index - 1 + prev.images.length) % prev.images.length
+    }))
+  }
+
   useEffect(() => {
     if (!isSupabaseConfigured) {
       setLoading(false)
@@ -352,6 +386,26 @@ export default function App() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!imageViewer.open) return
+
+    function handleKey(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        closeImageViewer()
+      } else if (e.key === 'ArrowRight' && imageViewer.images.length > 1) {
+        e.preventDefault()
+        nextImage()
+      } else if (e.key === 'ArrowLeft' && imageViewer.images.length > 1) {
+        e.preventDefault()
+        prevImage()
+      }
+    }
+
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [imageViewer.open, imageViewer.images.length])
 
   useEffect(() => {
     if (!isSupabaseConfigured) return
@@ -2367,6 +2421,7 @@ export default function App() {
             arenaCreateSignal={arenaCreateSignal}
             arenaSelectSignal={arenaSelectSignal}
             onConsumeArenaCreateSignal={() => setArenaCreateSignal(0)}
+            onOpenImageViewer={openImageViewer}
           />
         ) : currentPage === 'all_mods' ? (
           <AllModsPage
@@ -2418,6 +2473,7 @@ export default function App() {
             titleCreateSignal={titleCreateSignal}
             titleSelectSignal={titleSelectSignal}
             onConsumeTitleCreateSignal={() => setTitleCreateSignal(0)}
+            onOpenImageViewer={openImageViewer}
           />
         ) : currentPage === 'other_mods' ? (
           <OtherModPage
@@ -2443,6 +2499,7 @@ export default function App() {
             otherModsCreateSignal={otherModsCreateSignal}
             otherModsSelectSignal={otherModsSelectSignal}
             onConsumeOtherModsCreateSignal={() => setOtherModsCreateSignal(0)}
+            onOpenImageViewer={openImageViewer}
           />
         ) : currentPage === 'admin' ? (
           <AdminPanel
@@ -2535,6 +2592,7 @@ export default function App() {
               attireViewMode={attireViewMode}
               setAttireViewMode={setAttireViewMode}
               onOpenCollectionPicker={openCollectionPicker}
+              onOpenImageViewer={openImageViewer}
             />
           </div>
         </>
@@ -2630,7 +2688,52 @@ export default function App() {
       />
 
       <ModalNotice notice={notice} onClose={() => setNotice(null)} />
-      {loading ? <div className="loading-overlay">Loading database…</div> : null}
+        {imageViewer.open ? (
+          <div
+            className="image-modal-backdrop image-modal-backdrop-open"
+            onClick={closeImageViewer}
+          >
+            <div
+              className="image-modal-content image-modal-content-open"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {imageViewer.images.length > 1 ? (
+                <button
+                  type="button"
+                  className="ghost-button small-btn image-nav-btn image-nav-left"
+                  onClick={prevImage}
+                >
+                  ←
+                </button>
+              ) : null}
+
+              <img
+                src={imageViewer.images[imageViewer.index]}
+                alt={`Preview ${imageViewer.index + 1}`}
+              />
+
+              {imageViewer.images.length > 1 ? (
+                <button
+                  type="button"
+                  className="ghost-button small-btn image-nav-btn image-nav-right"
+                  onClick={nextImage}
+                >
+                  →
+                </button>
+              ) : null}
+
+              <button
+                type="button"
+                className="ghost-button small-btn image-close-btn"
+                onClick={closeImageViewer}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {loading ? <div className="loading-overlay">Loading database…</div> : null}
     </div>
+
   )
 }

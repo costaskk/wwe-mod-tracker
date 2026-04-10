@@ -37,7 +37,8 @@ export default function OtherModPage({
   otherModsCreateSignal,
   otherModsSelectSignal,
   onConsumeOtherModsCreateSignal,
-  openConfirmAction
+  openConfirmAction,
+  onOpenImageViewer
 }) {
   const [query, setQuery] = useState('')
   const [creatorFilter, setCreatorFilter] = useState('all')
@@ -578,6 +579,7 @@ export default function OtherModPage({
             onCreateRequest={createOtherModRequest}
             onResolveLink={resolveOtherModLink}
             onOpenCollectionPicker={onOpenCollectionPicker}
+            onOpenImageViewer={onOpenImageViewer}
         />
         </div>
 

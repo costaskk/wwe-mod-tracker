@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import {
   formatDate,
   parseDownloadLinks,
@@ -44,27 +44,35 @@ function DownloadLinks({ value, canViewLinks }) {
   )
 }
 
-function ArenaGallery({ images = [], onPreviewImage }) {
+function ArenaGallery({ images = [], onOpenImageViewer }) {
   if (!images.length) {
     return <div className="upload-placeholder">No arena screenshots uploaded</div>
   }
 
+  const galleryImages = images
+    .map((image) => image.url || image.image_url || '')
+    .filter(Boolean)
+
   return (
     <div className="gallery-grid detail-gallery-grid">
-      {images.map((image) => (
-        <button
-          type="button"
-          className="gallery-tile gallery-button-reset"
-          key={image.id || image.path || image.url}
-          onClick={() => onPreviewImage(image.url || image.image_url)}
-        >
-          <img
-            className="gallery-img"
-            src={image.url || image.image_url}
-            alt={image.name || image.image_name || 'Arena screenshot'}
-          />
-        </button>
-      ))}
+      {images.map((image, index) => {
+        const src = image.url || image.image_url || ''
+
+        return (
+          <button
+            type="button"
+            className="gallery-tile gallery-button-reset"
+            key={image.id || image.path || image.url || `arena-image-${index}`}
+            onClick={() => onOpenImageViewer?.(galleryImages, index)}
+          >
+            <img
+              className="gallery-img"
+              src={src}
+              alt={image.name || image.image_name || 'Arena screenshot'}
+            />
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -81,9 +89,9 @@ export default function ArenaDetailPanel({
   onDeleteArena,
   onToggleInstalled,
   onCreateRequest,
-  onOpenCollectionPicker
+  onOpenCollectionPicker,
+  onOpenImageViewer
 }) {
-  const [previewImage, setPreviewImage] = useState(null)  
 
   const isApprovedViewer = Boolean(
     session && (
@@ -299,7 +307,7 @@ export default function ArenaDetailPanel({
           </div>
         </div>
 
-        <ArenaGallery images={images} onPreviewImage={setPreviewImage} />
+        <ArenaGallery images={images} onOpenImageViewer={onOpenImageViewer} />
       </div>
 
       <div className="panel soft-panel improved-attire-card">
@@ -342,13 +350,6 @@ export default function ArenaDetailPanel({
           </div>
         </div>
       </div>
-      {previewImage ? (
-        <div className="image-modal-backdrop image-modal-backdrop-open" onClick={() => setPreviewImage(null)}>
-            <div className="image-modal-content image-modal-content-open" onClick={(e) => e.stopPropagation()}>
-            <img src={previewImage} alt="Arena preview" />
-            </div>
-        </div>
-      ) : null}
     </section>
   )
 }

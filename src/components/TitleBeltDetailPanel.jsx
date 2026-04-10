@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   formatDate,
@@ -45,21 +45,26 @@ function DownloadLinks({ value, canViewLinks }) {
   )
 }
 
-function TitleGallery({ images = [], onPreviewImage }) {
+function TitleGallery({ images = [], onOpenImageViewer }) {
   if (!images.length) {
     return <div className="upload-placeholder">No title screenshots uploaded</div>
   }
 
+  const galleryImages = images
+    .map((image) => image.url || image.image_url || '')
+    .filter(Boolean)
+
   return (
     <div className="gallery-grid detail-gallery-grid">
-      {images.map((image) => {
+      {images.map((image, index) => {
         const src = image.url || image.image_url || ''
+
         return (
           <button
             type="button"
             className="gallery-tile gallery-button-reset"
-            key={image.id || image.path || image.url}
-            onClick={() => src && onPreviewImage(src)}
+            key={image.id || image.path || image.url || `title-image-${index}`}
+            onClick={() => onOpenImageViewer?.(galleryImages, index)}
           >
             <img
               className="gallery-img"
@@ -110,7 +115,7 @@ function AudioSection({ files = [] }) {
   )
 }
 
-function DdsPreview({ url, name, onPreview }) {
+function DdsPreview({ url, name, onOpenImageViewer }) {
   const [failed, setFailed] = useState(false)
 
   if (!url) {
@@ -173,9 +178,9 @@ export default function TitleBeltDetailPanel({
   onToggleInstalled,
   onCreateRequest,
   onResolveLink,
-  onOpenCollectionPicker
+  onOpenCollectionPicker,
+  onOpenImageViewer
 }) {
-  const [previewImage, setPreviewImage] = useState(null)
 
   const isApprovedViewer = Boolean(
     session && (
@@ -184,20 +189,6 @@ export default function TitleBeltDetailPanel({
       currentProfile?.role === 'admin'
     )
   )
-
-  useEffect(() => {
-    function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        setPreviewImage(null)
-      }
-    }
-
-    if (previewImage) {
-      window.addEventListener('keydown', handleKeyDown)
-    }
-
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [previewImage])
 
   if (!title) {
     return (
@@ -435,7 +426,7 @@ export default function TitleBeltDetailPanel({
         <DdsPreview
             url={title.render_dds_url}
             name={title.render_dds_name || `${title.name} render`}
-            onPreview={setPreviewImage}
+            onOpenImageViewer={onOpenImageViewer}
         />
       </div>
 
@@ -447,7 +438,7 @@ export default function TitleBeltDetailPanel({
           </div>
         </div>
 
-        <TitleGallery images={images} onPreviewImage={setPreviewImage} />
+        <TitleGallery images={images} onOpenImageViewer={onOpenImageViewer} />
       </div>
 
       <div className="panel soft-panel improved-attire-card">
@@ -484,22 +475,6 @@ export default function TitleBeltDetailPanel({
           </div>
         </div>
       </div>
-
-      {previewImage &&
-        createPortal(
-          <div
-            className="image-modal-backdrop image-modal-backdrop-open"
-            onClick={() => setPreviewImage(null)}
-          >
-            <div
-              className="image-modal-content image-modal-content-open"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <img src={previewImage} alt="Title preview" />
-            </div>
-          </div>,
-          document.body
-        )}
     </section>
   )
 }

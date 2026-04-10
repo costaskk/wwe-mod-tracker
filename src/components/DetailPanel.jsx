@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import {
   formatDate,
   requestSummary,
@@ -197,7 +196,7 @@ function WrestlerAudioSection({ wrestler }) {
   )
 }
 
-function WrestlerTitantronSection({ wrestler, canContribute, onPreviewImage }) {
+function WrestlerTitantronSection({ wrestler, canContribute, onOpenImageViewer }) {
   const titantrons = wrestler.titantrons || []
 
   if (!titantrons.length) return null
@@ -233,7 +232,12 @@ function WrestlerTitantronSection({ wrestler, canContribute, onPreviewImage }) {
                         key={image.id || image.image_path || image.image_url || image.url || `${item.id}-${index}`}
                         type="button"
                         className="gallery-tile gallery-button-reset"
-                        onClick={() => onPreviewImage(image.image_url || image.url)}
+                        onClick={() =>
+                          onOpenImageViewer?.(
+                            validScreenshots.map((img) => img.image_url || img.url).filter(Boolean),
+                            index
+                          )
+                        }
                       >
                         <img
                           className="gallery-img"
@@ -329,7 +333,7 @@ function CompactRow({
             <button
               className={installed ? 'primary-button small-btn' : 'secondary-button small-btn'}
               disabled={!session}
-              onClick={() => onToggleInstalled(attire, installed)}
+              onClick={() => onToggleInstalled(attire)}
               type="button"
             >
               {installed ? 'Installed' : 'Install'}
@@ -338,12 +342,25 @@ function CompactRow({
 
           {canContribute && onOpenCollectionPicker ? (
             <button
-              className="ghost-button small-btn"
+              className={`ghost-button small-btn ${attire.inCollection ? 'collection-btn-active' : ''}`}
               disabled={!session}
-              onClick={() => onOpenCollectionPicker?.({ ...attire, modType: 'attire' })}
+              onClick={() =>
+                onOpenCollectionPicker?.({
+                  ...attire,
+                  id: attire.id,
+                  modType: 'attire'
+                })
+              }
+              title={
+                attire.inCollection
+                  ? attire.collectionNames?.join(', ')
+                  : 'Add to collection'
+              }
               type="button"
             >
-              Collection
+              {attire.inCollection
+                ? `In ${attire.collectionCount} collection${attire.collectionCount === 1 ? '' : 's'}`
+                : 'Add to collection'}
             </button>
           ) : null}
 
@@ -442,23 +459,9 @@ export default function DetailPanel({
   onResolveLink,
   attireViewMode,
   setAttireViewMode,
-  onOpenCollectionPicker
+  onOpenCollectionPicker,
+  onOpenImageViewer
 }) {
-  const [previewImage, setPreviewImage] = useState(null)
-
-  useEffect(() => {
-    function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        setPreviewImage(null)
-      }
-    }
-
-    if (previewImage) {
-      window.addEventListener('keydown', handleKeyDown)
-    }
-
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [previewImage])
 
   if (!wrestler) {
     return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
@@ -475,7 +478,7 @@ export default function DetailPanel({
               <button
                 type="button"
                 className="hero-headshot-button"
-                onClick={() => setPreviewImage(wrestler.headshot_url)}
+                onClick={() => onOpenImageViewer?.([wrestler.headshot_url], 0)}
               >
                 <img className="hero-headshot" src={wrestler.headshot_url} alt={wrestler.wrestler_name} />
               </button>
@@ -523,7 +526,7 @@ export default function DetailPanel({
       <WrestlerTitantronSection
         wrestler={wrestler}
         canContribute={canContribute}
-        onPreviewImage={setPreviewImage}
+        onOpenImageViewer={onOpenImageViewer}
       />
 
       <section className="panel soft-panel">
@@ -623,7 +626,12 @@ export default function DetailPanel({
                                 key={image.id || image.image_path || image.image_url || image.url || `${attire.id}-${index}`}
                                 type="button"
                                 className="gallery-tile gallery-button-reset"
-                                onClick={() => setPreviewImage(image.image_url || image.url)}
+                                onClick={() =>
+                                  onOpenImageViewer?.(
+                                    validScreenshots.map((img) => img.image_url || img.url).filter(Boolean),
+                                    index
+                                  )
+                                }
                               >
                                 <img className="gallery-img" src={image.image_url || image.url} alt={image.image_name || image.name || attire.name} />
                               </button>
@@ -801,14 +809,6 @@ export default function DetailPanel({
           </div>
         )}
       </section>
-
-      {previewImage ? (
-        <div className="image-modal-backdrop image-modal-backdrop-open" onClick={() => setPreviewImage(null)}>
-          <div className="image-modal-content image-modal-content-open" onClick={(e) => e.stopPropagation()}>
-            <img src={previewImage} alt="Preview" />
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }
