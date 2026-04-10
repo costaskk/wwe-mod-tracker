@@ -60,7 +60,7 @@ function openUnifiedItem(item, onOpenAttire, onOpenArena, onOpenTitle, onOpenOth
 
 function CategoryPills({ item }) {
   return (
-    <div className="wrap-actions">
+    <div className="mod-badges-inline">
       <span className="pill subtle-pill">{getModTypeLabel(item.modType)}</span>
 
       {item.modType === 'other' && item.modSubtype ? (
@@ -315,32 +315,36 @@ function CarouselSection({
           <p className="subtle-copy">{subtitle}</p>
         </div>
 
-        <div className="wrap-actions">
-          <Toggle
-            value={mode}
-            onChange={setMode}
-            options={[
-              { value: 'latest', label: 'Latest' },
-              { value: 'updated', label: 'Updated' },
-              { value: 'trending', label: 'Trending' }
-            ]}
-          />
+        <div className="carousel-header-actions">
+            <Toggle
+                value={mode}
+                onChange={setMode}
+                options={[
+                { value: 'latest', label: 'Latest' },
+                { value: 'updated', label: 'Updated' },
+                { value: 'trending', label: 'Trending' }
+                ]}
+            />
 
-          <button
-            type="button"
-            className="ghost-button small-btn"
-            onClick={() => scrollRail('left')}
-          >
-            ←
-          </button>
+            <div className="carousel-arrow-group">
+                <button
+                type="button"
+                className="ghost-button small-btn carousel-arrow-btn"
+                onClick={() => scrollRail('left')}
+                aria-label="Scroll left"
+                >
+                ←
+                </button>
 
-          <button
-            type="button"
-            className="ghost-button small-btn"
-            onClick={() => scrollRail('right')}
-          >
-            →
-          </button>
+                <button
+                type="button"
+                className="ghost-button small-btn carousel-arrow-btn"
+                onClick={() => scrollRail('right')}
+                aria-label="Scroll right"
+                >
+                →
+                </button>
+            </div>
         </div>
       </div>
 
@@ -391,7 +395,7 @@ function CarouselSection({
                 )}
               </div>
 
-              <div className="collection-actions wrap-actions">
+              <div className="collection-actions allmods-card-actions">
                 <ActionButtons
                     item={item}
                     onOpenAttire={onOpenAttire}
@@ -482,13 +486,13 @@ export default function AllModsList({
           <div className="compact-attire-table">
             {items.map((item) => (
               <article className="compact-attire-row" key={item.key}>
-                <div className="compact-main">
+                <div className=" compact-main-allmods">
                   <div className="compact-title-row">
                     <strong title={item.title}>{item.title}</strong>
                     <CategoryPills item={item} />
                   </div>
 
-                  <div className="compact-meta-line">
+                  <div className="compact-meta-line compact-meta-line-allmods">
                     <span className="collection-item-subtitle">
                       {item.parentTitle
                         ? `${item.parentTitle} · ${item.sourceGame || '—'}`
@@ -593,64 +597,66 @@ export default function AllModsList({
         )}
 
         {pagination && pagination.totalPages > 1 ? (
-          <div className="pagination-row">
-            <button
-              className="ghost-button small-btn"
-              disabled={pagination.page <= 1}
-              onClick={() => onPageChange(pagination.page - 1)}
-              type="button"
-            >
-              Previous
-            </button>
-
-            <div className="pagination-pages">
-              {pagination.page > 3 ? (
-                <>
-                  <button
-                    className="ghost-button small-btn page-number-btn"
-                    type="button"
-                    onClick={() => onPageChange(1)}
-                  >
-                    1
-                  </button>
-                  <span className="pagination-ellipsis">…</span>
-                </>
-              ) : null}
-
-              {pageNumbers.map((pageNumber) => (
+            <div className="pagination-container">
+                <div className="pagination-row">
                 <button
-                  key={pageNumber}
-                  type="button"
-                  className={`ghost-button small-btn page-number-btn ${pageNumber === pagination.page ? 'active-page' : ''}`}
-                  onClick={() => onPageChange(pageNumber)}
-                >
-                  {pageNumber}
-                </button>
-              ))}
-
-              {pagination.page < pagination.totalPages - 2 ? (
-                <>
-                  <span className="pagination-ellipsis">…</span>
-                  <button
-                    className="ghost-button small-btn page-number-btn"
+                    className="ghost-button small-btn"
+                    disabled={pagination.page <= 1}
+                    onClick={() => onPageChange(pagination.page - 1)}
                     type="button"
-                    onClick={() => onPageChange(pagination.totalPages)}
-                  >
-                    {pagination.totalPages}
-                  </button>
-                </>
-              ) : null}
-            </div>
+                >
+                    Previous
+                </button>
 
-            <button
-              className="ghost-button small-btn"
-              disabled={pagination.page >= pagination.totalPages}
-              onClick={() => onPageChange(pagination.page + 1)}
-              type="button"
-            >
-              Next
-            </button>
-          </div>
+                <div className="pagination-pages">
+                    {pagination.page > 3 ? (
+                    <>
+                        <button
+                        className="ghost-button small-btn page-number-btn"
+                        type="button"
+                        onClick={() => onPageChange(1)}
+                        >
+                        1
+                        </button>
+                        <span className="pagination-ellipsis">…</span>
+                    </>
+                    ) : null}
+
+                    {pageNumbers.map((pageNumber) => (
+                    <button
+                        key={pageNumber}
+                        type="button"
+                        className={`ghost-button small-btn page-number-btn ${pageNumber === pagination.page ? 'active-page' : ''}`}
+                        onClick={() => onPageChange(pageNumber)}
+                    >
+                        {pageNumber}
+                    </button>
+                    ))}
+
+                    {pagination.page < pagination.totalPages - 2 ? (
+                    <>
+                        <span className="pagination-ellipsis">…</span>
+                        <button
+                        className="ghost-button small-btn page-number-btn"
+                        type="button"
+                        onClick={() => onPageChange(pagination.totalPages)}
+                        >
+                        {pagination.totalPages}
+                        </button>
+                    </>
+                    ) : null}
+                </div>
+
+                <button
+                    className="ghost-button small-btn"
+                    disabled={pagination.page >= pagination.totalPages}
+                    onClick={() => onPageChange(pagination.page + 1)}
+                    type="button"
+                >
+                    Next
+                </button>
+                </div>
+            </div>
         ) : null}
       </section>
     </>

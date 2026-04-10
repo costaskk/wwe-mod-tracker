@@ -452,13 +452,12 @@ button:disabled {
 }
 
 .allmods-carousel-rail {
+  display: flex;
+  gap: 18px;
   overflow-x: auto;
   overflow-y: hidden;
-  display: flex;
-  gap: 16px;
-  padding-bottom: 8px;
-
   scroll-behavior: smooth;
+  padding-bottom: 12px;
 }
 
 .carousel-btn,
@@ -522,10 +521,9 @@ button:disabled {
 }
 
 .allmods-carousel-card {
-  min-width: 220px;
-  max-width: 240px;
-  scroll-snap-align: start;
-  min-height: 100%;
+  min-width: 260px;
+  max-width: 280px;
+  flex: 0 0 260px; 
 }
 
 .allmods-carousel-card .collection-item-thumb {
@@ -533,6 +531,21 @@ button:disabled {
   height: 190px;
   object-fit: cover;
   display: block;
+}
+
+.allmods-card-actions {
+  margin-top: 12px;
+}
+
+.compact-main-allmods {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.compact-meta-line-allmods {
+  flex-wrap: wrap;
+  row-gap: 8px;
 }
 
 .collection-thumb-button .collection-cover-placeholder,
@@ -3268,6 +3281,43 @@ select option {
   color: var(--text);
   border-color: rgba(63,166,255,.32);
   background: rgba(63,166,255,.12);
+}
+
+.mod-badges-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  min-height: 32px;
+}
+
+.carousel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+.carousel-arrow-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.carousel-arrow-btn {
+  min-width: 38px;
+  padding-inline: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+  padding-bottom: 8px;
 }
 
 .pagination-row {
