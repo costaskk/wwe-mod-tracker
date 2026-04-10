@@ -235,7 +235,6 @@ export default function TitleBeltDetailPanel({
   const requests = title.requests || []
   const openRequests = requests.filter((item) => item.status === 'open')
   const requestInfo = requestSummary(openRequests, 'title_belt_id', title.id)
-  const installed = installedTitleIds?.has ? installedTitleIds.has(title.id) : false
   const hasMissingDownload = !String(title.download_url || '').trim()
   const hasDeadLink = openRequests.some((item) => item.request_type === 'dead_link')
 

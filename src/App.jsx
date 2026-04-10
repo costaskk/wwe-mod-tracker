@@ -2348,6 +2348,7 @@ export default function App() {
             arenas={arenas}
             creators={creators}
             session={session}
+            collections={collections}
             canContribute={canContribute}
             canDeleteContent={canDeleteContent}
             canManageContent={canManageContent}
@@ -2398,6 +2399,7 @@ export default function App() {
             titleBelts={titleBelts}
             creators={creators}
             session={session}
+            collections={collections}
             canContribute={canContribute}
             canDeleteContent={canDeleteContent}
             canManageContent={canManageContent}
@@ -2422,6 +2424,7 @@ export default function App() {
             otherMods={otherMods}
             creators={creators}
             session={session}
+            collections={collections}
             canContribute={canContribute}
             canDeleteContent={canDeleteContent}
             canManageContent={canManageContent}

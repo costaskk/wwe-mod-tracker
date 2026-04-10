@@ -483,8 +483,10 @@ export default function TitleBeltPage({
     }
   }
 
-  async function toggleInstalled(title, installed) {
-    if (!canContribute) return
+  async function toggleInstalled(title) {
+    if (!canContribute || !session || !title) return
+
+    const installed = Boolean(title.isInstalled)
 
     try {
       if (installed) {

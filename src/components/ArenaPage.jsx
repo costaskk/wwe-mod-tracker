@@ -363,8 +363,10 @@ export default function ArenaPage({
     }
   }
 
-  async function toggleInstalled(arena, installed) {
-    if (!canContribute) return
+  async function toggleInstalled(arena) {
+    if (!canContribute || !session || !arena) return
+
+    const installed = Boolean(arena.isInstalled)
 
     try {
       if (installed) {
