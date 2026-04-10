@@ -1235,26 +1235,28 @@ select option {
 }
 
 .allmods-thumb-stack {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .allmods-thumb-strip {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .allmods-thumb-mini {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  overflow: hidden;
+  width: 38px;
+  height: 38px;
   padding: 0;
-  background: rgba(255,255,255,0.04);
-  flex: 0 0 auto;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  opacity: 0.72;
+  transition: 0.18s ease;
 }
 
 .allmods-thumb-mini img {
@@ -1264,18 +1266,33 @@ select option {
   display: block;
 }
 
+.allmods-thumb-mini:hover {
+  opacity: 1;
+  border-color: rgba(63, 166, 255, 0.35);
+}
+
+.allmods-thumb-mini.active-thumb {
+  opacity: 1;
+  border-color: rgba(63, 166, 255, 0.9);
+  box-shadow:
+    0 0 0 2px rgba(63, 166, 255, 0.18),
+    0 0 14px rgba(63, 166, 255, 0.16);
+  transform: translateY(-1px);
+}
+
 .allmods-thumb-more {
-  min-width: 52px;
-  height: 52px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  background: rgba(255,255,255,0.04);
-  color: var(--muted);
-  font-size: 0.82rem;
+  min-width: 38px;
+  height: 38px;
+  padding: 0 8px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
   font-weight: 700;
+  color: var(--text);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .image-nav-btn {

@@ -182,33 +182,73 @@ function ImageViewerModal({
   )
 }
 
-function ItemThumb({ item, onOpenViewer }) {
+function ItemThumb({
+  item,
+  onOpenViewer
+}) {
   const galleryImages = (item?.images || [])
     .map((img) => img?.image_url || img?.url || '')
     .filter(Boolean)
 
   const previewImages = galleryImages.length
     ? galleryImages
-    : item?.previewUrl
-      ? [item.previewUrl]
-      : []
+    : (item?.previewUrl ? [item.previewUrl] : [])
 
-  const firstImage = previewImages[0] || ''
   const titleText = item?.title || 'Unknown mod'
+  const [activeIndex, setActiveIndex] = useState(0)
+  const hoverIntervalRef = useRef(null)
+
+  useEffect(() => {
+    setActiveIndex(0)
+  }, [item?.key])
+
+  useEffect(() => {
+    return () => {
+      if (hoverIntervalRef.current) {
+        clearInterval(hoverIntervalRef.current)
+      }
+    }
+  }, [])
+
+  function startHoverRotation() {
+    if (previewImages.length <= 1) return
+    if (hoverIntervalRef.current) return
+
+    hoverIntervalRef.current = setInterval(() => {
+      setActiveIndex((current) => (current + 1) % previewImages.length)
+    }, 1000)
+  }
+
+  function stopHoverRotation() {
+    if (hoverIntervalRef.current) {
+      clearInterval(hoverIntervalRef.current)
+      hoverIntervalRef.current = null
+    }
+  }
+
+  const currentImage = previewImages[activeIndex] || ''
 
   return (
-    <div className="allmods-thumb-stack">
+    <div
+      className="allmods-thumb-stack"
+      onMouseEnter={startHoverRotation}
+      onMouseLeave={stopHoverRotation}
+    >
       <button
         type="button"
         className="collection-thumb-button"
         onClick={() => {
           if (previewImages.length) {
-            onOpenViewer?.(previewImages, 0, titleText)
+            onOpenViewer?.(previewImages, activeIndex, titleText)
           }
         }}
       >
-        {firstImage ? (
-          <img className="collection-item-thumb" src={firstImage} alt={titleText} />
+        {currentImage ? (
+          <img
+            className="collection-item-thumb"
+            src={currentImage}
+            alt={titleText}
+          />
         ) : (
           <div className="collection-item-thumb collection-cover-placeholder">
             {titleText.slice(0, 2).toUpperCase()}
@@ -218,14 +258,14 @@ function ItemThumb({ item, onOpenViewer }) {
 
       {previewImages.length > 1 ? (
         <div className="allmods-thumb-strip">
-          {previewImages.slice(0, 4).map((image, imageIndex) => (
+          {previewImages.slice(0, 4).map((image, index) => (
             <button
-              key={`${item.key}-thumb-${imageIndex}`}
+              key={`${item.key}-thumb-${index}`}
               type="button"
-              className="allmods-thumb-mini"
-              onClick={() => onOpenViewer?.(previewImages, imageIndex, titleText)}
+              className={`allmods-thumb-mini ${index === activeIndex ? 'active-thumb' : ''}`}
+              onClick={() => setActiveIndex(index)}
             >
-              <img src={image} alt={`${titleText} screenshot ${imageIndex + 1}`} />
+              <img src={image} alt={`${titleText} screenshot ${index + 1}`} />
             </button>
           ))}
 
