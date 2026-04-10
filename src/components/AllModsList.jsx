@@ -649,6 +649,32 @@ export default function AllModsList({
     })
   }
 
+  useEffect(() => {
+    if (!viewer.open) return
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        closeViewer()
+        return
+      }
+
+      if (event.key === 'ArrowLeft') {
+        showPrevViewerImage()
+        return
+      }
+
+      if (event.key === 'ArrowRight') {
+        showNextViewerImage()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [viewer.open, viewer.images.length, viewer.index])
+
   const pageStart = pagination ? (pagination.page - 1) * pagination.perPage + 1 : 0
   const pageEnd = pagination
     ? Math.min(pagination.page * pagination.perPage, pagination.totalItems)
