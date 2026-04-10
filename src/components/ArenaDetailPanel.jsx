@@ -124,7 +124,6 @@ export default function ArenaDetailPanel({
   const requests = arena.requests || []
   const openRequests = requests.filter((item) => item.status === 'open')
   const requestInfo = requestSummary(openRequests, 'arena_id', arena.id)
-  const installed = installedArenaIds?.has ? installedArenaIds.has(arena.id) : false
   const hasMissingDownload = !String(arena.download_url || '').trim()
   const hasDeadLink = openRequests.some((item) => item.request_type === 'dead_link')
 
@@ -176,30 +175,40 @@ export default function ArenaDetailPanel({
 
           {canContribute ? (
             <div className="hero-actions">
+
                 <button
                 type="button"
-                className="secondary-button"
-                onClick={() => onToggleInstalled(arena, installed)}
+                className={`ghost-button small-btn ${arena.isInstalled ? 'installed-btn-active' : ''}`}
+                onClick={() => onToggleInstalled?.(arena)}
                 >
-                {installed ? 'Installed' : 'Mark installed'}
+                {arena.isInstalled ? 'Installed in my game' : 'Mark installed'}
                 </button>
 
                 {onOpenCollectionPicker ? (
                 <button
                     type="button"
-                    className="ghost-button"
+                    className={`ghost-button small-btn ${arena.inCollection ? 'collection-btn-active' : ''}`}
                     onClick={() =>
                     onOpenCollectionPicker({
                         ...arena,
-                        modType: 'arena'
+                        modType: 'arena',
+                        id: arena.id
                     })
                     }
+                    title={
+                    arena.inCollection
+                        ? arena.collectionNames?.join(', ')
+                        : 'Add to collection'
+                    }
                 >
-                    Add to collection
+                    {arena.inCollection
+                    ? `In ${arena.collectionCount} collection${arena.collectionCount === 1 ? '' : 's'}`
+                    : 'Add to collection'}
                 </button>
                 ) : null}
+
             </div>
-           ) : null}
+          ) : null}
 
           {canManageContent(arena.owner_id) ? (
             <div className="hero-actions">
