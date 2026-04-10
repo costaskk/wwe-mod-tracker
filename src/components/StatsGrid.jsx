@@ -28,7 +28,7 @@ export default function StatsGrid({ stats = {} }) {
     {
       key: 'Other mods',
       label: 'Other mods',
-      value: stats.other_mods ?? 0
+      value: stats.otherMods ?? 0
     },
     {
       key: 'missingDownloads',
