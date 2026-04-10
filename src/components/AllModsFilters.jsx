@@ -11,6 +11,8 @@ export default function AllModsFilters({
   setCreatorFilter,
   sourceGameFilter,
   setSourceGameFilter,
+  installFilter,
+  setInstallFilter,
   sortBy,
   setSortBy,
   creators = [],
@@ -108,57 +110,64 @@ export default function AllModsFilters({
         </div>
 
         <div className="filter-row-grid filter-row-grid-three">
-          <label>
-            Creator
-            <select
-              value={creatorFilter}
-              onChange={(event) => setCreatorFilter(event.target.value)}
-            >
-              <option value="all">All creators</option>
-              {creatorOptions.map((item) => (
-                <option key={item.id} value={item.name}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
+            <label>
+                Creator
+                <select
+                value={creatorFilter}
+                onChange={(event) => setCreatorFilter(event.target.value)}
+                >
+                <option value="all">All creators</option>
+                {(creators || []).map((item) => (
+                    <option key={item.id} value={item.name}>
+                    {item.name}
+                    </option>
+                ))}
+                </select>
+            </label>
 
-          <label>
-            Source game
-            <select
-              value={sourceGameFilter}
-              onChange={(event) => setSourceGameFilter(event.target.value)}
-            >
-              <option value="all">All games</option>
-              {(sourceGames || []).map((game) => (
-                <option key={game} value={game}>
-                  {game === 'WWE 2K26' ? 'WWE 2K26 • NEW' : game}
-                </option>
-              ))}
-            </select>
-          </label>
+            <label>
+                Source game
+                <select
+                value={sourceGameFilter}
+                onChange={(event) => setSourceGameFilter(event.target.value)}
+                >
+                <option value="all">All games</option>
+                {(sourceGames || []).map((game) => (
+                    <option key={game} value={game}>
+                    {game === 'WWE 2K26' ? 'WWE 2K26 • NEW' : game}
+                    </option>
+                ))}
+                </select>
+            </label>
 
-          <label>
-            Other Mod subtype
-            <select
-              value={subtypeFilter}
-              onChange={(event) => setSubtypeFilter(event.target.value)}
-              disabled={subtypeDisabled}
-            >
-              <option value="all">All subtypes</option>
-              {sortedSubtypeOptions.map((subtype) => (
-                <option key={subtype} value={subtype}>
-                  {getOtherModSubtypeLabel(subtype)}
-                </option>
-              ))}
-            </select>
-            {subtypeDisabled ? (
-              <div className="muted-text small-text" style={{ marginTop: '6px' }}>
-                Choose the Other Mod category to enable subtype filtering.
-              </div>
-            ) : null}
-          </label>
-        </div>
+            <label>
+                Install status
+                <select
+                value={installFilter}
+                onChange={(event) => setInstallFilter(event.target.value)}
+                >
+                <option value="all">All mods</option>
+                <option value="installed">Installed only</option>
+                <option value="not_installed">Not installed only</option>
+                </select>
+            </label>
+
+            <label>
+                Other Mod subtype
+                <select
+                value={subtypeFilter}
+                onChange={(event) => setSubtypeFilter(event.target.value)}
+                disabled={categoryFilter !== 'other'}
+                >
+                <option value="all">All subtypes</option>
+                {(subtypeOptions || []).map((subtype) => (
+                    <option key={subtype} value={subtype}>
+                    {getOtherModSubtypeLabel(subtype)}
+                    </option>
+                ))}
+                </select>
+            </label>
+          </div>
       </div>
     </section>
   )

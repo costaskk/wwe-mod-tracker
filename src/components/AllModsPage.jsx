@@ -60,6 +60,7 @@ export default function AllModsPage({
       subtypeFilter !== 'all' ||
       creatorFilter !== 'all' ||
       sourceGameFilter !== 'all' ||
+      installFilter !== 'all' ||
       sortBy !== 'newest'
   )
 
@@ -79,27 +80,51 @@ export default function AllModsPage({
     const cleanQuery = query.toLowerCase().trim()
 
     const filtered = allMods.filter((item) => {
-      const queryOk = !cleanQuery || item.searchText.includes(cleanQuery)
-      const categoryOk = categoryFilter === 'all' || item.modType === categoryFilter
-      const subtypeOk =
+        const itemId = item.entityId || item.id
+
+        let isInstalled = false
+        if (item.modType === 'attire') isInstalled = installedIds.has(itemId)
+        if (item.modType === 'arena') isInstalled = installedArenaIds.has(itemId)
+        if (item.modType === 'title') isInstalled = installedTitleIds.has(itemId)
+        if (item.modType === 'other') isInstalled = installedOtherModIds.has(itemId)
+
+        const queryOk = !cleanQuery || item.searchText.includes(cleanQuery)
+        const categoryOk = categoryFilter === 'all' || item.modType === categoryFilter
+        const subtypeOk =
         categoryFilter !== 'other' ||
         subtypeFilter === 'all' ||
         item.modSubtype === subtypeFilter
-      const creatorOk = creatorFilter === 'all' || item.creatorName === creatorFilter
-      const sourceGameOk = sourceGameFilter === 'all' || item.sourceGame === sourceGameFilter
+        const creatorOk = creatorFilter === 'all' || item.creatorName === creatorFilter
+        const sourceGameOk = sourceGameFilter === 'all' || item.sourceGame === sourceGameFilter
+        const installOk =
+        installFilter === 'all' ||
+        (installFilter === 'installed' && isInstalled) ||
+        (installFilter === 'not_installed' && !isInstalled)
 
-      return queryOk && categoryOk && subtypeOk && creatorOk && sourceGameOk
+        return (
+        queryOk &&
+        categoryOk &&
+        subtypeOk &&
+        creatorOk &&
+        sourceGameOk &&
+        installOk
+        )
     })
 
     return sortUnifiedMods(filtered, sortBy)
-  }, [
+    }, [
     allMods,
     query,
     categoryFilter,
     subtypeFilter,
     creatorFilter,
     sourceGameFilter,
-    sortBy
+    installFilter,
+    sortBy,
+    installedIds,
+    installedArenaIds,
+    installedTitleIds,
+    installedOtherModIds
   ])
 
   const decorateFeedItems = useMemo(() => {
@@ -392,7 +417,7 @@ export default function AllModsPage({
 
   useEffect(() => {
     setPage(1)
-  }, [query, categoryFilter, subtypeFilter, creatorFilter, sourceGameFilter, sortBy])
+  }, [query, categoryFilter, subtypeFilter, creatorFilter, sourceGameFilter, installFilter, sortBy])
 
   useEffect(() => {
     if (page > pagination.totalPages) {
@@ -414,6 +439,8 @@ export default function AllModsPage({
           setCreatorFilter={setCreatorFilter}
           sourceGameFilter={sourceGameFilter}
           setSourceGameFilter={setSourceGameFilter}
+          installFilter={installFilter}
+          setInstallFilter={setInstallFilter}
           sortBy={sortBy}
           setSortBy={setSortBy}
           creators={creators}

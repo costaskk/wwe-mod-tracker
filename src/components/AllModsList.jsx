@@ -182,17 +182,16 @@ function ImageViewerModal({
   )
 }
 
-function ItemThumb({
-  item,
-  onOpenViewer
-}) {
+function ItemThumb({ item, onOpenViewer, isHovered = false }) {
   const galleryImages = (item?.images || [])
     .map((img) => img?.image_url || img?.url || '')
     .filter(Boolean)
 
   const previewImages = galleryImages.length
     ? galleryImages
-    : (item?.previewUrl ? [item.previewUrl] : [])
+    : item?.previewUrl
+      ? [item.previewUrl]
+      : []
 
   const titleText = item?.title || 'Unknown mod'
   const [activeIndex, setActiveIndex] = useState(0)
@@ -203,38 +202,34 @@ function ItemThumb({
   }, [item?.key])
 
   useEffect(() => {
+    if (!isHovered || previewImages.length <= 1) {
+      if (hoverIntervalRef.current) {
+        clearInterval(hoverIntervalRef.current)
+        hoverIntervalRef.current = null
+      }
+      return
+    }
+
+    if (hoverIntervalRef.current) {
+      clearInterval(hoverIntervalRef.current)
+    }
+
+    hoverIntervalRef.current = setInterval(() => {
+      setActiveIndex((current) => (current + 1) % previewImages.length)
+    }, 2000)
+
     return () => {
       if (hoverIntervalRef.current) {
         clearInterval(hoverIntervalRef.current)
+        hoverIntervalRef.current = null
       }
     }
-  }, [])
-
-  function startHoverRotation() {
-    if (previewImages.length <= 1) return
-
-    clearInterval(hoverIntervalRef.current)
-
-    hoverIntervalRef.current = setInterval(() => {
-        setActiveIndex((current) => (current + 1) % previewImages.length)
-    }, 1000)
-  }
-
-  function stopHoverRotation() {
-    if (hoverIntervalRef.current) {
-      clearInterval(hoverIntervalRef.current)
-      hoverIntervalRef.current = null
-    }
-  }
+  }, [isHovered, previewImages.length])
 
   const currentImage = previewImages[activeIndex] || ''
 
   return (
-    <div
-      className="allmods-thumb-stack"
-      onMouseEnter={startHoverRotation}
-      onMouseLeave={stopHoverRotation}
-    >
+    <div className="allmods-thumb-stack">
       <button
         type="button"
         className="collection-thumb-button"
@@ -264,7 +259,9 @@ function ItemThumb({
               key={`${item.key}-thumb-${index}`}
               type="button"
               className={`allmods-thumb-mini ${index === activeIndex ? 'active-thumb' : ''}`}
-              onClick={() => setActiveIndex(index)}
+              onMouseEnter={() => setActiveIndex(index)}
+              onFocus={() => setActiveIndex(index)}
+              onClick={() => onOpenViewer?.(previewImages, index, titleText)}
             >
               <img src={image} alt={`${titleText} screenshot ${index + 1}`} />
             </button>
@@ -384,6 +381,76 @@ function CompactActionButtons({
   )
 }
 
+function ModCard({
+  item,
+  onOpenViewer,
+  onOpenAttire,
+  onOpenArena,
+  onOpenTitle,
+  onOpenOtherMod,
+  onToggleInstalled,
+  onAddToCollection,
+  cardClassName = 'collection-item-card enhanced-collection-item-card'
+}) {
+  const [isHovered, setIsHovered] = useState(false)
+
+  return (
+    <article
+      className={cardClassName}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="collection-item-topbar">
+        <CategoryPills item={item} />
+      </div>
+
+      <ItemThumb item={item} onOpenViewer={onOpenViewer} isHovered={isHovered} />
+
+      <div className="collection-item-body">
+        <h3 title={item.title}>{item.title}</h3>
+
+        <div className="muted-text small-text">
+          {item.parentTitle
+            ? `${item.parentTitle} · ${item.sourceGame || '—'}`
+            : item.sourceGame || '—'}
+        </div>
+
+        {item.creatorName ? (
+          <div className="creator-badge prominent-creator-badge">
+            {item.creatorName}
+          </div>
+        ) : null}
+
+        <div className="collection-item-meta-row">
+          <span className="pill subtle-pill">
+            {formatDate(item.updatedAt || item.createdAt)}
+          </span>
+
+          {item.hasDownload ? (
+            <span className="pill">
+              {item.linkCount} link{item.linkCount === 1 ? '' : 's'}
+            </span>
+          ) : (
+            <span className="pill danger-pill">No link</span>
+          )}
+        </div>
+
+        <div className="collection-actions allmods-card-actions">
+          <ActionButtons
+            item={item}
+            onOpenAttire={onOpenAttire}
+            onOpenArena={onOpenArena}
+            onOpenTitle={onOpenTitle}
+            onOpenOtherMod={onOpenOtherMod}
+            onToggleInstalled={onToggleInstalled}
+            onAddToCollection={onAddToCollection}
+          />
+        </div>
+      </div>
+    </article>
+  )
+}
+
 function CarouselSection({
   mode,
   setMode,
@@ -475,58 +542,18 @@ function CarouselSection({
 
       <div className="allmods-carousel-rail" ref={railRef}>
         {items.map((item) => (
-          <article
-            className="allmods-carousel-card collection-item-card enhanced-collection-item-card"
+          <ModCard
             key={item.key}
-          >
-            <div className="collection-item-topbar">
-              <CategoryPills item={item} />
-            </div>
-
-            <ItemThumb item={item} onOpenViewer={onOpenViewer} />
-
-            <div className="collection-item-body">
-              <h3 title={item.title}>{item.title}</h3>
-
-              <div className="muted-text small-text">
-                {item.parentTitle
-                  ? `${item.parentTitle} · ${item.sourceGame || '—'}`
-                  : item.sourceGame || '—'}
-              </div>
-
-              {item.creatorName ? (
-                <div className="creator-badge prominent-creator-badge">
-                  {item.creatorName}
-                </div>
-              ) : null}
-
-              <div className="collection-item-meta-row">
-                <span className="pill subtle-pill">
-                  {formatDate(item.updatedAt || item.createdAt)}
-                </span>
-
-                {item.hasDownload ? (
-                  <span className="pill">
-                    {item.linkCount} link{item.linkCount === 1 ? '' : 's'}
-                  </span>
-                ) : (
-                  <span className="pill danger-pill">No link</span>
-                )}
-              </div>
-
-              <div className="collection-actions allmods-card-actions">
-                <ActionButtons
-                  item={item}
-                  onOpenAttire={onOpenAttire}
-                  onOpenArena={onOpenArena}
-                  onOpenTitle={onOpenTitle}
-                  onOpenOtherMod={onOpenOtherMod}
-                  onToggleInstalled={onToggleInstalled}
-                  onAddToCollection={onAddToCollection}
-                />
-              </div>
-            </div>
-          </article>
+            item={item}
+            cardClassName="allmods-carousel-card collection-item-card enhanced-collection-item-card"
+            onOpenViewer={onOpenViewer}
+            onOpenAttire={onOpenAttire}
+            onOpenArena={onOpenArena}
+            onOpenTitle={onOpenTitle}
+            onOpenOtherMod={onOpenOtherMod}
+            onToggleInstalled={onToggleInstalled}
+            onAddToCollection={onAddToCollection}
+          />
         ))}
       </div>
     </section>
@@ -702,58 +729,17 @@ export default function AllModsList({
         ) : (
           <div className="collection-items-grid">
             {items.map((item) => (
-              <article
-                className="collection-item-card enhanced-collection-item-card"
+              <ModCard
                 key={item.key}
-              >
-                <div className="collection-item-topbar">
-                  <CategoryPills item={item} />
-                </div>
-
-                <ItemThumb item={item} onOpenViewer={openViewer} />
-
-                <div className="collection-item-body">
-                  <h3 title={item.title}>{item.title}</h3>
-
-                  <div className="muted-text small-text">
-                    {item.parentTitle
-                      ? `${item.parentTitle} · ${item.sourceGame || '—'}`
-                      : item.sourceGame || '—'}
-                  </div>
-
-                  {item.creatorName ? (
-                    <div className="creator-badge prominent-creator-badge">
-                      {item.creatorName}
-                    </div>
-                  ) : null}
-
-                  <div className="collection-item-meta-row">
-                    <span className="pill subtle-pill">
-                      {formatDate(item.updatedAt || item.createdAt)}
-                    </span>
-
-                    {item.hasDownload ? (
-                      <span className="pill">
-                        {item.linkCount} link{item.linkCount === 1 ? '' : 's'}
-                      </span>
-                    ) : (
-                      <span className="pill danger-pill">No link</span>
-                    )}
-                  </div>
-
-                  <div className="collection-actions allmods-card-actions">
-                    <ActionButtons
-                      item={item}
-                      onOpenAttire={onOpenAttire}
-                      onOpenArena={onOpenArena}
-                      onOpenTitle={onOpenTitle}
-                      onOpenOtherMod={onOpenOtherMod}
-                      onToggleInstalled={onToggleInstalled}
-                      onAddToCollection={onAddToCollection}
-                    />
-                  </div>
-                </div>
-              </article>
+                item={item}
+                onOpenViewer={openViewer}
+                onOpenAttire={onOpenAttire}
+                onOpenArena={onOpenArena}
+                onOpenTitle={onOpenTitle}
+                onOpenOtherMod={onOpenOtherMod}
+                onToggleInstalled={onToggleInstalled}
+                onAddToCollection={onAddToCollection}
+              />
             ))}
           </div>
         )}
