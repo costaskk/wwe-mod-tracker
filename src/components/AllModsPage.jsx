@@ -54,6 +54,8 @@ export default function AllModsPage({
     })
   }, [wrestlers, arenas, titleBelts, otherMods])
 
+  const [installFilter, setInstallFilter] = useState('all')
+
   const hasActiveFilters = Boolean(
     query.trim() ||
       categoryFilter !== 'all' ||
@@ -429,23 +431,23 @@ export default function AllModsPage({
     <div className="allmods-layout">
       <div className="left-column">
         <AllModsFilters
-          query={query}
-          setQuery={setQuery}
-          categoryFilter={categoryFilter}
-          setCategoryFilter={setCategoryFilter}
-          subtypeFilter={subtypeFilter}
-          setSubtypeFilter={setSubtypeFilter}
-          creatorFilter={creatorFilter}
-          setCreatorFilter={setCreatorFilter}
-          sourceGameFilter={sourceGameFilter}
-          setSourceGameFilter={setSourceGameFilter}
-          installFilter={installFilter}
-          setInstallFilter={setInstallFilter}
-          sortBy={sortBy}
-          setSortBy={setSortBy}
-          creators={creators}
-          sourceGames={SOURCE_GAMES}
-          subtypeOptions={OTHER_MOD_SUBTYPES}
+            query={query}
+            setQuery={setQuery}
+            categoryFilter={categoryFilter}
+            setCategoryFilter={setCategoryFilter}
+            subtypeFilter={subtypeFilter}
+            setSubtypeFilter={setSubtypeFilter}
+            creatorFilter={creatorFilter}
+            setCreatorFilter={setCreatorFilter}
+            sourceGameFilter={sourceGameFilter}
+            setSourceGameFilter={setSourceGameFilter}
+            installFilter={installFilter}
+            setInstallFilter={setInstallFilter}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            creators={creators}
+            sourceGames={SOURCE_GAMES}
+            subtypeOptions={OTHER_MOD_SUBTYPES}
         />
       </div>
 
