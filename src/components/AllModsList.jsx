@@ -202,32 +202,39 @@ function ItemThumb({ item, onOpenViewer, isHovered = false }) {
 
   useEffect(() => {
     setActiveIndex(0)
+    setIsThumbHovered(false)
+
+    if (hoverIntervalRef.current) {
+        clearInterval(hoverIntervalRef.current)
+        hoverIntervalRef.current = null
+    }
   }, [item?.key])
 
   useEffect(() => {
-    if (!isHovered || isThumbHovered || previewImages.length <= 1)
-      if (hoverIntervalRef.current) {
+    if (!isHovered || isThumbHovered || previewImages.length <= 1) {
+        if (hoverIntervalRef.current) {
         clearInterval(hoverIntervalRef.current)
         hoverIntervalRef.current = null
-      }
-      return
+        }
+        return
     }
 
     if (hoverIntervalRef.current) {
-      clearInterval(hoverIntervalRef.current)
+        clearInterval(hoverIntervalRef.current)
+        hoverIntervalRef.current = null
     }
 
     hoverIntervalRef.current = setInterval(() => {
-      setActiveIndex((current) => (current + 1) % previewImages.length)
+        setActiveIndex((current) => (current + 1) % previewImages.length)
     }, 2000)
 
     return () => {
-      if (hoverIntervalRef.current) {
+        if (hoverIntervalRef.current) {
         clearInterval(hoverIntervalRef.current)
         hoverIntervalRef.current = null
-      }
+        }
     }
-  }, [isHovered, previewImages.length])
+  }, [isHovered, isThumbHovered, previewImages.length])
 
   const currentImage = previewImages[activeIndex] || ''
 
@@ -266,17 +273,16 @@ function ItemThumb({ item, onOpenViewer, isHovered = false }) {
                 setIsThumbHovered(true)
                 setActiveIndex(index)
               }}
-                onMouseLeave={() => {
+              onMouseLeave={() => {
                 setIsThumbHovered(false)
               }}
-                onFocus={() => {
+              onFocus={() => {
                 setIsThumbHovered(true)
                 setActiveIndex(index)
               }}
-                onBlur={() => {
+              onBlur={() => {
                 setIsThumbHovered(false)
               }}
-              onFocus={() => setActiveIndex(index)}
               onClick={() => onOpenViewer?.(previewImages, index, titleText)}
             >
               <img src={image} alt={`${titleText} screenshot ${index + 1}`} />
