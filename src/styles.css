@@ -1272,12 +1272,13 @@ select option {
 }
 
 .allmods-thumb-mini.active-thumb {
+  border: 2px solid #4f8cff;
   opacity: 1;
   border-color: rgba(63, 166, 255, 0.9);
   box-shadow:
     0 0 0 2px rgba(63, 166, 255, 0.18),
     0 0 14px rgba(63, 166, 255, 0.16);
-  transform: translateY(-1px);
+  transform: scale(1.05);
 }
 
 .allmods-thumb-more {

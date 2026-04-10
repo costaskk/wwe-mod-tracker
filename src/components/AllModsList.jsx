@@ -183,6 +183,9 @@ function ImageViewerModal({
 }
 
 function ItemThumb({ item, onOpenViewer, isHovered = false }) {
+
+  const [isThumbHovered, setIsThumbHovered] = useState(false)  
+
   const galleryImages = (item?.images || [])
     .map((img) => img?.image_url || img?.url || '')
     .filter(Boolean)
@@ -202,7 +205,7 @@ function ItemThumb({ item, onOpenViewer, isHovered = false }) {
   }, [item?.key])
 
   useEffect(() => {
-    if (!isHovered || previewImages.length <= 1) {
+    if (!isHovered || isThumbHovered || previewImages.length <= 1)
       if (hoverIntervalRef.current) {
         clearInterval(hoverIntervalRef.current)
         hoverIntervalRef.current = null
@@ -259,7 +262,20 @@ function ItemThumb({ item, onOpenViewer, isHovered = false }) {
               key={`${item.key}-thumb-${index}`}
               type="button"
               className={`allmods-thumb-mini ${index === activeIndex ? 'active-thumb' : ''}`}
-              onMouseEnter={() => setActiveIndex(index)}
+              onMouseEnter={() => {
+                setIsThumbHovered(true)
+                setActiveIndex(index)
+              }}
+                onMouseLeave={() => {
+                setIsThumbHovered(false)
+              }}
+                onFocus={() => {
+                setIsThumbHovered(true)
+                setActiveIndex(index)
+              }}
+                onBlur={() => {
+                setIsThumbHovered(false)
+              }}
               onFocus={() => setActiveIndex(index)}
               onClick={() => onOpenViewer?.(previewImages, index, titleText)}
             >
