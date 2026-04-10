@@ -135,30 +135,106 @@ function ResultStats({ items = [] }) {
   )
 }
 
-function ItemThumb({ item, onOpenAttire, onOpenArena, onOpenTitle, onOpenOtherMod }) {
-  const titleText = item?.title || 'Unknown mod'
-  const thumb = item?.previewUrl || ''
+function ImageViewerModal({
+  open,
+  images = [],
+  index = 0,
+  title = '',
+  onClose,
+  onPrev,
+  onNext
+}) {
+  if (!open || !images.length) return null
 
   return (
-    <button
-      type="button"
-      className="collection-thumb-button"
-      onClick={() =>
-        openUnifiedItem(item, onOpenAttire, onOpenArena, onOpenTitle, onOpenOtherMod)
-      }
-    >
-      {thumb ? (
-        <img
-          className="collection-item-thumb"
-          src={thumb}
-          alt={titleText}
-        />
-      ) : (
-        <div className="collection-item-thumb collection-cover-placeholder">
-          {titleText.slice(0, 2).toUpperCase()}
+    <div className="image-modal-backdrop" onClick={onClose}>
+      <div
+        className="image-modal-content image-modal-content-open"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="ghost-button small-btn image-nav-btn image-nav-left"
+          onClick={onPrev}
+        >
+          ←
+        </button>
+
+        <img src={images[index]} alt={`${title} screenshot ${index + 1}`} />
+
+        <button
+          type="button"
+          className="ghost-button small-btn image-nav-btn image-nav-right"
+          onClick={onNext}
+        >
+          →
+        </button>
+
+        <button
+          type="button"
+          className="ghost-button small-btn image-close-btn"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ItemThumb({ item, onOpenViewer }) {
+  const galleryImages = (item?.images || [])
+    .map((img) => img?.image_url || img?.url || '')
+    .filter(Boolean)
+
+  const previewImages = galleryImages.length
+    ? galleryImages
+    : item?.previewUrl
+      ? [item.previewUrl]
+      : []
+
+  const firstImage = previewImages[0] || ''
+  const titleText = item?.title || 'Unknown mod'
+
+  return (
+    <div className="allmods-thumb-stack">
+      <button
+        type="button"
+        className="collection-thumb-button"
+        onClick={() => {
+          if (previewImages.length) {
+            onOpenViewer?.(previewImages, 0, titleText)
+          }
+        }}
+      >
+        {firstImage ? (
+          <img className="collection-item-thumb" src={firstImage} alt={titleText} />
+        ) : (
+          <div className="collection-item-thumb collection-cover-placeholder">
+            {titleText.slice(0, 2).toUpperCase()}
+          </div>
+        )}
+      </button>
+
+      {previewImages.length > 1 ? (
+        <div className="allmods-thumb-strip">
+          {previewImages.slice(0, 4).map((image, imageIndex) => (
+            <button
+              key={`${item.key}-thumb-${imageIndex}`}
+              type="button"
+              className="allmods-thumb-mini"
+              onClick={() => onOpenViewer?.(previewImages, imageIndex, titleText)}
+            >
+              <img src={image} alt={`${titleText} screenshot ${imageIndex + 1}`} />
+            </button>
+          ))}
+
+          {previewImages.length > 4 ? (
+            <div className="allmods-thumb-more">+{previewImages.length - 4}</div>
+          ) : null}
         </div>
-      )}
-    </button>
+      ) : null}
+    </div>
   )
 }
 
@@ -215,25 +291,27 @@ function ActionButtons({
 
       {onToggleInstalled ? (
         <button
-            type="button"
-            className={`ghost-button small-btn ${item.isInstalled ? 'installed-btn-active' : ''}`}
-            onClick={() => onToggleInstalled(item)}
+          type="button"
+          className={`ghost-button small-btn ${item.isInstalled ? 'installed-btn-active' : ''}`}
+          onClick={() => onToggleInstalled(item)}
         >
-            {item.isInstalled ? 'Installed' : 'Mark installed'}
+          {item.isInstalled ? 'Installed in my game' : 'Mark installed'}
         </button>
       ) : null}
 
       {onAddToCollection ? (
         <button
-            type="button"
-            className={`ghost-button small-btn ${item.inCollection ? 'collection-btn-active' : ''}`}
-            onClick={() => onAddToCollection(item)}
-            title={item.inCollection ? item.collectionNames?.join(', ') : 'Add to collection'}
+          type="button"
+          className={`ghost-button small-btn ${item.inCollection ? 'collection-btn-active' : ''}`}
+          onClick={() => onAddToCollection(item)}
+          title={
+            item.inCollection
+              ? item.collectionNames?.join(', ')
+              : 'Add to collection'
+          }
         >
-            {item.inCollection
-            ? item.collectionNames?.length === 1
-                ? item.collectionNames[0]
-                : `${item.collectionNames?.length || 0} collections`
+          {item.inCollection
+            ? `In ${item.collectionCount} collection${item.collectionCount === 1 ? '' : 's'}`
             : 'Add to collection'}
         </button>
       ) : null}
@@ -276,7 +354,8 @@ function CarouselSection({
   onOpenTitle,
   onOpenOtherMod,
   onToggleInstalled,
-  onAddToCollection
+  onAddToCollection,
+  onOpenViewer
 }) {
   const railRef = useRef(null)
 
@@ -321,35 +400,35 @@ function CarouselSection({
         </div>
 
         <div className="carousel-header-actions">
-            <Toggle
-                value={mode}
-                onChange={setMode}
-                options={[
-                { value: 'latest', label: 'Latest' },
-                { value: 'updated', label: 'Updated' },
-                { value: 'trending', label: 'Trending' }
-                ]}
-            />
+          <Toggle
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'latest', label: 'Latest' },
+              { value: 'updated', label: 'Updated' },
+              { value: 'trending', label: 'Trending' }
+            ]}
+          />
 
-            <div className="carousel-arrow-group">
-                <button
-                type="button"
-                className="ghost-button small-btn carousel-arrow-btn"
-                onClick={() => scrollRail('left')}
-                aria-label="Scroll left"
-                >
-                ←
-                </button>
+          <div className="carousel-arrow-group">
+            <button
+              type="button"
+              className="ghost-button small-btn carousel-arrow-btn"
+              onClick={() => scrollRail('left')}
+              aria-label="Scroll left"
+            >
+              ←
+            </button>
 
-                <button
-                type="button"
-                className="ghost-button small-btn carousel-arrow-btn"
-                onClick={() => scrollRail('right')}
-                aria-label="Scroll right"
-                >
-                →
-                </button>
-            </div>
+            <button
+              type="button"
+              className="ghost-button small-btn carousel-arrow-btn"
+              onClick={() => scrollRail('right')}
+              aria-label="Scroll right"
+            >
+              →
+            </button>
+          </div>
         </div>
       </div>
 
@@ -363,13 +442,7 @@ function CarouselSection({
               <CategoryPills item={item} />
             </div>
 
-            <ItemThumb
-              item={item}
-              onOpenAttire={onOpenAttire}
-              onOpenArena={onOpenArena}
-              onOpenTitle={onOpenTitle}
-              onOpenOtherMod={onOpenOtherMod}
-            />
+            <ItemThumb item={item} onOpenViewer={onOpenViewer} />
 
             <div className="collection-item-body">
               <h3 title={item.title}>{item.title}</h3>
@@ -402,13 +475,13 @@ function CarouselSection({
 
               <div className="collection-actions allmods-card-actions">
                 <ActionButtons
-                    item={item}
-                    onOpenAttire={onOpenAttire}
-                    onOpenArena={onOpenArena}
-                    onOpenTitle={onOpenTitle}
-                    onOpenOtherMod={onOpenOtherMod}
-                    onToggleInstalled={onToggleInstalled}
-                    onAddToCollection={onAddToCollection}
+                  item={item}
+                  onOpenAttire={onOpenAttire}
+                  onOpenArena={onOpenArena}
+                  onOpenTitle={onOpenTitle}
+                  onOpenOtherMod={onOpenOtherMod}
+                  onToggleInstalled={onToggleInstalled}
+                  onAddToCollection={onAddToCollection}
                 />
               </div>
             </div>
@@ -437,6 +510,54 @@ export default function AllModsList({
   onAddToCollection
 }) {
   const [featuredMode, setFeaturedMode] = useState('latest')
+  const [viewer, setViewer] = useState({
+    open: false,
+    images: [],
+    index: 0,
+    title: ''
+  })
+
+  function openViewer(images, index = 0, title = '') {
+    setViewer({
+      open: true,
+      images,
+      index,
+      title
+    })
+  }
+
+  function closeViewer() {
+    setViewer({
+      open: false,
+      images: [],
+      index: 0,
+      title: ''
+    })
+  }
+
+  function showPrevViewerImage() {
+    setViewer((current) => {
+      const nextIndex =
+        current.index <= 0 ? current.images.length - 1 : current.index - 1
+
+      return {
+        ...current,
+        index: nextIndex
+      }
+    })
+  }
+
+  function showNextViewerImage() {
+    setViewer((current) => {
+      const nextIndex =
+        current.index >= current.images.length - 1 ? 0 : current.index + 1
+
+      return {
+        ...current,
+        index: nextIndex
+      }
+    })
+  }
 
   const pageStart = pagination ? (pagination.page - 1) * pagination.perPage + 1 : 0
   const pageEnd = pagination
@@ -458,6 +579,7 @@ export default function AllModsList({
         onOpenOtherMod={onOpenOtherMod}
         onToggleInstalled={onToggleInstalled}
         onAddToCollection={onAddToCollection}
+        onOpenViewer={openViewer}
       />
 
       <section className="panel soft-panel list-panel">
@@ -491,7 +613,7 @@ export default function AllModsList({
           <div className="compact-attire-table">
             {items.map((item) => (
               <article className="compact-attire-row" key={item.key}>
-                <div className=" compact-main compact-main-allmods">
+                <div className="compact-main compact-main-allmods">
                   <div className="compact-title-row">
                     <strong title={item.title}>{item.title}</strong>
                     <CategoryPills item={item} />
@@ -547,13 +669,7 @@ export default function AllModsList({
                   <CategoryPills item={item} />
                 </div>
 
-                <ItemThumb
-                  item={item}
-                  onOpenAttire={onOpenAttire}
-                  onOpenArena={onOpenArena}
-                  onOpenTitle={onOpenTitle}
-                  onOpenOtherMod={onOpenOtherMod}
-                />
+                <ItemThumb item={item} onOpenViewer={openViewer} />
 
                 <div className="collection-item-body">
                   <h3 title={item.title}>{item.title}</h3>
@@ -602,68 +718,78 @@ export default function AllModsList({
         )}
 
         {pagination && pagination.totalPages > 1 ? (
-            <div className="pagination-container">
-                <div className="pagination-row">
-                <button
-                    className="ghost-button small-btn"
-                    disabled={pagination.page <= 1}
-                    onClick={() => onPageChange(pagination.page - 1)}
-                    type="button"
-                >
-                    Previous
-                </button>
+          <div className="pagination-container">
+            <div className="pagination-row">
+              <button
+                className="ghost-button small-btn"
+                disabled={pagination.page <= 1}
+                onClick={() => onPageChange(pagination.page - 1)}
+                type="button"
+              >
+                Previous
+              </button>
 
-                <div className="pagination-pages">
-                    {pagination.page > 3 ? (
-                    <>
-                        <button
-                        className="ghost-button small-btn page-number-btn"
-                        type="button"
-                        onClick={() => onPageChange(1)}
-                        >
-                        1
-                        </button>
-                        <span className="pagination-ellipsis">…</span>
-                    </>
-                    ) : null}
-
-                    {pageNumbers.map((pageNumber) => (
+              <div className="pagination-pages">
+                {pagination.page > 3 ? (
+                  <>
                     <button
-                        key={pageNumber}
-                        type="button"
-                        className={`ghost-button small-btn page-number-btn ${pageNumber === pagination.page ? 'active-page' : ''}`}
-                        onClick={() => onPageChange(pageNumber)}
+                      className="ghost-button small-btn page-number-btn"
+                      type="button"
+                      onClick={() => onPageChange(1)}
                     >
-                        {pageNumber}
+                      1
                     </button>
-                    ))}
+                    <span className="pagination-ellipsis">…</span>
+                  </>
+                ) : null}
 
-                    {pagination.page < pagination.totalPages - 2 ? (
-                    <>
-                        <span className="pagination-ellipsis">…</span>
-                        <button
-                        className="ghost-button small-btn page-number-btn"
-                        type="button"
-                        onClick={() => onPageChange(pagination.totalPages)}
-                        >
-                        {pagination.totalPages}
-                        </button>
-                    </>
-                    ) : null}
-                </div>
-
-                <button
-                    className="ghost-button small-btn"
-                    disabled={pagination.page >= pagination.totalPages}
-                    onClick={() => onPageChange(pagination.page + 1)}
+                {pageNumbers.map((pageNumber) => (
+                  <button
+                    key={pageNumber}
                     type="button"
-                >
-                    Next
-                </button>
-                </div>
+                    className={`ghost-button small-btn page-number-btn ${pageNumber === pagination.page ? 'active-page' : ''}`}
+                    onClick={() => onPageChange(pageNumber)}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+
+                {pagination.page < pagination.totalPages - 2 ? (
+                  <>
+                    <span className="pagination-ellipsis">…</span>
+                    <button
+                      className="ghost-button small-btn page-number-btn"
+                      type="button"
+                      onClick={() => onPageChange(pagination.totalPages)}
+                    >
+                      {pagination.totalPages}
+                    </button>
+                  </>
+                ) : null}
+              </div>
+
+              <button
+                className="ghost-button small-btn"
+                disabled={pagination.page >= pagination.totalPages}
+                onClick={() => onPageChange(pagination.page + 1)}
+                type="button"
+              >
+                Next
+              </button>
             </div>
+          </div>
         ) : null}
       </section>
+
+      <ImageViewerModal
+        open={viewer.open}
+        images={viewer.images}
+        index={viewer.index}
+        title={viewer.title}
+        onClose={closeViewer}
+        onPrev={showPrevViewerImage}
+        onNext={showNextViewerImage}
+      />
     </>
   )
 }
