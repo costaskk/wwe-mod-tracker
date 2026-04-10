@@ -26,9 +26,9 @@ export default function StatsGrid({ stats = {} }) {
       value: stats.titleBelts ?? 0
     },
     {
-      key: 'requests',
-      label: 'Open requests',
-      value: stats.requests ?? 0
+      key: 'Other mods',
+      label: 'Other mods',
+      value: stats.othermods ?? 0
     },
     {
       key: 'missingDownloads',
