@@ -26,7 +26,7 @@ export default function StatsGrid({ stats = {} }) {
       value: stats.titleBelts ?? 0
     },
     {
-      key: 'Other mods',
+      key: 'otherMods',
       label: 'Other mods',
       value: stats.otherMods ?? 0
     },
