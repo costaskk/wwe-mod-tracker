@@ -428,9 +428,34 @@ button:disabled {
 /* add this */
 .allmods-layout {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 320px minmax(0, 1fr);
   gap: 20px;
   align-items: start;
+  min-width: 0;
+}
+
+.allmods-layout > * {
+  min-width: 0;
+}
+
+.allmods-layout .left-column,
+.allmods-layout .detail-stack,
+.allmods-layout .panel,
+.allmods-layout .list-panel,
+.allmods-layout .panel-header,
+.allmods-layout .collection-items-grid,
+.allmods-layout .compact-attire-table {
+  min-width: 0;
+  width: 100%;
+}
+
+.allmods-layout .collection-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
 }
 
 /* keep right panel tight like old version */
@@ -454,6 +479,9 @@ button:disabled {
 .allmods-carousel-rail {
   display: flex;
   gap: 18px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-behavior: smooth;
@@ -521,9 +549,10 @@ button:disabled {
 }
 
 .allmods-carousel-card {
-  min-width: 260px;
-  max-width: 280px;
-  flex: 0 0 260px; 
+  flex: 0 0 300px;
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
 }
 
 .allmods-carousel-card .collection-item-thumb {
@@ -1204,6 +1233,21 @@ select option {
 }
 
 @media (max-width: 860px) {
+  .carousel-header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .carousel-arrow-group {
+    margin-left: 0;
+  }
+
+  .allmods-carousel-card {
+    flex: 0 0 260px;
+    width: 260px;
+    min-width: 260px;
+    max-width: 260px;
+  }
   .compact-attire-row {
     grid-template-columns: 1fr;
   }
@@ -3170,7 +3214,28 @@ select option {
   grid-template-columns: repeat(8, minmax(0, 1fr));
 }
 
+@media (max-width: 1180px) {
+  .allmods-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .carousel-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
 @media (max-width: 1400px) {
+  .allmods-layout {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+
+  .allmods-carousel-card {
+    flex: 0 0 280px;
+    width: 280px;
+    min-width: 280px;
+    max-width: 280px;
+  }
   .stats-grid-eight {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -3293,8 +3358,10 @@ select option {
 .carousel-header-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
   flex-wrap: nowrap;
+  flex: 0 0 auto;
 }
 
 .carousel-arrow-group {
@@ -3306,10 +3373,15 @@ select option {
 
 .carousel-arrow-btn {
   min-width: 38px;
-  padding-inline: 0;
+  width: 38px;
+  height: 38px;
+  padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .pagination-container {
