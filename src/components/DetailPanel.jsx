@@ -678,33 +678,54 @@ export default function DetailPanel({
                     <div className="attire-actions wrap-actions">
                       {canContribute ? (
                         <button
-                          className={installed ? 'primary-button small-btn' : 'secondary-button small-btn'}
+                          className={`small-btn ${attire.isInstalled ? 'primary-button' : 'secondary-button'}`}
                           disabled={!session}
-                          onClick={() => onToggleInstalled(attire, installed)}
+                          onClick={() => onToggleInstalled(attire)}
                           type="button"
                         >
-                          {installed ? 'Installed in my game' : 'Mark installed'}
+                          {attire.isInstalled ? 'Installed in my game' : 'Mark installed'}
                         </button>
                       ) : null}
 
                       {canContribute && onOpenCollectionPicker ? (
                         <button
-                          className="ghost-button small-btn"
+                          className={`ghost-button small-btn ${attire.inCollection ? 'collection-btn-active' : ''}`}
                           disabled={!session}
-                          onClick={() => onOpenCollectionPicker?.({ ...attire, modType: 'attire' })}
+                          onClick={() =>
+                            onOpenCollectionPicker?.({
+                              ...attire,
+                              id: attire.id,
+                              modType: 'attire'
+                            })
+                          }
+                          title={
+                            attire.inCollection
+                              ? attire.collectionNames?.join(', ')
+                              : 'Add to collection'
+                          }
                           type="button"
                         >
-                          Save to collection
+                          {attire.inCollection
+                            ? `In ${attire.collectionCount} collection${attire.collectionCount === 1 ? '' : 's'}`
+                            : 'Add to collection'}
                         </button>
                       ) : null}
 
                       {canEditAttire ? (
                         <>
-                          <button className="ghost-button small-btn" onClick={() => onEditAttire(attire)} type="button">
+                          <button 
+                            className="ghost-button small-btn"
+                            onClick={() => onEditAttire(attire)}
+                            type="button"
+                          >
                             Edit
                           </button>
                           {onDeleteAttire ? (
-                            <button className="ghost-button small-btn" onClick={() => onDeleteAttire(attire)} type="button">
+                            <button
+                              className="ghost-button small-btn"
+                              onClick={() => onDeleteAttire(attire)}
+                              type="button"
+                            >
                               Delete
                             </button>
                           ) : null}

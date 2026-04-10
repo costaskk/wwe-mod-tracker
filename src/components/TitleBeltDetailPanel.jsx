@@ -289,24 +289,32 @@ export default function TitleBeltDetailPanel({
             <div className="hero-actions">
               <button
                 type="button"
-                className="secondary-button"
-                onClick={() => onToggleInstalled?.(title, installed)}
-              >
-                {installed ? 'Installed' : 'Mark installed'}
-              </button>
-
-              {onOpenCollectionPicker ? (
-                <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() =>
-                    onOpenCollectionPicker({
-                      ...title,
-                      modType: 'title'
-                    })
-                  }
+                className={`ghost-button small-btn ${title.isInstalled ? 'installed-btn-active' : ''}`}
+                onClick={() => onToggleInstalled?.(title)}
                 >
-                  Add to collection
+                {title.isInstalled ? 'Installed in my game' : 'Mark installed'}
+                </button>
+
+                {onOpenCollectionPicker ? (
+                <button
+                    type="button"
+                    className={`ghost-button small-btn ${title.inCollection ? 'collection-btn-active' : ''}`}
+                    onClick={() =>
+                    onOpenCollectionPicker({
+                        ...title,
+                        modType: 'title',
+                        id: title.id
+                    })
+                    }
+                    title={
+                    title.inCollection
+                        ? title.collectionNames?.join(', ')
+                        : 'Add to collection'
+                    }
+                >
+                    {title.inCollection
+                    ? `In ${title.collectionCount} collection${title.collectionCount === 1 ? '' : 's'}`
+                    : 'Add to collection'}
                 </button>
               ) : null}
             </div>

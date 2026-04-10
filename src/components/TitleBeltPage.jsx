@@ -17,6 +17,7 @@ import { getAssetUrl, removeAssets, uploadAsset } from '../lib/storage'
 export default function TitleBeltPage({
   titleBelts = [],
   creators = [],
+  collections = [],
   session,
   canContribute,
   canDeleteContent,
@@ -95,16 +96,34 @@ export default function TitleBeltPage({
     installedTitleIds
   ])
 
+  const decoratedTitles = useMemo(() => {
+    return filteredTitles.map((title) => {
+        const isInstalled = installedTitleIds.has(title.id)
+
+        const matchingCollections = (collections || []).filter((collection) =>
+        (collection.items || []).some((entry) => entry.title_id === title.id)
+        )
+
+        return {
+        ...title,
+        isInstalled,
+        inCollection: matchingCollections.length > 0,
+        collectionCount: matchingCollections.length,
+        collectionNames: matchingCollections.map((collection) => collection.name)
+        }
+    })
+  }, [filteredTitles, installedTitleIds, collections])
+
   const paginated = useMemo(
-    () => paginateItems(filteredTitles, titlePage, titlesPerPage),
-    [filteredTitles, titlePage]
+    () => paginateItems(decoratedTitles, titlePage, titlesPerPage),
+    [decoratedTitles, titlePage]
   )
 
   const visibleTitles = paginated.items
 
   const selectedTitle = useMemo(
-    () => filteredTitles.find((item) => item.id === selectedTitleId) || visibleTitles[0] || null,
-    [filteredTitles, visibleTitles, selectedTitleId]
+    () => decoratedTitles.find((item) => item.id === selectedTitleId) || visibleTitles[0] || null,
+    [decoratedTitles, visibleTitles, selectedTitleId]
   )
 
   useEffect(() => {

@@ -230,30 +230,38 @@ export default function OtherModDetailPanel({
 
           {canContribute ? (
             <div className="hero-actions">
-              {onToggleInstalled ? (
+                {onToggleInstalled ? (
                 <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => onToggleInstalled(mod, installed)}
+                    type="button"
+                    className={`ghost-button small-btn ${mod.isInstalled ? 'installed-btn-active' : ''}`}
+                    onClick={() => onToggleInstalled(mod)}
                 >
-                  {installed ? 'Installed' : 'Mark installed'}
+                    {mod.isInstalled ? 'Installed in my game' : 'Mark installed'}
                 </button>
-              ) : null}
+                ) : null}
 
-              {onOpenCollectionPicker ? (
+                {onOpenCollectionPicker ? (
                 <button
-                  type="button"
-                  className="ghost-button"
-                  onClick={() =>
+                    type="button"
+                    className={`ghost-button small-btn ${mod.inCollection ? 'collection-btn-active' : ''}`}
+                    onClick={() =>
                     onOpenCollectionPicker({
-                      ...mod,
-                      modType: 'other'
+                        ...mod,
+                        id: mod.id,
+                        modType: 'other'
                     })
-                  }
+                    }
+                    title={
+                    mod.inCollection
+                        ? mod.collectionNames?.join(', ')
+                        : 'Add to collection'
+                    }
                 >
-                  Add to collection
+                    {mod.inCollection
+                    ? `In ${mod.collectionCount} collection${mod.collectionCount === 1 ? '' : 's'}`
+                    : 'Add to collection'}
                 </button>
-              ) : null}
+                ) : null}
             </div>
           ) : null}
 

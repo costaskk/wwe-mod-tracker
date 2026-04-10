@@ -810,6 +810,29 @@ export default function App() {
     [filteredWrestlers, visibleWrestlers, selectedId]
   )
 
+  const decoratedSelectedWrestler = useMemo(() => {
+    if (!selectedWrestler) return null
+
+    return {
+      ...selectedWrestler,
+      attires: (selectedWrestler.attires || []).map((attire) => {
+        const isInstalled = installedIds.has(attire.id)
+
+        const matchingCollections = (collections || []).filter((collection) =>
+          (collection.items || []).some((entry) => entry.attire_id === attire.id)
+        )
+
+        return {
+          ...attire,
+          isInstalled,
+          inCollection: matchingCollections.length > 0,
+          collectionCount: matchingCollections.length,
+          collectionNames: matchingCollections.map((collection) => collection.name)
+        }
+      })
+    }
+  }, [selectedWrestler, installedIds, collections])
+
   const collectionMemberships = useMemo(() => {
     if (!collectionPicker.item || !session) return []
 
@@ -2493,7 +2516,7 @@ export default function App() {
             </div>
 
             <DetailPanel
-              wrestler={selectedWrestler}
+              wrestler={decoratedSelectedWrestler}
               session={session}
               currentProfile={currentProfile}
               canContribute={canContribute}

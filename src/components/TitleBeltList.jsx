@@ -124,7 +124,6 @@ export default function TitleBeltList({
 
                   const previewImage = (title.images || title.title_belt_images || [])[0]
                   const previewUrl =
-                    title.render_dds_url ||
                     previewImage?.url ||
                     previewImage?.image_url ||
                     ''
@@ -219,7 +218,6 @@ export default function TitleBeltList({
 
               const previewImage = (title.images || title.title_belt_images || [])[0]
               const previewUrl =
-                title.render_dds_url ||
                 previewImage?.url ||
                 previewImage?.image_url ||
                 ''

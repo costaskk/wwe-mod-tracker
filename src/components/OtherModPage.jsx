@@ -18,6 +18,7 @@ import { getAssetUrl, removeAssets, uploadAsset } from '../lib/storage'
 export default function OtherModPage({
   otherMods = [],
   creators = [],
+  collections = [],
   session,
   canContribute,
   canDeleteContent,
@@ -109,16 +110,34 @@ export default function OtherModPage({
     installedOtherModIds
   ])
 
+  const decoratedOtherMods = useMemo(() => {
+    return filteredOtherMods.map((otherMod) => {
+        const isInstalled = installedOtherModIds.has(otherMod.id)
+
+        const matchingCollections = (collections || []).filter((collection) =>
+        (collection.items || []).some((entry) => entry.other_mod_id === otherMod.id)
+        )
+
+        return {
+        ...otherMod,
+        isInstalled,
+        inCollection: matchingCollections.length > 0,
+        collectionCount: matchingCollections.length,
+        collectionNames: matchingCollections.map((collection) => collection.name)
+        }
+    })
+  }, [filteredOtherMods, installedOtherModIds, collections])
+
   const paginated = useMemo(
-    () => paginateItems(filteredOtherMods, otherModsPage, otherModsPerPage),
-    [filteredOtherMods, otherModsPage]
+    () => paginateItems(decoratedOtherMods, otherModsPage, otherModsPerPage),
+    [decoratedOtherMods, otherModsPage]
   )
 
   const visibleOtherMods = paginated.items
 
   const selectedOtherMod = useMemo(
-    () => filteredOtherMods.find((item) => item.id === selectedOtherModId) || visibleOtherMods[0] || null,
-    [filteredOtherMods, visibleOtherMods, selectedOtherModId]
+    () => decoratedOtherMods.find((item) => item.id === selectedOtherModId) || visibleOtherMods[0] || null,
+    [decoratedOtherMods, visibleOtherMods, selectedOtherModId]
   )
 
   useEffect(() => {
@@ -363,9 +382,9 @@ export default function OtherModPage({
     }
   }
 
-  async function toggleInstalled(otherMod, installed) {
+  async function toggleInstalled(otherMod) {
     if (!canContribute) return
-
+    const installed = installedOtherModIds.has(otherMod.id)
     try {
       if (installed) {
         const { error } = await supabase

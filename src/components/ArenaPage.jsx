@@ -18,6 +18,7 @@ import { getAssetUrl, removeAssets, uploadAsset } from '../lib/storage'
 export default function ArenaPage({
   arenas = [],
   creators = [],
+  collections = [],
   session,
   canContribute,
   canDeleteContent,
@@ -97,15 +98,33 @@ export default function ArenaPage({
     installedArenaIds
   ])
 
+  const decoratedArenas = useMemo(() => {
+    return filteredArenas.map((arena) => {
+        const isInstalled = installedArenaIds.has(arena.id)
+
+        const matchingCollections = (collections || []).filter((collection) =>
+        (collection.items || []).some((entry) => entry.arena_id === arena.id)
+        )
+
+        return {
+        ...arena,
+        isInstalled,
+        inCollection: matchingCollections.length > 0,
+        collectionCount: matchingCollections.length,
+        collectionNames: matchingCollections.map((c) => c.name)
+        }
+    })
+  }, [filteredArenas, installedArenaIds, collections])
+
   const paginatedArenas = useMemo(
-    () => paginateItems(filteredArenas, arenaPage, arenasPerPage),
+    () => paginateItems(decoratedArenas, arenaPage, arenasPerPage),
     [filteredArenas, arenaPage]
   )
 
   const visibleArenas = paginatedArenas.items
 
   const selectedArena = useMemo(
-    () => filteredArenas.find((item) => item.id === selectedArenaId) || visibleArenas[0] || null,
+    () => decoratedArenas.find((item) => item.id === selectedArenaId) || visibleArenas[0] || null,
     [filteredArenas, visibleArenas, selectedArenaId]
   )
 
