@@ -40,10 +40,11 @@ export default function AllModsPage({
   const [sourceGameFilter, setSourceGameFilter] = useState('all')
   const [sortBy, setSortBy] = useState('newest')
   const [viewMode, setViewMode] = useState('grid')
-  const [visibleCount, setVisibleCount] = useState(perPage)
-  const [page, setPage] = useState(1)
 
   const perPage = 18
+
+  const [visibleCount, setVisibleCount] = useState(perPage)
+  const [page, setPage] = useState(1)
 
   const allMods = useMemo(() => {
     return buildUnifiedModsFeed({
@@ -144,9 +145,10 @@ export default function AllModsPage({
   }
 
   async function toggleInstalled(item) {
-    const itemId = item.entityId || item.id
 
     if (!canContribute || !session || !item) return
+
+    const itemId = item.entityId || item.id
 
     try {
         if (item.modType === 'attire') {
