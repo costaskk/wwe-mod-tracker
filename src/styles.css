@@ -425,6 +425,21 @@ button:disabled {
   justify-content: flex-end;
 }
 
+/* add this */
+.allmods-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* keep right panel tight like old version */
+.allmods-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .allmods-stats-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -441,9 +456,25 @@ button:disabled {
   overflow-y: hidden;
   display: flex;
   gap: 16px;
-  padding-bottom: 6px;
+  padding-bottom: 8px;
 
   scroll-behavior: smooth;
+}
+
+.carousel-btn,
+.panel-header .ghost-button.small-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel-header .ghost-button.small-btn:hover {
+  background: rgba(255,255,255,0.12);
 }
 
 /* === GLOBAL SCROLLBAR (dark theme) === */
@@ -482,15 +513,17 @@ button:disabled {
 }
 
 .allmods-carousel-rail::-webkit-scrollbar {
-  height: 6px;
+  height: 8px;
 }
 
 .allmods-carousel-rail::-webkit-scrollbar-thumb {
-  background: rgba(120, 160, 255, 0.35);
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
 }
 
 .allmods-carousel-card {
+  min-width: 220px;
+  max-width: 240px;
   scroll-snap-align: start;
   min-height: 100%;
 }

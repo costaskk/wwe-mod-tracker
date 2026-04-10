@@ -63,11 +63,11 @@ export default function AllModsPage({
   )
 
   const featuredItems = useMemo(() => {
-    return sortUnifiedMods(allMods, 'newest').slice(0, 6)
+    return sortUnifiedMods(allMods, 'newest').slice(0, 10)
   }, [allMods])
 
   const latestItems = useMemo(() => {
-    return sortUnifiedMods(allMods, 'updated').slice(0, 6)
+    return sortUnifiedMods(allMods, 'updated').slice(0, 10)
   }, [allMods])
 
   const filteredItems = useMemo(() => {
@@ -297,13 +297,13 @@ export default function AllModsPage({
   }, [filteredItems, page])
 
   const trendingItems = useMemo(
-    () => sortUnifiedMods(allMods, 'trending').slice(0, 8),
+    () => sortUnifiedMods(allMods, 'trending').slice(0, 10),
     [allMods]
   )
 
-  const visibleFeaturedItems = !hasActiveFilters && page === 1 ? featuredItems : []
-  const visibleLatestItems = !hasActiveFilters && page === 1 ? latestItems : []
-  const visibleTrendingItems = !hasActiveFilters && page === 1 ? trendingItems : []
+  const visibleFeaturedItems = !hasActiveFilters ? featuredItems : []
+  const visibleLatestItems = !hasActiveFilters ? latestItems : []
+  const visibleTrendingItems = !hasActiveFilters ? trendingItems : []
 
   useEffect(() => {
     setPage(1)
@@ -316,7 +316,7 @@ export default function AllModsPage({
   }, [page, pagination.totalPages])
 
   return (
-    <div className="layout-grid">
+    <div className="allmods-layout">
       <div className="left-column">
         <AllModsFilters
           query={query}
