@@ -380,6 +380,8 @@ export default function App() {
         setCurrentPage('issues')
       } else if (page === 'all_mods') {
         setCurrentPage('all_mods')
+      } else if (page === 'mods') {
+        setCurrentPage('mods')
       } else {
         setCurrentPage('all_mods')
       }
@@ -2350,6 +2352,7 @@ export default function App() {
             otherMods={otherMods}
             creators={creators}
             session={session}
+            collections={myCollections}
             canContribute={canContribute}
             supabase={supabase}
             openNotice={openNotice}

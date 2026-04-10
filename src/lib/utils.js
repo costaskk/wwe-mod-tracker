@@ -664,9 +664,11 @@ export function getUnifiedModPreview(item = {}) {
 
   if (item.modType === 'attire') {
     return (
-      item.render_dds_url ||
       firstImageUrl ||
+      item.images?.[0]?.image_url ||
+      item.images?.[0]?.url ||
       item.wrestlerHeadshotUrl ||
+      item.render_dds_url ||
       ''
     )
   }

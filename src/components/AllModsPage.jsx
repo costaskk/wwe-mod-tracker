@@ -15,6 +15,7 @@ export default function AllModsPage({
   titleBelts = [],
   otherMods = [],
   creators = [],
+  collections = [],
   session,
   canContribute,
   supabase,
@@ -97,6 +98,42 @@ export default function AllModsPage({
     creatorFilter,
     sourceGameFilter,
     sortBy
+  ])
+
+  const decoratedFilteredItems = useMemo(() => {
+    return filteredItems.map((item) => {
+        const itemId = item.entityId || item.id
+        let isInstalled = false
+
+        if (item.modType === 'attire') isInstalled = installedIds.has(itemId)
+        if (item.modType === 'arena') isInstalled = installedArenaIds.has(itemId)
+        if (item.modType === 'title') isInstalled = installedTitleIds.has(itemId)
+        if (item.modType === 'other') isInstalled = installedOtherModIds.has(itemId)
+
+        const collectionMatches = (collections || []).filter((collection) =>
+            (collection.items || []).some((entry) => {
+                if (item.modType === 'attire') return entry.attire_id === itemId
+                if (item.modType === 'arena') return entry.arena_id === itemId
+                if (item.modType === 'title') return entry.title_id === itemId
+                if (item.modType === 'other') return entry.other_mod_id === itemId
+                return false
+            })
+        )
+
+        return {
+            ...item,
+            isInstalled,
+            collectionNames: collectionMatches.map((collection) => collection.name),
+            inCollection: collectionMatches.length > 0
+        }
+    })
+    }, [
+    filteredItems,
+    collections,
+    installedIds,
+    installedArenaIds,
+    installedTitleIds,
+    installedOtherModIds
   ])
 
   function addToCollection(item) {
@@ -298,8 +335,8 @@ export default function AllModsPage({
   }
 
   const pagination = useMemo(() => {
-    return paginateItems(filteredItems, page, perPage)
-  }, [filteredItems, page])
+    return paginateItems(decoratedFilteredItems, page, perPage)
+  }, [decoratedFilteredItems, page])
 
   const visibleItems = useMemo(() => {
     return filteredItems.slice(0, visibleCount)

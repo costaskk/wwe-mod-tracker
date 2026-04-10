@@ -215,21 +215,26 @@ function ActionButtons({
 
       {onToggleInstalled ? (
         <button
-          type="button"
-          className="ghost-button small-btn"
-          onClick={() => onToggleInstalled(item)}
+            type="button"
+            className={`ghost-button small-btn ${item.isInstalled ? 'installed-btn-active' : ''}`}
+            onClick={() => onToggleInstalled(item)}
         >
-          Mark installed
+            {item.isInstalled ? 'Installed' : 'Mark installed'}
         </button>
       ) : null}
 
       {onAddToCollection ? (
         <button
-          type="button"
-          className="ghost-button small-btn"
-          onClick={() => onAddToCollection(item)}
+            type="button"
+            className={`ghost-button small-btn ${item.inCollection ? 'collection-btn-active' : ''}`}
+            onClick={() => onAddToCollection(item)}
+            title={item.inCollection ? item.collectionNames?.join(', ') : 'Add to collection'}
         >
-          Add to collection
+            {item.inCollection
+            ? item.collectionNames?.length === 1
+                ? item.collectionNames[0]
+                : `${item.collectionNames?.length || 0} collections`
+            : 'Add to collection'}
         </button>
       ) : null}
     </div>
