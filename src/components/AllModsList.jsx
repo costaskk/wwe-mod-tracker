@@ -486,7 +486,7 @@ export default function AllModsList({
           <div className="compact-attire-table">
             {items.map((item) => (
               <article className="compact-attire-row" key={item.key}>
-                <div className=" compact-main-allmods">
+                <div className=" compact-main compact-main-allmods">
                   <div className="compact-title-row">
                     <strong title={item.title}>{item.title}</strong>
                     <CategoryPills item={item} />
@@ -579,7 +579,7 @@ export default function AllModsList({
                     )}
                   </div>
 
-                  <div className="collection-actions wrap-actions">
+                  <div className="collection-actions allmods-card-actions">
                     <ActionButtons
                       item={item}
                       onOpenAttire={onOpenAttire}

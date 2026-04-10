@@ -2349,10 +2349,23 @@ export default function App() {
             titleBelts={titleBelts}
             otherMods={otherMods}
             creators={creators}
+            session={session}
+            canContribute={canContribute}
+            supabase={supabase}
+            openNotice={openNotice}
+            installedIds={installedIds}
+            setInstalledIds={setInstalledIds}
+            installedArenaIds={installedArenaIds}
+            setInstalledArenaIds={setInstalledArenaIds}
+            installedTitleIds={installedTitleIds}
+            setInstalledTitleIds={setInstalledTitleIds}
+            installedOtherModIds={installedOtherModIds}
+            setInstalledOtherModIds={setInstalledOtherModIds}
             onOpenAttire={openAttireFromAllMods}
             onOpenArena={openArenaFromAllMods}
             onOpenTitle={openTitleFromAllMods}
             onOpenOtherMod={openOtherModFromAllMods}
+            onOpenCollectionPicker={openCollectionPicker}
           />
         ) : currentPage === 'titles' ? (
           <TitleBeltPage

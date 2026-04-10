@@ -2694,10 +2694,9 @@ select option {
   }
 
   .list-panel {
-    max-height: calc(100vh - 32px);
-    overflow: hidden;
-    display: grid;
-    grid-template-rows: auto 1fr auto;
+    max-height: none;
+    overflow: visible;
+    display: block;
   }
 }
 
