@@ -774,6 +774,52 @@ button:disabled {
   align-items: end;
 }
 
+.header-addmod-dropdown {
+  position: relative;
+}
+
+.header-addmod-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 220px;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(161, 196, 255, 0.14);
+  background:
+    linear-gradient(180deg, rgba(18, 27, 43, 0.98), rgba(10, 17, 29, 0.98));
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+  z-index: 80;
+}
+
+.header-addmod-item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 0.8rem 0.95rem;
+  transition: 0.18s ease;
+}
+
+.header-addmod-item:hover {
+  background: rgba(63, 166, 255, 0.12);
+  border-color: rgba(63, 166, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+.header-addmod-item:focus {
+  outline: none;
+  border-color: rgba(63, 166, 255, 0.35);
+  box-shadow: 0 0 0 3px rgba(63, 166, 255, 0.14);
+}
+
 .stat-card {
   position: relative;
   min-height: 104px;

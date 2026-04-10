@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 export default function Header({
@@ -18,6 +19,9 @@ export default function Header({
   currentProfile,
   canContribute
 }) {
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
+  const addMenuRef = useRef(null)
+
   async function handleSignOut() {
     try {
       await supabase.auth.signOut()
@@ -26,14 +30,43 @@ export default function Header({
     }
   }
 
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (!addMenuRef.current) return
+      if (!addMenuRef.current.contains(event.target)) {
+        setAddMenuOpen(false)
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === 'Escape') {
+        setAddMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [])
+
   const roleLabel = session ? `${currentProfile?.role || 'user'} mode` : 'Public browse mode'
   const approvalLabel = currentProfile?.approval_status || 'pending'
   const isAdmin = currentProfile?.role === 'admin'
+
   const showAllModsAction = currentPage === 'all_mods'
   const showCharactersAction = currentPage === 'mods'
   const showArenaAction = currentPage === 'arenas'
   const showTitleAction = currentPage === 'titles'
   const showOtherModAction = currentPage === 'other_mods'
+
+  function handleAddOption(action) {
+    setAddMenuOpen(false)
+    action?.()
+  }
 
   return (
     <header className="hero-card hero-card-improved">
@@ -144,7 +177,56 @@ export default function Header({
         </div>
 
         <div className="hero-actions">
-          {(showAllModsAction || showCharactersAction) && (
+          {showAllModsAction ? (
+            <div className="header-addmod-dropdown" ref={addMenuRef}>
+              <button
+                className="primary-button hero-primary"
+                onClick={() => setAddMenuOpen((current) => !current)}
+                disabled={!canContribute}
+                type="button"
+              >
+                Add Mod
+              </button>
+
+              {addMenuOpen ? (
+                <div className="header-addmod-menu">
+                  <button
+                    type="button"
+                    className="header-addmod-item"
+                    onClick={() => handleAddOption(onAddWrestler)}
+                  >
+                    Add Wrestler
+                  </button>
+
+                  <button
+                    type="button"
+                    className="header-addmod-item"
+                    onClick={() => handleAddOption(onAddArena)}
+                  >
+                    Add Arena
+                  </button>
+
+                  <button
+                    type="button"
+                    className="header-addmod-item"
+                    onClick={() => handleAddOption(onAddTitle)}
+                  >
+                    Add Title
+                  </button>
+
+                  <button
+                    type="button"
+                    className="header-addmod-item"
+                    onClick={() => handleAddOption(onAddOtherMod)}
+                  >
+                    Add Other Mod
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {showCharactersAction ? (
             <button
               className="primary-button hero-primary"
               onClick={onAddWrestler}
@@ -153,7 +235,7 @@ export default function Header({
             >
               Add wrestler
             </button>
-          )}
+          ) : null}
 
           {showArenaAction ? (
             <button
