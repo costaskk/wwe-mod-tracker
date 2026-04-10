@@ -1,6 +1,11 @@
 export default function StatsGrid({ stats = {} }) {
   const items = [
     {
+      key: 'totalMods',
+      label: 'Total mods',
+      value: stats.totalMods ?? 0
+    },
+    {
       key: 'wrestlers',
       label: 'Wrestlers',
       value: stats.wrestlers ?? 0
@@ -19,11 +24,6 @@ export default function StatsGrid({ stats = {} }) {
       key: 'titleBelts',
       label: 'Title belts',
       value: stats.titleBelts ?? 0
-    },
-    {
-      key: 'totalMods',
-      label: 'Total mods',
-      value: stats.totalMods ?? 0
     },
     {
       key: 'requests',
