@@ -643,6 +643,17 @@ button:disabled {
 }
 
 @media (max-width: 760px) {
+  .nav-chip.has-badge {
+    padding-right: 2rem;
+  }
+
+  .nav-chip-badge {
+    top: -5px;
+    right: -5px;
+    min-width: 18px;
+    height: 18px;
+    font-size: 0.66rem;
+  }
   .allmods-stats-grid,
   .stats-inline-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1467,6 +1478,101 @@ select option {
   color: var(--text);
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.05);
+}
+
+/* ===== ALL MODS CARD ALIGNMENT FIX ===== */
+
+.collection-items-grid > .collection-item-card.enhanced-collection-item-card,
+.allmods-carousel-card.collection-item-card.enhanced-collection-item-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.collection-item-card.enhanced-collection-item-card .collection-item-topbar {
+  min-height: 42px;
+  align-items: flex-start;
+}
+
+.collection-item-card.enhanced-collection-item-card .allmods-thumb-stack {
+  display: flex;
+  flex-direction: column;
+  min-height: 278px; /* image area + thumb strip area */
+}
+
+.collection-item-card.enhanced-collection-item-card .collection-thumb-button {
+  display: block;
+  width: 100%;
+  height: 220px;
+  padding: 10px 10px 0;
+  flex: 0 0 220px;
+}
+
+.collection-item-card.enhanced-collection-item-card .collection-thumb-button .collection-item-thumb,
+.collection-item-card.enhanced-collection-item-card .collection-thumb-button .collection-cover-placeholder {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+}
+
+.collection-item-card.enhanced-collection-item-card .allmods-thumb-strip {
+  min-height: 38px; /* reserve the same space even if there are no extra thumbs */
+  margin-top: 8px;
+  align-items: center;
+}
+
+.collection-item-card.enhanced-collection-item-card .collection-item-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 0;
+  padding: 16px;
+}
+
+.collection-item-card.enhanced-collection-item-card .collection-item-body h3 {
+  margin: 0;
+  min-height: 2.7em;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.collection-item-card.enhanced-collection-item-card .collection-item-body > .muted-text.small-text {
+  min-height: 2.7em;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.collection-item-card.enhanced-collection-item-card .prominent-creator-badge {
+  min-height: 38px;
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.collection-item-card.enhanced-collection-item-card .collection-item-meta-row {
+  min-height: 38px;
+  align-items: center;
+}
+
+.collection-item-card.enhanced-collection-item-card .collection-actions.allmods-card-actions {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+/* keep action buttons aligned nicely inside all mods cards */
+.collection-item-card.enhanced-collection-item-card .wrap-actions {
+  align-items: stretch;
+}
+
+.collection-item-card.enhanced-collection-item-card .wrap-actions .small-btn {
+  min-height: 40px;
 }
 
 .image-nav-btn {
@@ -3633,6 +3739,33 @@ select option {
   color: var(--text);
   border-color: rgba(63,166,255,.32);
   background: rgba(63,166,255,.12);
+}
+
+.nav-chip.has-badge {
+  position: relative;
+  padding-right: 2.2rem;
+}
+
+.nav-chip-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ff4d6d, #ff7a59);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow:
+    0 0 0 3px rgba(10, 16, 24, 0.95),
+    0 8px 18px rgba(255, 77, 109, 0.28);
+  pointer-events: none;
 }
 
 .mod-badges-inline {

@@ -17,7 +17,8 @@ export default function Header({
   currentPage = 'all_mods',
   session,
   currentProfile,
-  canContribute
+  canContribute,
+  issueCount = 0
 }) {
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const addMenuRef = useRef(null)
@@ -134,10 +135,15 @@ export default function Header({
 
             <button
               type="button"
-              className={`nav-chip ${currentPage === 'issues' ? 'active' : ''}`}
+              className={`nav-chip has-badge ${currentPage === 'issues' ? 'active' : ''}`}
               onClick={onBrowseIssues}
             >
               Issues
+              {issuesCount > 0 ? (
+                <span className="nav-chip-badge">
+                  {issuesCount > 99 ? '99+' : issuesCount}
+                </span>
+              ) : null}
             </button>
 
             {isAdmin ? (

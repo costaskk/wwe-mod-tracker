@@ -2229,6 +2229,30 @@ export default function App() {
 
   const stats = computeStats(wrestlers, collections, arenas, titleBelts, otherMods)
 
+  const issuesCount = useMemo(() => {
+  const wrestlerIssues = wrestlers.reduce(
+    (sum, wrestler) => sum + (wrestler.requests || []).filter((item) => item.status === 'open').length,
+    0
+  )
+
+  const arenaIssues = arenas.reduce(
+    (sum, arena) => sum + (arena.requests || []).filter((item) => item.status === 'open').length,
+    0
+  )
+
+  const titleIssues = titleBelts.reduce(
+    (sum, title) => sum + (title.requests || []).filter((item) => item.status === 'open').length,
+    0
+  )
+
+  const otherModIssues = otherMods.reduce(
+    (sum, mod) => sum + (mod.requests || []).filter((item) => item.status === 'open').length,
+    0
+  )
+
+  return wrestlerIssues + arenaIssues + titleIssues + otherModIssues
+}, [wrestlers, arenas, titleBelts, otherMods])
+
   if (!isSupabaseConfigured) {
     return (
       <div className="app-shell">
@@ -2249,6 +2273,7 @@ export default function App() {
           currentProfile={null}
           canContribute={false}
           onBrowseAdmin={() => {}}
+          issuesCount={0}
         />
         <div className="message error">Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY before running the app.</div>
       </div>
@@ -2274,6 +2299,7 @@ export default function App() {
         currentProfile={currentProfile}
         canContribute={canContribute}
         onBrowseAdmin={goAdminPage}
+        issuesCount={issuesCount}
       />
       <AuthPanel session={session} currentProfile={currentProfile} />
       <StatsGrid stats={stats} />
