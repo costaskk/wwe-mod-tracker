@@ -1961,6 +1961,67 @@ select option {
   line-height: 1.6;
 }
 
+.notes-markdown {
+  line-height: 1.7;
+  color: #d7e2f6;
+}
+
+.notes-markdown > *:first-child {
+  margin-top: 0;
+}
+
+.notes-markdown > *:last-child {
+  margin-bottom: 0;
+}
+
+.notes-markdown p {
+  margin: 0 0 0.8rem;
+}
+
+.notes-markdown ul,
+.notes-markdown ol {
+  margin: 0.4rem 0 0.9rem;
+  padding-left: 1.25rem;
+}
+
+.notes-markdown li {
+  margin-bottom: 0.4rem;
+}
+
+.notes-markdown li::marker {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.notes-markdown strong {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.notes-markdown a {
+  color: #8dc6ff;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(141, 198, 255, 0.35);
+}
+
+.notes-markdown a:hover {
+  color: #b7dcff;
+  border-bottom-color: rgba(183, 220, 255, 0.7);
+}
+
+.notes-markdown code {
+  font-size: 0.92em;
+}
+
+.notes-markdown blockquote {
+  margin: 0.8rem 0;
+  padding: 0.8rem 1rem;
+  border-left: 3px solid rgba(63, 166, 255, 0.45);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 14px;
+  color: #dbe8ff;
+}
+
 .list-card-actions.compact-actions {
   display: inline-flex;
   justify-content: flex-end;
@@ -3743,23 +3804,22 @@ select option {
 
 .nav-chip.has-badge {
   position: relative;
-  padding-right: 2.2rem;
 }
 
 .nav-chip-badge {
   position: absolute;
-  top: -7px;
-  right: -7px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #ff4d6d, #ff7a59);
   color: #fff;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 800;
   line-height: 1;
   box-shadow:

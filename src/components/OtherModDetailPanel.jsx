@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { createPortal } from 'react-dom'
 import {
   formatDate,
@@ -104,6 +105,41 @@ function JsonProfileSection({ value }) {
   )
 }
 
+function NotesMarkdown({ value }) {
+  if (!value?.trim()) return null
+
+  const normalizedValue = value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('\n')
+
+  const shouldAutoBullet =
+    normalizedValue.includes('\n') &&
+    !normalizedValue.match(/^[-*]\s/m) &&
+    !normalizedValue.match(/^\d+\.\s/m)
+
+  const markdownValue = shouldAutoBullet
+    ? normalizedValue
+        .split('\n')
+        .map((line) => `- ${line}`)
+        .join('\n')
+    : normalizedValue
+
+  return (
+    <ReactMarkdown
+      className="notes-markdown"
+      components={{
+        a: ({ ...props }) => (
+          <a {...props} target="_blank" rel="noreferrer" />
+        )
+      }}
+    >
+      {markdownValue}
+    </ReactMarkdown>
+  )
+}
+
 export default function OtherModDetailPanel({
   mod,
   session,
@@ -188,7 +224,7 @@ export default function OtherModDetailPanel({
 
           {mod.notes ? (
             <div className="note-box">
-              {mod.notes}
+              <NotesMarkdown value={mod.notes} />
             </div>
           ) : null}
 

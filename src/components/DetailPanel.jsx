@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import {
   formatDate,
   requestSummary,
@@ -11,6 +12,41 @@ import {
 
 function statusClass(status) {
   return `status-pill status-${status || 'complete'}`
+}
+
+function NotesMarkdown({ value }) {
+  if (!value?.trim()) return null
+
+  const normalizedValue = value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('\n')
+
+  const shouldAutoBullet =
+    normalizedValue.includes('\n') &&
+    !normalizedValue.match(/^[-*]\s/m) &&
+    !normalizedValue.match(/^\d+\.\s/m)
+
+  const markdownValue = shouldAutoBullet
+    ? normalizedValue
+        .split('\n')
+        .map((line) => `- ${line}`)
+        .join('\n')
+    : normalizedValue
+
+  return (
+    <ReactMarkdown
+      className="notes-markdown"
+      components={{
+        a: ({ ...props }) => (
+          <a {...props} target="_blank" rel="noreferrer" />
+        )
+      }}
+    >
+      {markdownValue}
+    </ReactMarkdown>
+  )
 }
 
 function JsonBrowser({ title, value }) {
@@ -519,7 +555,11 @@ export default function DetailPanel({
           <div><span>Updated</span><strong>{formatDate(wrestler.updated_at)}</strong></div>
         </div>
 
-        {wrestler.notes ? <div className="note-box">{wrestler.notes}</div> : null}
+        {wrestler.notes ? (
+          <div className="note-box">
+            <NotesMarkdown value={wrestler.notes} />
+          </div>
+        ) : null}
       </section>
 
       <WrestlerAudioSection wrestler={wrestler} />
@@ -671,7 +711,11 @@ export default function DetailPanel({
                       </div>
                     )}
 
-                    {attire.notes ? <div className="note-box compact-note">{attire.notes}</div> : null}
+                    {attire.notes ? (
+                      <div className="note-box compact-note">
+                        <NotesMarkdown value={attire.notes} />
+                      </div>
+                    ) : null}
 
                     <div className="json-grid attire-json-grid">
                       <JsonBrowser title="Moveset / animations" value={attire.moveset_json} />
