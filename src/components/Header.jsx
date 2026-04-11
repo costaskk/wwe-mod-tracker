@@ -18,7 +18,7 @@ export default function Header({
   session,
   currentProfile,
   canContribute,
-  issueCount = 0
+  issuesCount = 0
 }) {
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const addMenuRef = useRef(null)
