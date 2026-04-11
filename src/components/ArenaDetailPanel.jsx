@@ -187,7 +187,7 @@ export default function ArenaDetailPanel({
 
           {arena.notes ? (
             <div className="note-box">
-              <NotesMarkDown value={arena.notes} />
+              <NotesMarkdown value={arena.notes} />
             </div>
           ) : null}
 
