@@ -15,25 +15,38 @@ export default function AuthPanel({ session, currentProfile }) {
     setMessage('')
     setLoading(true)
 
-    const action =
-      mode === 'signin'
-        ? supabase.auth.signInWithPassword({ email, password })
-        : supabase.auth.signUp({ email, password })
+    try {
+      let authError = null
 
-    const { error: authError } = await action
+      if (mode === 'signin') {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password
+        })
+        authError = error
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password
+        })
+        authError = error
+      }
 
-    if (authError) {
-      setError(authError.message)
+      if (authError) {
+        setError(authError.message)
+        return
+      }
+
+      setMessage(
+        mode === 'signup'
+          ? 'Account created. An admin must approve it before you can contribute.'
+          : 'Signed in.'
+      )
+    } catch (err) {
+      setError(err.message || 'Something went wrong.')
+    } finally {
       setLoading(false)
-      return
     }
-
-    setMessage(
-      mode === 'signup'
-        ? 'Account created. An admin must approve it before you can contribute.'
-        : 'Signed in.'
-    )
-    setLoading(false)
   }
 
   if (session) {
@@ -78,7 +91,12 @@ export default function AuthPanel({ session, currentProfile }) {
         <div className="compact-grid compact-grid-3">
           <label>
             Email
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </label>
 
           <label>
@@ -93,7 +111,7 @@ export default function AuthPanel({ session, currentProfile }) {
           </label>
 
           <div className="auth-submit-wrap">
-            <button type="button" className="primary-button" disabled={loading}>
+            <button type="submit" className="primary-button" disabled={loading}>
               {loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
             </button>
           </div>

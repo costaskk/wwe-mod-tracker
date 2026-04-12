@@ -1144,6 +1144,7 @@ select option {
 
 .filters-panel {
   align-self: start;
+  width: 100%;
 }
 
 .filters-panel .form-grid {
@@ -3256,9 +3257,9 @@ select option {
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 768px) {
   .app-shell {
-    padding: 14px;
+    padding: 12px;
   }
 
   .hero-card,
@@ -3290,6 +3291,20 @@ select option {
 
   .hero-id-wrap {
     align-items: flex-start;
+  }
+  .stats-inline-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .filter-row-grid,
+  .filter-row-grid-three {
+    grid-template-columns: 1fr !important;
+  }
+
+  button,
+  .primary-button,
+  .secondary-button {
+    width: 100%;
   }
 }
 
@@ -3677,6 +3692,12 @@ select option {
   .carousel-header-actions {
     width: 100%;
     justify-content: space-between;
+  }
+}
+
+@media (max-width: 1200px) {
+  .allmods-layout {
+    grid-template-columns: 1fr;
   }
 }
 
