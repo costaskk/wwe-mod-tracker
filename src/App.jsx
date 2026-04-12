@@ -454,11 +454,30 @@ export default function App() {
     return () => window.removeEventListener('popstate', syncFromUrl)
   }, [collections])
 
+  async function fetchCurrentUserProfile() {
+    if (!session?.user?.id) return { data: null, error: null }
+
+    return await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .maybeSingle()
+  }
+
   async function fetchAll() {
     setLoading(true)
     setError('')
 
     try {
+      const currentProfileResult = await fetchCurrentUserProfile()
+
+      if (currentProfileResult.error) {
+        setError(currentProfileResult.error.message || 'Failed to load your profile.')
+        return
+      }
+
+      const myProfile = currentProfileResult.data || null
+
       const publicCollectionsQuery = supabase
         .from('collections')
         .select(`
@@ -528,8 +547,7 @@ export default function App() {
         installedArenasResult,
         installedTitlesResult,
         publicCollectionsResult,
-        ownCollectionsResult,
-        profilesResult
+        ownCollectionsResult
       ] = await Promise.all([
         supabase
           .from('wrestlers')
@@ -595,8 +613,7 @@ export default function App() {
           : Promise.resolve({ data: [], error: null }),
 
         publicCollectionsQuery,
-        ownCollectionsQuery,
-        supabase.from('profiles').select('*').order('created_at', { ascending: false })
+        ownCollectionsQuery
       ])
 
       if (
@@ -609,7 +626,6 @@ export default function App() {
         installedTitlesResult.error ||
         publicCollectionsResult.error ||
         ownCollectionsResult.error ||
-        profilesResult.error ||
         otherModsResult.error ||
         installedOtherModsResult.error
       ) {
@@ -623,7 +639,6 @@ export default function App() {
           installedTitlesResult.error?.message ||
           publicCollectionsResult.error?.message ||
           ownCollectionsResult.error?.message ||
-          profilesResult.error?.message ||
           otherModsResult.error?.message ||
           installedOtherModsResult.error?.message ||
           'Failed to load data.'
@@ -771,10 +786,20 @@ export default function App() {
       const slug = new URLSearchParams(window.location.search).get('collection')
       const collectionFromUrl = slug ? repairedCollections.find((item) => item.slug === slug) : null
 
-      const loadedProfiles = profilesResult.data || []
-      const myProfile = session
-        ? loadedProfiles.find((item) => item.user_id === session.user.id) || null
-        : null
+      let loadedProfiles = myProfile ? [myProfile] : []
+
+      if (myProfile?.role === 'admin') {
+        const adminProfilesResult = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (adminProfilesResult.error) {
+          throw adminProfilesResult.error
+        }
+
+        loadedProfiles = adminProfilesResult.data || []
+      }
 
       setProfiles(loadedProfiles)
       setCurrentProfile(myProfile)
@@ -1307,15 +1332,24 @@ export default function App() {
           .eq('id', audioFile.id)
 
         if (error) throw error
-
-        await fetchAll()
-      } else {
-        setWrestlerForm((current) => ({
-          ...current,
-          audio_files: (current.audio_files || []).filter((item) => item.file_path !== audioFile.file_path),
-          pendingAudioUploads: (current.pendingAudioUploads || []).filter((item) => item.file_path !== audioFile.file_path)
-        }))
       }
+
+      setWrestlerForm((current) => ({
+        ...current,
+        audio_files: (current.audio_files || []).filter((item) => item.file_path !== audioFile.file_path),
+        pendingAudioUploads: (current.pendingAudioUploads || []).filter((item) => item.file_path !== audioFile.file_path)
+      }))
+
+      setWrestlers((current) =>
+        current.map((wrestler) => {
+          if (wrestler.id !== (wrestlerForm.id || audioFile.wrestler_id)) return wrestler
+
+          return {
+            ...wrestler,
+            audio_files: (wrestler.audio_files || []).filter((item) => item.file_path !== audioFile.file_path)
+          }
+        })
+      )
 
       openNotice('success', 'Audio removed', `${audioFile.file_name || 'Audio file'} was removed.`)
     } catch (err) {
@@ -1358,13 +1392,81 @@ export default function App() {
 
   async function removeAttireAsset(kind, path) {
     if (!canDeleteContent) return
+
     try {
-      if (path) await removeAssets([path])
-      if (kind === 'render') setAttireForm((current) => ({ ...current, render_dds_path: '', render_dds_name: '', render_dds_url: '' }))
-      if (kind === 'image') {
-        setAttireForm((current) => ({ ...current, images: current.images.filter((img) => img.path !== path), pendingImageUploads: (current.pendingImageUploads || []).filter((img) => img.path !== path) }))
-        if (attireForm.persisted) await supabase.from('attire_images').delete().eq('attire_id', attireForm.id).eq('image_path', path)
+      if (path) {
+        await removeAssets([path])
       }
+
+      if (kind === 'render') {
+        if (attireForm.persisted) {
+          const { error } = await supabase
+            .from('attires')
+            .update({
+              render_dds_path: '',
+              render_dds_name: ''
+            })
+            .eq('id', attireForm.id)
+
+          if (error) throw error
+        }
+
+        setAttireForm((current) => ({
+          ...current,
+          render_dds_path: '',
+          render_dds_name: '',
+          render_dds_url: ''
+        }))
+
+        setWrestlers((current) =>
+          current.map((wrestler) => ({
+            ...wrestler,
+            attires: (wrestler.attires || []).map((attire) =>
+              attire.id === attireForm.id
+                ? {
+                    ...attire,
+                    render_dds_path: '',
+                    render_dds_name: '',
+                    render_dds_url: ''
+                  }
+                : attire
+            )
+          }))
+        )
+      }
+
+      if (kind === 'image') {
+        setAttireForm((current) => ({
+          ...current,
+          images: (current.images || []).filter((img) => img.path !== path),
+          pendingImageUploads: (current.pendingImageUploads || []).filter((img) => img.path !== path)
+        }))
+
+        if (attireForm.persisted) {
+          const { error } = await supabase
+            .from('attire_images')
+            .delete()
+            .eq('attire_id', attireForm.id)
+            .eq('image_path', path)
+
+          if (error) throw error
+        }
+
+        setWrestlers((current) =>
+          current.map((wrestler) => ({
+            ...wrestler,
+            attires: (wrestler.attires || []).map((attire) =>
+              attire.id === attireForm.id
+                ? {
+                    ...attire,
+                    attire_images: (attire.attire_images || []).filter((img) => img.image_path !== path)
+                  }
+                : attire
+            )
+          }))
+        )
+      }
+
       openNotice('success', 'Asset removed', 'The selected asset was removed.')
     } catch (err) {
       openNotice('error', 'Could not remove asset', err.message || 'Could not remove asset.')

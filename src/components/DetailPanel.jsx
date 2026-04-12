@@ -65,10 +65,20 @@ function JsonBrowser({ title, value }) {
   )
 }
 
-function DdsDisplay({ url, name }) {
+function DdsDisplay({ url, name, canAccessRestrictedFiles }) {
   const [failed, setFailed] = useState(false)
 
-  if (!url) return <div className="render-placeholder">No render uploaded</div>
+  if (!canAccessRestrictedFiles) {
+    return (
+      <div className="render-placeholder">
+        DDS renders are visible only to approved users, moderators, and admins.
+      </div>
+    )
+  }
+
+  if (!url) {
+    return <div className="render-placeholder">No render uploaded</div>
+  }
 
   return (
     <div className="dds-display">
@@ -85,7 +95,13 @@ function DdsDisplay({ url, name }) {
           <div className="render-name">Preview not available in this browser.</div>
         </div>
       )}
-      <a className="secondary-button inline-btn small-btn" href={url} target="_blank" rel="noreferrer">
+
+      <a
+        className="secondary-button inline-btn small-btn"
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+      >
         Open / download DDS
       </a>
     </div>
@@ -150,9 +166,28 @@ function DownloadLinks({ value }) {
   )
 }
 
-function WrestlerAudioSection({ wrestler }) {
+function WrestlerAudioSection({ wrestler, canAccessRestrictedFiles }) {
   const entranceMusicFiles = (wrestler.audio_files || []).filter((item) => item.audio_type === 'entrance_music')
   const callnameFiles = (wrestler.audio_files || []).filter((item) => item.audio_type === 'callname')
+
+  if (!entranceMusicFiles.length && !callnameFiles.length) return null
+
+  if (!canAccessRestrictedFiles) {
+    return (
+      <section className="panel soft-panel">
+        <div className="panel-header">
+          <div>
+            <h2>Wrestler audio</h2>
+            <p className="subtle-copy">Entrance music and announce callnames attached directly to this wrestler.</p>
+          </div>
+        </div>
+
+        <div className="upload-placeholder">
+          WEM audio files are visible only to approved users, moderators, and admins.
+        </div>
+      </section>
+    )
+  }
 
   function AudioGroup({ title, items }) {
     const [failedIds, setFailedIds] = useState({})
@@ -213,8 +248,6 @@ function WrestlerAudioSection({ wrestler }) {
       </div>
     )
   }
-
-  if (!entranceMusicFiles.length && !callnameFiles.length) return null
 
   return (
     <section className="panel soft-panel">
@@ -506,6 +539,8 @@ export default function DetailPanel({
 
   const canEditWrestler = session && canManageContent(wrestler.owner_id)
 
+  const canAccessRestrictedFiles = Boolean(canContribute)
+
   return (
     <div className="detail-stack">
       <section className="panel detail-hero">
@@ -562,7 +597,10 @@ export default function DetailPanel({
         ) : null}
       </section>
 
-      <WrestlerAudioSection wrestler={wrestler} />
+      <WrestlerAudioSection
+        wrestler={wrestler}
+        canAccessRestrictedFiles={canAccessRestrictedFiles}
+      />
 
       <WrestlerTitantronSection
         wrestler={wrestler}
@@ -685,7 +723,11 @@ export default function DetailPanel({
 
                       <div className="visual-block">
                         <div className="visual-label">DDS render</div>
-                        <DdsDisplay url={attire.render_dds_url} name={attire.render_dds_name} />
+                        <DdsDisplay
+                          url={attire.render_dds_url}
+                          name={attire.render_dds_name}
+                          canAccessRestrictedFiles={canAccessRestrictedFiles}
+                        />
                       </div>
                     </div>
 
