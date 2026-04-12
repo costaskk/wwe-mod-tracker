@@ -50,7 +50,11 @@ export default function AuthPanel({ session, currentProfile }) {
   }
 
   if (session) {
-    if (currentProfile && currentProfile.approval_status !== 'approved') {
+    if (
+      currentProfile &&
+      currentProfile.approval_status !== 'approved' &&
+      currentProfile.role !== 'admin'
+    ) {
       return (
         <div className="auth-card compact-auth-card">
           <div className="auth-head compact-auth-head">
