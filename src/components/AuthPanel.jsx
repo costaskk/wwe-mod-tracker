@@ -7,6 +7,7 @@ export default function AuthPanel({ session, currentProfile }) {
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(event) {
@@ -37,16 +38,57 @@ export default function AuthPanel({ session, currentProfile }) {
         return
       }
 
-      setMessage(
-        mode === 'signup'
-          ? 'Account created. An admin must approve it before you can contribute.'
-          : 'Signed in.'
-      )
+      if (mode === 'signup') {
+        setShowSuccessModal(true)
+
+        // Optional: reset form
+        setEmail('')
+        setPassword('')
+
+        // Optional: switch back to signin tab
+        setMode('signin')
+      } else {
+        setMessage('Signed in.')
+      }
     } catch (err) {
       setError(err.message || 'Something went wrong.')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (showSuccessModal) {
+    return (
+      <div className="modal-backdrop">
+        <div className="panel modal-card small-modal success-modal">
+          <div className="modal-header">
+            <h2>🎉 Registration successful</h2>
+            <p className="subtle-copy">
+              Your account has been created successfully.
+            </p>
+          </div>
+
+          <div className="modal-body">
+            <p>
+              An admin must approve your account before you can contribute content.
+            </p>
+
+            <div className="notice-box">
+              You can already sign in and browse normally.
+            </div>
+          </div>
+
+          <div className="modal-actions">
+            <button
+              className="primary-button"
+              onClick={() => setShowSuccessModal(false)}
+            >
+              Continue to sign in
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (session) {
@@ -121,7 +163,6 @@ export default function AuthPanel({ session, currentProfile }) {
           </div>
         </div>
       </form>
-
       {message ? <div className="message success">{message}</div> : null}
       {error ? <div className="message error">{error}</div> : null}
     </div>

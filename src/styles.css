@@ -3308,6 +3308,34 @@ select option {
   }
 }
 
+.success-modal {
+  text-align: center;
+  max-width: 420px;
+}
+
+.success-modal h2 {
+  font-size: 1.4rem;
+}
+
+.notice-box {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(0, 200, 120, 0.08);
+  border: 1px solid rgba(0, 200, 120, 0.2);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.modal-body {
+  margin-top: 10px;
+}
+
+.modal-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
 .autocomplete-title {
   color: var(--muted);
   font-size: 0.8rem;
