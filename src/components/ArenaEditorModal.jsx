@@ -1,12 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   parseDownloadLinks,
   getDownloadProvider,
   getDownloadProviderLabel,
   getDownloadProviderMark,
   findDuplicateArena,
-  SOURCE_GAMES
+  SOURCE_GAMES,
+  testDownloadLink
 } from '../lib/utils'
+
+function normalizeLinkForCheck(link) {
+  const value = String(link || '').trim()
+  if (!value) return ''
+
+  if (/^https?:\/\//i.test(value)) {
+    return value
+  }
+
+  return `https://${value}`
+}
 
 function JsonEditor({ title, value, onChange, onUpload, filenameHint, uploading }) {
   const [expanded, setExpanded] = useState(true)
@@ -85,9 +97,59 @@ export default function ArenaEditorModal({
   }, [arenas, form.name, form.id, form.persisted, normalizedName])
 
   const parsedLinks = useMemo(
-    () => parseDownloadLinks(form.download_url || ''),
+    () => [...new Set(parseDownloadLinks(form.download_url || ''))],
     [form.download_url]
   )
+
+  const [linkCheckResults, setLinkCheckResults] = useState({})
+  const [isCheckingLinks, setIsCheckingLinks] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!parsedLinks.length) {
+      setLinkCheckResults({})
+      setIsCheckingLinks(false)
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      setIsCheckingLinks(true)
+
+      try {
+        const results = await Promise.all(
+          parsedLinks.map(async (link) => {
+            try {
+              const result = await testDownloadLink(normalizeLinkForCheck(link))
+              return [link, result]
+            } catch (error) {
+              return [
+                link,
+                {
+                  status: 'error',
+                  ok: false,
+                  message: error?.message || 'Could not test this link.'
+                }
+              ]
+            }
+          })
+        )
+
+        if (!cancelled) {
+          setLinkCheckResults(Object.fromEntries(results))
+        }
+      } finally {
+        if (!cancelled) {
+          setIsCheckingLinks(false)
+        }
+      }
+    }, 500)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [parsedLinks])
 
   if (!open) return null
 
@@ -201,14 +263,42 @@ export default function ArenaEditorModal({
                   />
                 </label>
 
+                {isCheckingLinks ? (
+                  <div className="live-ok-hint">Checking download links…</div>
+                ) : null}
+
                 {parsedLinks.length ? (
-                  <div className="download-provider-preview">
+                  <div className="link-health-list">
                     {parsedLinks.map((link, index) => {
+                      const result = linkCheckResults[link]
                       const provider = getDownloadProvider(link)
+
                       return (
-                        <div className={`provider-chip provider-${provider}`} key={`${link}-${index}`}>
-                          <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
-                          <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
+                        <div className="link-health-row" key={`${link}-${index}`}>
+                          <div className={`provider-chip provider-${provider}`}>
+                            <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
+                            <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
+                          </div>
+
+                          <div
+                            className={`link-health-pill ${
+                              result?.ok
+                                ? 'link-health-ok'
+                                : result?.status === 'dead'
+                                  ? 'link-health-dead'
+                                  : result?.status === 'error'
+                                    ? 'link-health-error'
+                                    : 'link-health-pending'
+                            }`}
+                          >
+                            {result?.ok
+                              ? 'Link looks good'
+                              : result?.status === 'dead'
+                                ? 'Link looks dead'
+                                : result?.status === 'error'
+                                  ? 'Could not verify'
+                                  : 'Waiting to test'}
+                          </div>
                         </div>
                       )
                     })}

@@ -9,6 +9,17 @@ import {
   testDownloadLink
 } from '../lib/utils'
 
+function normalizeLinkForCheck(link) {
+  const value = String(link || '').trim()
+  if (!value) return ''
+
+  if (/^https?:\/\//i.test(value)) {
+    return value
+  }
+
+  return `https://${value}`
+}
+
 function AudioFilesSection({ files = [], onRemoveAudio, uploading }) {
   return (
     <div className="upload-card premium-upload-card">
@@ -76,6 +87,7 @@ export default function TitleBeltEditorModal({
   uploading,
   titleBelts = []
 }) {
+
   const normalizedName = (form.name || '').trim().toLowerCase()
 
   const duplicateTitle = useMemo(() => {
@@ -87,7 +99,7 @@ export default function TitleBeltEditorModal({
   }, [titleBelts, form.name, form.id, form.persisted, normalizedName])
 
   const parsedLinks = useMemo(
-    () => parseDownloadLinks(form.download_url || ''),
+    () => [...new Set(parseDownloadLinks(form.download_url || ''))],
     [form.download_url]
   )
 
@@ -110,7 +122,7 @@ export default function TitleBeltEditorModal({
         const results = await Promise.all(
           parsedLinks.map(async (link) => {
             try {
-              const result = await testDownloadLink(link)
+              const result = await testDownloadLink(normalizeLinkForCheck(link))
               return [link, result]
             } catch (error) {
               return [
@@ -291,20 +303,6 @@ export default function TitleBeltEditorModal({
                                   ? 'Could not verify'
                                   : 'Waiting to test'}
                           </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : null}
-
-                {parsedLinks.length ? (
-                  <div className="download-provider-preview">
-                    {parsedLinks.map((link, index) => {
-                      const provider = getDownloadProvider(link)
-                      return (
-                        <div className={`provider-chip provider-${provider}`} key={`${link}-${index}`}>
-                          <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
-                          <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
                         </div>
                       )
                     })}

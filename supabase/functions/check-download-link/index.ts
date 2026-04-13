@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std/http/server.ts"
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Content-Type": "application/json"
+}
+
 function normalizeUrl(url: string) {
   const value = String(url || "").trim()
   if (!value) return ""
@@ -45,7 +52,7 @@ async function checkSingleUrl(url: string) {
       finalUrl: response.url,
       message: response.ok ? "Link looks valid." : `HTTP ${response.status}`
     }
-  } catch (error) {
+  } catch (error: unknown) {
     return {
       url,
       normalizedUrl: normalized,
@@ -59,6 +66,10 @@ async function checkSingleUrl(url: string) {
 }
 
 serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders })
+  }
+
   try {
     const body: { urls?: string[] } = await req.json().catch(() => ({}))
     const urls: string[] = Array.isArray(body?.urls) ? body.urls : []
@@ -70,7 +81,7 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({ success: true, results }),
       {
-        headers: { "Content-Type": "application/json" },
+        headers: corsHeaders,
         status: 200
       }
     )
@@ -81,7 +92,7 @@ serve(async (req: Request) => {
         error: error instanceof Error ? error.message : "Unknown error"
       }),
       {
-        headers: { "Content-Type": "application/json" },
+        headers: corsHeaders,
         status: 500
       }
     )

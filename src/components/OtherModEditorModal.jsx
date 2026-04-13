@@ -11,6 +11,18 @@ import {
   testDownloadLink
 } from '../lib/utils'
 
+
+function normalizeLinkForCheck(link) {
+  const value = String(link || '').trim()
+  if (!value) return ''
+
+  if (/^https?:\/\//i.test(value)) {
+    return value
+  }
+
+  return `https://${value}`
+}
+
 export default function OtherModEditorModal({
   open,
   form,
@@ -28,6 +40,7 @@ export default function OtherModEditorModal({
   uploading,
   otherMods = []
 }) {
+
   const normalizedName = (form.name || '').trim().toLowerCase()
 
   const duplicateMod = useMemo(() => {
@@ -39,7 +52,7 @@ export default function OtherModEditorModal({
   }, [otherMods, form.name, form.id, form.persisted, normalizedName])
 
   const parsedLinks = useMemo(
-    () => parseDownloadLinks(form.download_url || ''),
+    () => [...new Set(parseDownloadLinks(form.download_url || ''))],
     [form.download_url]
   )
 
@@ -62,7 +75,7 @@ export default function OtherModEditorModal({
         const results = await Promise.all(
           parsedLinks.map(async (link) => {
             try {
-              const result = await testDownloadLink(link)
+              const result = await testDownloadLink(normalizeLinkForCheck(link))
               return [link, result]
             } catch (error) {
               return [
@@ -263,24 +276,6 @@ export default function OtherModEditorModal({
                     })}
                   </div>
                 ) : null}
-
-                {parsedLinks.length ? (
-                  <div className="download-provider-preview">
-                    {parsedLinks.map((link, index) => {
-                      const provider = getDownloadProvider(link)
-                      return (
-                        <div
-                          className={`provider-chip provider-${provider}`}
-                          key={`${link}-${index}`}
-                        >
-                          <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
-                          <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : null}
-
                 <label>
                   Notes / description
                   <textarea
