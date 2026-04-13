@@ -545,6 +545,9 @@ export default function DetailPanel({
   const attireRefs = useRef({})
   const highlightTimeoutRef = useRef(null)
 
+  const suppressObserverRef = useRef(false)
+  const suppressObserverTimeoutRef = useRef(null)
+
   const [copiedNotice, setCopiedNotice] = useState(null)
 
   const copiedNoticeTimeoutRef = useRef(null)
@@ -609,6 +612,9 @@ export default function DetailPanel({
     const node = attireRefs.current[highlightedAttireId]
     if (!node) return
 
+    suppressObserverRef.current = true
+    clearTimeout(suppressObserverTimeoutRef.current)
+
     node.scrollIntoView({
       behavior: 'smooth',
       block: 'start'
@@ -623,7 +629,14 @@ export default function DetailPanel({
       node.classList.remove('attire-card-highlight-flash')
     }, 1800)
 
-    return () => clearTimeout(highlightTimeoutRef.current)
+    suppressObserverTimeoutRef.current = setTimeout(() => {
+      suppressObserverRef.current = false
+    }, 1400)
+
+    return () => {
+      clearTimeout(highlightTimeoutRef.current)
+      clearTimeout(suppressObserverTimeoutRef.current)
+    }
   }, [highlightedAttireId, attireViewMode, wrestler?.id])
 
   useEffect(() => {
@@ -634,6 +647,8 @@ export default function DetailPanel({
 
     const observer = new IntersectionObserver(
       (entries) => {
+        if (suppressObserverRef.current) return
+
         const visible = entries
           .filter((entry) => entry.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
@@ -661,6 +676,13 @@ export default function DetailPanel({
 
     return () => observer.disconnect()
   }, [wrestler?.id, wrestler?.attires, attireViewMode, highlightedAttireId, onHighlightAttire])
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(highlightTimeoutRef.current)
+      clearTimeout(suppressObserverTimeoutRef.current)
+    }
+  }, [])
 
   if (!wrestler) {
     return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
