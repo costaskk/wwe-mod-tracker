@@ -917,6 +917,11 @@ export default function DetailPanel({
                           <div className="meta-value break-line">
                             <DownloadLinks value={attire.download_url} />
                           </div>
+                          <span className={`link-status ${attire.link_status}`}>
+                            {attire.link_status === 'working' && '🟢 Working'}
+                            {attire.link_status === 'dead' && '🔴 Dead'}
+                            {attire.link_status === 'missing' && '⚠️ Missing'}
+                          </span>
                         </div>
                         <div>
                           <span className="muted-text">Added</span>

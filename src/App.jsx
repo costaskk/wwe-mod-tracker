@@ -25,6 +25,7 @@ import WrestlerList from './components/WrestlerList'
 import { buildUnifiedModsFeed } from './lib/utils' // ✅ make sure this exists
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { getAssetUrl, removeAssets, tryAutoMatchHeadshot, uploadAsset } from './lib/storage'
+import { testDownloadLink, parseDownloadLinks } from './lib/utils'
 import {
   uid,
   computeStats,
@@ -1169,6 +1170,18 @@ export default function App() {
       if (!attireForm.name.trim()) throw new Error('Attire name is required.')
       const parentWrestler = wrestlers.find((item) => item.id === attireForm.wrestler_id)
       const duplicateAttire = findDuplicateAttire(parentWrestler?.attires || [], attireForm.name)
+
+      const parsedLinks = parseDownloadLinks(attireForm.download_url || '')
+
+      if (parsedLinks.length) {
+        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
+        const deadResults = results.filter((item) => item?.status === 'dead' || item?.ok === false)
+
+        if (deadResults.length === parsedLinks.length) {
+          throw new Error('All entered download links appear to be dead. Please correct them before saving.')
+        }
+      }
+
       if (duplicateAttire && duplicateAttire.id !== attireForm.id) throw new Error(`Attire already exists for this wrestler: ${duplicateAttire.name}`)
       const payload = {
         wrestler_id: attireForm.wrestler_id,
@@ -1187,6 +1200,31 @@ export default function App() {
       }
 
       let attireId = attireForm.id
+
+      if (parsedLinks.length) {
+        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
+        const hasDeadLink = results.some((item) => item?.status === 'dead')
+
+        if (hasDeadLink) {
+          const { data: existingDeadRequests } = await supabase
+            .from('mod_requests')
+            .select('id')
+            .eq('attire_id', attireId)
+            .eq('status', 'open')
+            .eq('request_type', 'dead_link')
+            .limit(1)
+
+          if (!existingDeadRequests?.length) {
+            await supabase.from('mod_requests').insert({
+              wrestler_id: attireForm.wrestler_id,
+              attire_id: attireId,
+              request_type: 'dead_link',
+              notes: 'Automatically detected dead link during save.'
+            })
+          }
+        }
+      }
+
       if (attireForm.persisted) {
         const { error } = await supabase.from('attires').update(payload).eq('id', attireForm.id)
         if (error) throw error

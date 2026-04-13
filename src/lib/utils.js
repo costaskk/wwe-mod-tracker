@@ -966,3 +966,39 @@ export function sortUnifiedMods(items = [], sortBy = 'newest') {
   )
 }
 
+import { supabase } from './supabase'
+
+export async function testDownloadLink(url) {
+  const cleanUrl = String(url || '').trim()
+
+  if (!cleanUrl) {
+    return {
+      ok: false,
+      status: 'empty',
+      message: 'No URL provided.'
+    }
+  }
+
+  const { data, error } = await supabase.functions.invoke('check-links', {
+    body: {
+      urls: [cleanUrl]
+    }
+  })
+
+  if (error) {
+    throw new Error(error.message || 'Could not check this link.')
+  }
+
+  const result = data?.results?.[0]
+
+  if (!result) {
+    return {
+      ok: false,
+      status: 'error',
+      message: 'No result returned.'
+    }
+  }
+
+  return result
+}
+

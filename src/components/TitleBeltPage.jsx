@@ -10,6 +10,8 @@ import {
   paginateItems,
   requestSummary,
   SOURCE_GAMES,
+  parseDownloadLinks,
+  testDownloadLink,
   uid
 } from '../lib/utils'
 import { getAssetUrl, removeAssets, uploadAsset } from '../lib/storage'
@@ -197,6 +199,17 @@ export default function TitleBeltPage({
       if (duplicate && duplicate.id !== form.id) {
         throw new Error(`Title belt already exists: ${duplicate.name}`)
       }
+      
+      const parsedLinks = parseDownloadLinks(form.download_url || '')
+
+      if (parsedLinks.length) {
+        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
+        const deadResults = results.filter((item) => item?.status === 'dead' || item?.ok === false)
+
+        if (deadResults.length === parsedLinks.length) {
+          throw new Error('All entered download links appear to be dead. Please correct them before saving.')
+        }
+      }
 
       const payload = {
         name: form.name.trim(),
@@ -209,6 +222,29 @@ export default function TitleBeltPage({
       }
 
       let titleId = form.id
+
+      if (parsedLinks.length) {
+        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
+        const hasDeadLink = results.some((item) => item?.status === 'dead')
+
+        if (hasDeadLink) {
+          const { data: existingDeadRequests } = await supabase
+            .from('title_belt_requests')
+            .select('id')
+            .eq('title_belt_id', titleId)
+            .eq('status', 'open')
+            .eq('request_type', 'dead_link')
+            .limit(1)
+
+          if (!existingDeadRequests?.length) {
+            await supabase.from('title_belt_requests').insert({
+              title_belt_id: titleId,
+              request_type: 'dead_link',
+              notes: 'Automatically detected dead link during save.'
+            })
+          }
+        }
+      }
 
       if (form.persisted) {
         const { error } = await supabase
