@@ -522,28 +522,28 @@ export function getDownloadProvider(url = '') {
   return 'link'
 }
 
-export function getDownloadProviderMark(provider = '') {
+export function getDownloadProviderLabel(provider = '') {
   switch (provider) {
     case 'mediafire':
-      return 'MF'
+      return 'MediaFire'
     case 'mega':
-      return 'M'
+      return 'MEGA'
     case 'google_drive':
-      return 'GD'
+      return 'Google Drive'
     case 'discord':
-      return 'DC'
+      return 'Discord'
     case 'patreon':
-      return 'P'
+      return 'Patreon'
     case 'pixeldrain':
-      return 'PD'
+      return 'PixelDrain'
     case 'dropbox':
-      return 'DB'
+      return 'Dropbox'
     case 'onedrive':
-      return 'OD'
+      return 'OneDrive'
     case 'proton_drive':
-      return 'PR'
+      return 'Proton Drive'
     default:
-      return '↗'
+      return 'Link'
   }
 }
 
@@ -565,6 +565,8 @@ export function getDownloadProviderMark(provider = '') {
       return 'DB'
     case 'onedrive':
       return 'OD'
+    case 'proton_drive':
+      return 'PR'
     default:
       return '↗'
   }
