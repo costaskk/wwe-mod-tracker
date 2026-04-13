@@ -1016,11 +1016,17 @@ export default function App() {
   }, [myCollections, collectionPicker, session])
 
   useEffect(() => {
-    if (!selectedId && visibleWrestlers[0]) setSelectedId(visibleWrestlers[0].id)
+    if (wrestlerSelectSignal?.wrestlerId) return
+
+    if (!selectedId && visibleWrestlers[0]) {
+      setSelectedId(visibleWrestlers[0].id)
+      return
+    }
+
     if (selectedId && !visibleWrestlers.some((item) => item.id === selectedId)) {
       setSelectedId(visibleWrestlers[0]?.id || null)
     }
-  }, [visibleWrestlers, selectedId])
+  }, [visibleWrestlers, selectedId, wrestlerSelectSignal])
 
   async function updateProfile(userId, changes) {
     if (!isAdmin) return
@@ -2216,13 +2222,11 @@ export default function App() {
 
     const nextPage = Math.floor(index / modsPerPage) + 1
 
-    // ✅ STEP 1: ensure correct page FIRST
     if (modsPage !== nextPage) {
       setModsPage(nextPage)
-      return // 🔥 THIS RETURN IS ACTUALLY CORRECT HERE
+      return
     }
 
-    // ✅ STEP 2: now page is correct → continue safely
     if (selectedId !== wrestlerId) {
       setSelectedId(wrestlerId)
     }
@@ -2277,16 +2281,55 @@ export default function App() {
         setCurrentPage('mods')
 
         if (wrestlerId) {
-          setSelectedId(wrestlerId)
-        }
-
-        if (attireId) {
-          setHighlightedAttireId(attireId)
-          setAttireViewMode('gallery')
+          setWrestlerSelectSignal({
+            wrestlerId,
+            attireId: attireId || null,
+            forceGallery: Boolean(attireId),
+            ts: Date.now()
+          })
         } else {
           setHighlightedAttireId(null)
         }
+
+        return
       }
+
+      if (page === 'collections') {
+        setCurrentPage('collections')
+        return
+      }
+
+      if (page === 'arenas') {
+        setCurrentPage('arenas')
+        return
+      }
+
+      if (page === 'titles') {
+        setCurrentPage('titles')
+        return
+      }
+
+      if (page === 'other_mods') {
+        setCurrentPage('other_mods')
+        return
+      }
+
+      if (page === 'issues') {
+        setCurrentPage('issues')
+        return
+      }
+
+      if (page === 'admin') {
+        setCurrentPage('admin')
+        return
+      }
+
+      if (page === 'all_mods') {
+        setCurrentPage('all_mods')
+        return
+      }
+
+      setCurrentPage('all_mods')
     }
 
     syncModsStateFromUrl()
@@ -2880,7 +2923,10 @@ export default function App() {
               <WrestlerList
                 wrestlers={visibleWrestlers}
                 selectedId={selectedId}
-                onSelect={setSelectedId}
+                onSelect={(id) => {
+                  setSelectedId(id)
+                  setHighlightedAttireId(null)
+                }}
                 onEdit={openEditWrestler}
                 onDelete={canDeleteContent ? deleteWrestler : null}
                 session={session}

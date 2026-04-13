@@ -616,38 +616,8 @@ export default function DetailPanel({
 
   useEffect(() => {
     if (attireViewMode !== 'gallery') return
-    const attires = wrestler?.attires || []
-    if (!attires.length) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
-
-        if (!visible.length) return
-
-        const topEntry = visible[0]
-        const attireId = topEntry.target.getAttribute('data-attire-id')
-
-        if (attireId && attireId !== highlightedAttireId) {
-          onHighlightAttire?.(attireId)
-        }
-      },
-      {
-        root: null,
-        rootMargin: '-20% 0px -45% 0px',
-        threshold: [0.2, 0.35, 0.5, 0.7]
-      }
-    )
-
-    attires.forEach((attire) => {
-      const node = attireRefs.current[attire.id]
-      if (node) observer.observe(node)
-    })
-
-    return () => observer.disconnect()
-  }, [wrestler?.id, wrestler?.attires, attireViewMode, highlightedAttireId, onHighlightAttire])
+    return undefined
+  }, [attireViewMode])
 
   if (!wrestler) {
     return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
