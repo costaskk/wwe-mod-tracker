@@ -401,20 +401,6 @@ export default function AttireEditorModal({
                   </div>
                 ) : null}
 
-                {parsedLinks.length ? (
-                  <div className="download-provider-preview">
-                    {parsedLinks.map((link, index) => {
-                      const provider = getDownloadProvider(link)
-                      return (
-                        <div className={`provider-chip provider-${provider}`} key={`${link}-${index}`}>
-                          <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
-                          <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : null}
-
                 <label>
                   Notes
                   <textarea

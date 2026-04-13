@@ -979,7 +979,7 @@ export async function testDownloadLink(url) {
     }
   }
 
-  const { data, error } = await supabase.functions.invoke('check-links', {
+  const { data, error } = await supabase.functions.invoke('check-download-link', {
     body: {
       urls: [cleanUrl]
     }
