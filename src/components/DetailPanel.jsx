@@ -537,6 +537,8 @@ export default function DetailPanel({
   onClearHighlightedAttire
 }) {
 
+  const canEditWrestler = session && canManageContent(wrestler.owner_id)
+
   const highlightedAttireRef = useRef(null)
 
   useEffect(() => {
@@ -563,8 +565,6 @@ export default function DetailPanel({
   if (!wrestler) {
     return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
   }
-
-  const canEditWrestler = session && canManageContent(wrestler.owner_id)
 
   const canAccessRestrictedFiles = Boolean(canContribute)
 
@@ -702,12 +702,12 @@ export default function DetailPanel({
 
                 return (
                   <article
-                    className={`attire-card improved-attire-card elevated-card ${
-                      highlightedAttireId === attire.id ? 'highlighted-attire-card' : ''
-                    }`}
-                    key={attire.id}
-                    ref={highlightedAttireId === attire.id ? highlightedAttireRef : null}
-                  >
+                  className={`attire-card improved-attire-card elevated-card ${
+                    highlightedAttireId === attire.id ? 'highlighted-attire-card' : ''
+                  }`}
+                  key={attire.id}
+                  ref={highlightedAttireId === attire.id ? highlightedAttireRef : null}
+                >
                     <div className="attire-card-top">
                       <div className="attire-title-stack">
                         <h3>{attire.name}</h3>
