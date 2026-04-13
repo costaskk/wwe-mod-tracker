@@ -2132,6 +2132,10 @@ export default function App() {
       ts: Date.now()
     })
 
+    setTimeout(() => {
+      setCurrentPage('mods')
+    }, 0)
+
     setCurrentPage('mods')
     window.history.replaceState({}, '', `${window.location.pathname}?page=mods`)
   }
@@ -2190,19 +2194,22 @@ export default function App() {
   useEffect(() => {
     if (!wrestlerSelectSignal?.wrestlerId) return
     if (currentPage !== 'mods') return
+
+    // 🚨 DO NOT run until data is ready
     if (!filteredWrestlers.length) return
 
     const { wrestlerId, attireId, forceGallery } = wrestlerSelectSignal
+
     const index = filteredWrestlers.findIndex((w) => w.id === wrestlerId)
 
-    if (index === -1) {
-      return
-    }
+    // 🚨 If wrestler not found yet → WAIT (don't clear signal)
+    if (index === -1) return
 
     const nextPage = Math.floor(index / modsPerPage) + 1
 
     if (modsPage !== nextPage) {
       setModsPage(nextPage)
+      return // wait next render
     }
 
     if (selectedId !== wrestlerId) {
@@ -2217,7 +2224,9 @@ export default function App() {
       setHighlightedAttireId(attireId)
     }
 
+    // ✅ ONLY clear AFTER success
     setWrestlerSelectSignal(null)
+
   }, [
     wrestlerSelectSignal,
     currentPage,
