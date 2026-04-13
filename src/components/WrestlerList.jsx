@@ -130,7 +130,6 @@ export default function WrestlerList({
                   return (
                     <tr
                       key={wrestler.id}
-                      ref={isSelected ? selectedRef : null}
                       className={isSelected ? 'selected-row' : ''}
                       onClick={() => onSelect(wrestler.id)}
                       onKeyDown={(e) => {
@@ -199,7 +198,6 @@ export default function WrestlerList({
                 <button
                   type="button"
                   key={wrestler.id}
-                  ref={isSelected ? selectedRef : null}
                   className={`list-card wrestler-list-card ${isSelected ? 'selected' : ''}`}
                   onClick={() => onSelect(wrestler.id)}
                 >

@@ -2193,9 +2193,11 @@ export default function App() {
     if (!filteredWrestlers.length) return
 
     const { wrestlerId, attireId, forceGallery } = wrestlerSelectSignal
-
     const index = filteredWrestlers.findIndex((w) => w.id === wrestlerId)
-    if (index === -1) return
+
+    if (index === -1) {
+      return
+    }
 
     const nextPage = Math.floor(index / modsPerPage) + 1
 
