@@ -48,17 +48,6 @@ export default function WrestlerList({
 
     const loadMoreRef = useRef(null)
 
-    const selectedRef = useRef(null)
-
-    useEffect(() => {
-      if (selectedRef.current) {
-        selectedRef.current.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        })
-      }
-    }, [selectedId])
-
     useEffect(() => {
       if (!onLoadMore || !hasMore) return
 
@@ -84,8 +73,13 @@ export default function WrestlerList({
       return () => observer.disconnect()
     }, [onLoadMore, hasMore, wrestlers.length])
 
-  const pageStart = pagination ? (pagination.page - 1) * pagination.perPage + 1 : 0
-  const pageEnd = pagination ? Math.min(pagination.page * pagination.perPage, pagination.totalItems) : wrestlers.length
+  const pageStart = pagination?.page && pagination?.perPage
+    ? (pagination.page - 1) * pagination.perPage + 1
+    : wrestlers.length ? 1 : 0
+
+  const pageEnd = pagination?.page && pagination?.perPage && pagination?.totalItems
+    ? Math.min(pagination.page * pagination.perPage, pagination.totalItems)
+    : wrestlers.length
   const pageNumbers = pagination ? buildPageNumbers(pagination.page, pagination.totalPages) : []
 
   return (

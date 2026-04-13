@@ -2123,11 +2123,12 @@ export default function App() {
     const wrestlerId = item?.raw?.wrestler_id
     const attireId = item?.entityId || item?.raw?.id
 
-    if (!wrestlerId || !attireId) return
+    if (!wrestlerId) return
 
     setWrestlerSelectSignal({
       wrestlerId,
       attireId,
+      forceGallery: true,
       ts: Date.now()
     })
 
@@ -2191,21 +2192,39 @@ export default function App() {
     if (currentPage !== 'mods') return
     if (!filteredWrestlers.length) return
 
-    const { wrestlerId, attireId } = wrestlerSelectSignal
+    const { wrestlerId, attireId, forceGallery } = wrestlerSelectSignal
 
-    const index = filteredWrestlers.findIndex((item) => item.id === wrestlerId)
+    const index = filteredWrestlers.findIndex((w) => w.id === wrestlerId)
     if (index === -1) return
 
     const nextPage = Math.floor(index / modsPerPage) + 1
-    setModsPage(nextPage)
-    setSelectedId(wrestlerId)
+
+    if (modsPage !== nextPage) {
+      setModsPage(nextPage)
+    }
+
+    if (selectedId !== wrestlerId) {
+      setSelectedId(wrestlerId)
+    }
+
+    if (forceGallery && attireViewMode !== 'gallery') {
+      setAttireViewMode('gallery')
+    }
 
     if (attireId) {
       setHighlightedAttireId(attireId)
     }
 
     setWrestlerSelectSignal(null)
-  }, [wrestlerSelectSignal, currentPage, filteredWrestlers, modsPerPage])
+  }, [
+    wrestlerSelectSignal,
+    currentPage,
+    filteredWrestlers,
+    modsPage,
+    modsPerPage,
+    selectedId,
+    attireViewMode
+  ])
 
   async function shareCollection(collection) {
     const url = `${window.location.origin}${window.location.pathname}?page=collections&collection=${collection.slug}`
