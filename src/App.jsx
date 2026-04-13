@@ -2216,11 +2216,13 @@ export default function App() {
 
     const nextPage = Math.floor(index / modsPerPage) + 1
 
+    // ✅ STEP 1: ensure correct page FIRST
     if (modsPage !== nextPage) {
       setModsPage(nextPage)
-      return
+      return // 🔥 THIS RETURN IS ACTUALLY CORRECT HERE
     }
 
+    // ✅ STEP 2: now page is correct → continue safely
     if (selectedId !== wrestlerId) {
       setSelectedId(wrestlerId)
     }
@@ -2262,6 +2264,38 @@ export default function App() {
 
     window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`)
   }, [currentPage, selectedId, highlightedAttireId])
+
+  useEffect(() => {
+    function syncModsStateFromUrl() {
+      const params = new URLSearchParams(window.location.search)
+
+      const page = params.get('page')
+      const wrestlerId = params.get('wrestler')
+      const attireId = params.get('attire')
+
+      if (page === 'mods') {
+        setCurrentPage('mods')
+
+        if (wrestlerId) {
+          setSelectedId(wrestlerId)
+        }
+
+        if (attireId) {
+          setHighlightedAttireId(attireId)
+          setAttireViewMode('gallery')
+        } else {
+          setHighlightedAttireId(null)
+        }
+      }
+    }
+
+    syncModsStateFromUrl()
+    window.addEventListener('popstate', syncModsStateFromUrl)
+
+    return () => {
+      window.removeEventListener('popstate', syncModsStateFromUrl)
+    }
+  }, [])
 
   async function shareCollection(collection) {
     const url = `${window.location.origin}${window.location.pathname}?page=collections&collection=${collection.slug}`

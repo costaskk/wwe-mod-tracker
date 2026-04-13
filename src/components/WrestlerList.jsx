@@ -46,6 +46,20 @@ export default function WrestlerList({
   hasMore
 }) {
 
+    const selectedRef = useRef(null)
+
+    useEffect(() => {
+      if (!selectedId) return
+
+      const node = selectedRef.current
+      if (!node) return
+
+      node.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      })
+    }, [selectedId])
+
     const loadMoreRef = useRef(null)
 
     useEffect(() => {
@@ -80,7 +94,10 @@ export default function WrestlerList({
   const pageEnd = pagination?.page && pagination?.perPage && pagination?.totalItems
     ? Math.min(pagination.page * pagination.perPage, pagination.totalItems)
     : wrestlers.length
-  const pageNumbers = pagination ? buildPageNumbers(pagination.page, pagination.totalPages) : []
+  const pageNumbers =
+    pagination?.page && pagination?.totalPages
+      ? buildPageNumbers(pagination.page, pagination.totalPages)
+      : []
 
   return (
     <section className="panel soft-panel list-panel">
@@ -130,12 +147,27 @@ export default function WrestlerList({
                   return (
                     <tr
                       key={wrestler.id}
+                      ref={isSelected ? selectedRef : null}
                       className={isSelected ? 'selected-row' : ''}
-                      onClick={() => onSelect(wrestler.id)}
+                      onClick={() => {
+                        onSelect(wrestler.id)
+
+                        const params = new URLSearchParams(window.location.search)
+                        params.set('page', 'mods')
+                        params.set('wrestler', wrestler.id)
+
+                        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`)
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
                           onSelect(wrestler.id)
+
+                          const params = new URLSearchParams(window.location.search)
+                          params.set('page', 'mods')
+                          params.set('wrestler', wrestler.id)
+
+                          window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`)
                         }
                       }}
                       tabIndex={0}
@@ -198,8 +230,17 @@ export default function WrestlerList({
                 <button
                   type="button"
                   key={wrestler.id}
+                  ref={isSelected ? selectedRef : null}
                   className={`list-card wrestler-list-card ${isSelected ? 'selected' : ''}`}
-                  onClick={() => onSelect(wrestler.id)}
+                  onClick={() => {
+                    onSelect(wrestler.id)
+
+                    const params = new URLSearchParams(window.location.search)
+                    params.set('page', 'mods')
+                    params.set('wrestler', wrestler.id)
+
+                    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`)
+                  }}
                 >
                   <div className="list-card-top with-thumb">
                     <div className="list-thumb-wrap">

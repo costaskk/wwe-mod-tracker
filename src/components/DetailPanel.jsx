@@ -539,15 +539,42 @@ export default function DetailPanel({
 }) {
 
   const canEditWrestler = Boolean(session && wrestler?.owner_id && canManageContent(wrestler.owner_id))
+  const canAccessRestrictedFiles = Boolean(canContribute)
 
   const highlightedAttireRef = useRef(null)
-
   const attireRefs = useRef({})
   const highlightTimeoutRef = useRef(null)
+
+  const [copiedNotice, setCopiedNotice] = useState(null)
+
+  function copyAttireLink(attire) {
+    const params = new URLSearchParams()
+    params.set('page', 'mods')
+    params.set('wrestler', wrestler.id)
+    params.set('attire', attire.id)
+
+    const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`
+
+    navigator.clipboard.writeText(url)
+      .then(() => {
+        setCopiedNotice({
+          title: attire.name,
+          wrestlerName: wrestler.wrestler_name
+        })
+
+        setTimeout(() => {
+          setCopiedNotice(null)
+        }, 1000)
+      })
+      .catch((err) => {
+        console.error('Could not copy attire link', err)
+      })
+  }
 
   useEffect(() => {
     if (!highlightedAttireId) return
     if (!wrestler?.attires?.length) return
+    if (attireViewMode !== 'compact') return
 
     const timer = setTimeout(() => {
       highlightedAttireRef.current?.scrollIntoView({
@@ -564,13 +591,9 @@ export default function DetailPanel({
       clearTimeout(timer)
       clearTimeout(clearTimer)
     }
-  }, [highlightedAttireId, wrestler, onClearHighlightedAttire])
+  }, [highlightedAttireId, wrestler?.id, wrestler?.attires?.length, attireViewMode, onClearHighlightedAttire])
 
-  if (!wrestler) {
-    return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
-  }
-
-  useEffect(() => {
+   useEffect(() => {
     if (!highlightedAttireId || attireViewMode !== 'gallery') return
 
     const node = attireRefs.current[highlightedAttireId]
@@ -626,7 +649,9 @@ export default function DetailPanel({
     return () => observer.disconnect()
   }, [wrestler?.id, wrestler?.attires, attireViewMode, highlightedAttireId, onHighlightAttire])
 
-  const canAccessRestrictedFiles = Boolean(canContribute)
+  if (!wrestler) {
+    return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
+  }
 
   return (
     <div className="detail-stack">
@@ -775,6 +800,14 @@ export default function DetailPanel({
                     }`}
                     key={attire.id}
                   >
+                    <button
+                      type="button"
+                      className="attire-link-copy-btn"
+                      onClick={() => copyAttireLink(attire)}
+                      title="Copy attire link"
+                    >
+                      🔗
+                    </button>
                     <div className="attire-card-top">
                       <div className="attire-title-stack">
                         <h3>{attire.name}</h3>
@@ -1001,6 +1034,11 @@ export default function DetailPanel({
           </div>
         )}
       </section>
+      {copiedNotice ? (
+        <div className="copied-link-toast">
+          {copiedNotice.title} attire from {copiedNotice.wrestlerName} copied to clipboard
+        </div>
+      ) : null}
     </div>
   )
 }

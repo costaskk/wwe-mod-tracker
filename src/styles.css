@@ -2167,6 +2167,48 @@ select option {
   gap: 14px;
 }
 
+.attire-card {
+  position: relative;
+}
+
+.attire-link-copy-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(10, 16, 24, 0.75);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.attire-link-copy-btn:hover {
+  background: rgba(63, 166, 255, 0.18);
+  border-color: rgba(63, 166, 255, 0.4);
+}
+
+.copied-link-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  background: rgba(14, 24, 20, 0.95);
+  color: #d8ffec;
+  padding: 12px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(111, 227, 173, 0.3);
+  font-weight: 600;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+}
+
 .single-column-visuals {
   grid-template-columns: 1fr;
 }
