@@ -11,6 +11,17 @@ import {
   testDownloadLink
 } from '../lib/utils'
 
+function normalizeLinkForCheck(link) {
+  const value = String(link || '').trim()
+  if (!value) return ''
+
+  if (/^https?:\/\//i.test(value)) {
+    return value
+  }
+
+  return `https://${value}`
+}
+
 function JsonEditor({ title, value, onChange, onUpload, filenameHint, uploading }) {
   const [expanded, setExpanded] = useState(true)
 
@@ -126,7 +137,9 @@ export default function AttireEditorModal({
       .slice(0, 6)
   }, [parentWrestler, normalizedAttireName, form.id, duplicateAttire])
 
-  const parsedLinks = useMemo(() => parseDownloadLinks(form.download_url || ''), [form.download_url])
+  const parsedLinks = useMemo(() => {
+    return [...new Set(parseDownloadLinks(form.download_url || ''))]
+  }, [form.download_url])
 
   const [linkCheckResults, setLinkCheckResults] = useState({})
   const [isCheckingLinks, setIsCheckingLinks] = useState(false)
@@ -147,7 +160,7 @@ export default function AttireEditorModal({
         const results = await Promise.all(
           parsedLinks.map(async (link) => {
             try {
-              const result = await testDownloadLink(link)
+              const result = await testDownloadLink(normalizeLinkForCheck(link))
               return [link, result]
             } catch (error) {
               return [

@@ -146,6 +146,78 @@ export default function App() {
     setNotice({ type, title, message })
   }
 
+  async function compressImage(file) {
+    if (!(file instanceof File)) {
+      return file
+    }
+
+    // Do not try to "compress" non-image files.
+    // Keep DDS, WEM, JSON and anything else untouched.
+    if (!file.type || !file.type.startsWith('image/')) {
+      return file
+    }
+
+    return new Promise((resolve) => {
+      const img = new Image()
+      const reader = new FileReader()
+
+      reader.onload = (event) => {
+        img.onload = () => {
+          const maxWidth = 1920
+          const maxHeight = 1920
+
+          let { width, height } = img
+
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height)
+            width = Math.round(width * ratio)
+            height = Math.round(height * ratio)
+          }
+
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            resolve(file)
+            return
+          }
+
+          ctx.drawImage(img, 0, 0, width, height)
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                resolve(file)
+                return
+              }
+
+              const compressed = new File(
+                [blob],
+                file.name,
+                {
+                  type: file.type === 'image/png' ? 'image/png' : 'image/jpeg',
+                  lastModified: Date.now()
+                }
+              )
+
+              resolve(compressed)
+            },
+            file.type === 'image/png' ? 'image/png' : 'image/jpeg',
+            0.82
+          )
+        }
+
+        img.onerror = () => resolve(file)
+        img.src = event.target?.result
+      }
+
+      reader.onerror = () => resolve(file)
+      reader.readAsDataURL(file)
+    })
+  }
+
   function addTitantron() {
     setWrestlerForm((current) => ({
       ...current,
@@ -1253,16 +1325,12 @@ export default function App() {
       const parentWrestler = wrestlers.find((item) => item.id === attireForm.wrestler_id)
       const duplicateAttire = findDuplicateAttire(parentWrestler?.attires || [], attireForm.name)
 
-      const parsedLinks = parseDownloadLinks(attireForm.download_url || '')
-
-      if (parsedLinks.length) {
-        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
-        const deadResults = results.filter((item) => item?.status === 'dead' || item?.ok === false)
-
-        if (deadResults.length === parsedLinks.length) {
-          throw new Error('All entered download links appear to be dead. Please correct them before saving.')
-        }
-      }
+      const normalizedDownloadUrl = (attireForm.download_url || '')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => (/^https?:\/\//i.test(line) ? line : `https://${line}`))
+        .join('\n')
 
       if (duplicateAttire && duplicateAttire.id !== attireForm.id) throw new Error(`Attire already exists for this wrestler: ${duplicateAttire.name}`)
       const payload = {
@@ -1270,7 +1338,7 @@ export default function App() {
         name: attireForm.name.trim(),
         era: attireForm.era.trim(),
         creator_name: attireForm.creator_name.trim(),
-        download_url: attireForm.download_url.trim(),
+        download_url: normalizedDownloadUrl,
         source_game: attireForm.source_game,
         mod_type: attireForm.mod_type === 'port' ? 'port' : 'original',
         render_dds_path: attireForm.render_dds_path || '',
@@ -1283,27 +1351,53 @@ export default function App() {
 
       let attireId = attireForm.id
 
+      const parsedLinks = parseDownloadLinks(attireForm.download_url || '')
+
       if (parsedLinks.length) {
-        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
-        const hasDeadLink = results.some((item) => item?.status === 'dead')
+        try {
+          const results = await Promise.all(
+            parsedLinks.map((link) => testDownloadLink(link))
+          )
 
-        if (hasDeadLink) {
-          const { data: existingDeadRequests } = await supabase
-            .from('mod_requests')
-            .select('id')
-            .eq('attire_id', attireId)
-            .eq('status', 'open')
-            .eq('request_type', 'dead_link')
-            .limit(1)
+          const hasDeadLink = results.some(
+            (item) => item?.status === 'dead' || item?.ok === false
+          )
 
-          if (!existingDeadRequests?.length) {
-            await supabase.from('mod_requests').insert({
-              wrestler_id: attireForm.wrestler_id,
-              attire_id: attireId,
-              request_type: 'dead_link',
-              notes: 'Automatically detected dead link during save.'
-            })
+          if (hasDeadLink && attireId) {
+            const { data: existingDeadRequests, error: existingDeadRequestsError } = await supabase
+              .from('mod_requests')
+              .select('id')
+              .eq('attire_id', attireId)
+              .eq('status', 'open')
+              .eq('request_type', 'dead_link')
+              .limit(1)
+
+            if (existingDeadRequestsError) {
+              throw existingDeadRequestsError
+            }
+
+            if (!existingDeadRequests?.length) {
+              const { error: deadRequestInsertError } = await supabase
+                .from('mod_requests')
+                .insert({
+                  wrestler_id: attireForm.wrestler_id,
+                  attire_id: attireId,
+                  request_type: 'dead_link',
+                  notes: 'Automatically detected dead link during save.'
+                })
+
+              if (deadRequestInsertError) {
+                throw deadRequestInsertError
+              }
+            }
           }
+        } catch (linkCheckError) {
+          console.error('Link check during save failed', linkCheckError)
+          openNotice(
+            'info',
+            'Attire saved',
+            'The attire was saved, but the automatic link verification could not be completed right now.'
+          )
         }
       }
 
