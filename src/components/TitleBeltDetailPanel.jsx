@@ -52,7 +52,7 @@ function TitleGallery({ images = [], onOpenImageViewer }) {
   }
 
   const galleryImages = images
-    .map((image) => image.url || image.image_url || '')
+    .map((image) => image.full_image_url || image.url || image.image_url || '')
     .filter(Boolean)
 
   return (
@@ -68,6 +68,7 @@ function TitleGallery({ images = [], onOpenImageViewer }) {
             onClick={() => onOpenImageViewer?.(galleryImages, index)}
           >
             <img
+              loading="lazy"
               className="gallery-img"
               src={src}
               alt={image.name || image.image_name || 'Title screenshot'}
@@ -137,6 +138,7 @@ function DdsPreview({ url, name, onOpenImageViewer }) {
           onClick={() => onPreview(url)}
         >
           <img
+            loading="lazy"
             className="upload-preview dds-inline-preview"
             src={url}
             alt={name || 'DDS render'}

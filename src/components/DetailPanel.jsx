@@ -84,6 +84,7 @@ function DdsDisplay({ url, name, canAccessRestrictedFiles }) {
     <div className="dds-display">
       {!failed ? (
         <img
+          loading="lazy"
           className="gallery-img dds-inline-preview"
           src={url}
           alt={name || 'DDS render'}
@@ -304,12 +305,13 @@ function WrestlerTitantronSection({ wrestler, canContribute, onOpenImageViewer }
                         className="gallery-tile gallery-button-reset"
                         onClick={() =>
                           onOpenImageViewer?.(
-                            validScreenshots.map((img) => img.image_url || img.url).filter(Boolean),
+                            validScreenshots.map((img) => img.full_image_url || img.image_url || img.url).filter(Boolean),
                             index
                           )
                         }
                       >
                         <img
+                          loading="lazy"
                           className="gallery-img"
                           src={image.image_url || image.url}
                           alt={image.image_name || image.name || item.title || 'Titantron screenshot'}
@@ -550,9 +552,9 @@ export default function DetailPanel({
               <button
                 type="button"
                 className="hero-headshot-button"
-                onClick={() => onOpenImageViewer?.([wrestler.headshot_url], 0)}
+                onClick={() => onOpenImageViewer?.([wrestler.headshot_full_url || wrestler.headshot_url], 0)}
               >
-                <img className="hero-headshot" src={wrestler.headshot_url} alt={wrestler.wrestler_name} />
+                <img loading="lazy" className="hero-headshot" src={wrestler.headshot_url} alt={wrestler.wrestler_name} />
               </button>
             ) : (
               <div className="hero-headshot hero-headshot-placeholder">
@@ -707,12 +709,12 @@ export default function DetailPanel({
                                 className="gallery-tile gallery-button-reset"
                                 onClick={() =>
                                   onOpenImageViewer?.(
-                                    validScreenshots.map((img) => img.image_url || img.url).filter(Boolean),
+                                    validScreenshots.map((img) => img.full_image_url || img.image_url || img.url).filter(Boolean),
                                     index
                                   )
                                 }
                               >
-                                <img className="gallery-img" src={image.image_url || image.url} alt={image.image_name || image.name || attire.name} />
+                                <img loading="lazy" className="gallery-img" src={image.image_url || image.url} alt={image.image_name || image.name || attire.name} />
                               </button>
                             ))
                           ) : (

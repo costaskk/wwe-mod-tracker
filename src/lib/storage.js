@@ -1,14 +1,16 @@
-
 import { supabase } from './supabase'
 
 const BUCKET = 'mod-assets'
 
+/**
+ * Upload asset (images, audio, etc)
+ */
 export async function uploadAsset({ userId, entityId, file, kind, folder = 'attires' }) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
   const path = `${userId}/${folder}/${entityId}/${kind}-${Date.now()}-${safeName}`
 
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-    cacheControl: '3600',
+    cacheControl: '31536000', // 1 year cache (important for performance)
     upsert: true
   })
 
@@ -16,19 +18,92 @@ export async function uploadAsset({ userId, entityId, file, kind, folder = 'atti
   return { path, fileName: file.name }
 }
 
+/**
+ * Remove assets from storage
+ */
 export async function removeAssets(paths = []) {
   const clean = paths.filter(Boolean)
   if (!clean.length) return
+
   const { error } = await supabase.storage.from(BUCKET).remove(clean)
   if (error) throw error
 }
 
-export function getAssetUrl(path) {
+/**
+ * Get asset URL
+ * Supports Supabase image transformations for optimized loading
+ */
+export function getAssetUrl(path, options = {}) {
   if (!path) return ''
+
+  const {
+    width,
+    height,
+    quality = 70,
+    resize = 'cover'
+  } = options
+
+  const hasTransform = width || height
+
+  // Use Supabase transform (THIS FIXES YOUR 10MB IMAGE ISSUE)
+  if (hasTransform) {
+    const { data } = supabase.storage.from(BUCKET).getPublicUrl(path, {
+      transform: {
+        width,
+        height,
+        quality,
+        resize
+      }
+    })
+
+    return data.publicUrl
+  }
+
+  // Full original image
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
   return data.publicUrl
 }
 
+/**
+ * OPTIONAL: Compress image before upload (fixes future large uploads)
+ */
+export async function compressImage(file, { maxWidth = 2200, quality = 0.82 } = {}) {
+  if (!file?.type?.startsWith('image/')) return file
+
+  try {
+    const imageBitmap = await createImageBitmap(file)
+
+    const scale = Math.min(1, maxWidth / imageBitmap.width)
+    const width = Math.round(imageBitmap.width * scale)
+    const height = Math.round(imageBitmap.height * scale)
+
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(imageBitmap, 0, 0, width, height)
+
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', quality)
+    )
+
+    if (!blob) return file
+
+    return new File(
+      [blob],
+      file.name.replace(/\.\w+$/, '.jpg'),
+      { type: 'image/jpeg' }
+    )
+  } catch (err) {
+    console.warn('Image compression failed, using original file', err)
+    return file
+  }
+}
+
+/**
+ * Wikipedia auto headshot fetch
+ */
 export async function tryAutoMatchHeadshot(name, excludedTitles = [], excludedUrls = []) {
   const query = encodeURIComponent(name.trim())
   if (!query) throw new Error('Wrestler name is required for auto-match.')
@@ -48,7 +123,10 @@ export async function tryAutoMatchHeadshot(name, excludedTitles = [], excludedUr
     if (!summaryResponse.ok) continue
 
     const summaryData = await summaryResponse.json()
-    const imageUrl = summaryData?.thumbnail?.source || summaryData?.originalimage?.source
+    const imageUrl =
+      summaryData?.thumbnail?.source ||
+      summaryData?.originalimage?.source
+
     if (!imageUrl || excludedUrls.includes(imageUrl)) continue
 
     return { imageUrl, sourceTitle: title }

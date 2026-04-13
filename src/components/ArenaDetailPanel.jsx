@@ -51,7 +51,7 @@ function ArenaGallery({ images = [], onOpenImageViewer }) {
   }
 
   const galleryImages = images
-    .map((image) => image.url || image.image_url || '')
+    .map((image) => image.full_image_url || image.url || image.image_url || '')
     .filter(Boolean)
 
   return (
@@ -67,6 +67,7 @@ function ArenaGallery({ images = [], onOpenImageViewer }) {
             onClick={() => onOpenImageViewer?.(galleryImages, index)}
           >
             <img
+              loading="lazy"
               className="gallery-img"
               src={src}
               alt={image.name || image.image_name || 'Arena screenshot'}

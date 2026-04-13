@@ -186,10 +186,12 @@ export default function App() {
           throw new Error('Titantron screenshots must be image files.')
         }
 
+        const optimizedFile = await compressImage(file)
+
         const { path, fileName } = await uploadAsset({
           userId: session.user.id,
           entityId,
-          file,
+          file: optimizedFile,
           kind: 'titantron_image',
           folder: 'wrestlers'
         })
@@ -650,7 +652,12 @@ export default function App() {
 
       const normalizedWrestlers = (wrestlerResult.data || []).map((wrestler) => ({
         ...wrestler,
-        headshot_url: wrestler.headshot_path ? getAssetUrl(wrestler.headshot_path) : (wrestler.headshot_external_url || ''),
+        headshot_url: wrestler.headshot_path
+          ? getAssetUrl(wrestler.headshot_path, { width: 320, height: 320, quality: 70 })
+          : (wrestler.headshot_external_url || ''),
+        headshot_full_url: wrestler.headshot_path
+          ? getAssetUrl(wrestler.headshot_path)
+          : (wrestler.headshot_external_url || ''),
         audio_files: (wrestler.wrestler_audio_files || []).map((file) => ({
           ...file,
           file_url: file.file_path ? getAssetUrl(file.file_path) : ''
@@ -659,16 +666,25 @@ export default function App() {
           ...item,
           titantron_images: (item.titantron_images || []).map((img) => ({
             ...img,
-            image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+            image_url: img.image_path
+              ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+              : '',
+            full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
           }))
         })),
         attires: sortAttires((wrestler.attires || []).map((attire) => ({
           ...attire,
           mod_type: attire.mod_type === 'port' ? 'port' : 'original',
-          render_dds_url: attire.render_dds_path ? getAssetUrl(attire.render_dds_path) : '',
+          render_dds_url: attire.render_dds_path
+            ? getAssetUrl(attire.render_dds_path, { width: 700, height: 700, quality: 70, resize: 'contain' })
+            : '',
+          render_dds_full_url: attire.render_dds_path ? getAssetUrl(attire.render_dds_path) : '',
           attire_images: (attire.attire_images || []).map((img) => ({
             ...img,
-            image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+            image_url: img.image_path
+              ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+              : '',
+            full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
           }))
         }))),
         requests: [...(wrestler.mod_requests || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -678,7 +694,10 @@ export default function App() {
         ...arena,
         arena_images: (arena.arena_images || []).map((img) => ({
           ...img,
-          image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+          image_url: img.image_path
+            ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+            : '',
+          full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
         })),
         requests: [...(arena.arena_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
@@ -687,10 +706,16 @@ export default function App() {
 
       const normalizedTitles = (titleResult.data || []).map((title) => ({
         ...title,
-        render_dds_url: title.render_dds_path ? getAssetUrl(title.render_dds_path) : '',
+        render_dds_url: title.render_dds_path
+          ? getAssetUrl(title.render_dds_path, { width: 700, height: 700, quality: 70, resize: 'contain' })
+          : '',
+        render_dds_full_url: title.render_dds_path ? getAssetUrl(title.render_dds_path) : '',
         title_belt_images: (title.title_belt_images || []).map((img) => ({
           ...img,
-          image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+          image_url: img.image_path
+            ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+            : '',
+          full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
         })),
         audio_files: (title.title_belt_audio_files || []).map((file) => ({
           ...file,
@@ -705,7 +730,10 @@ export default function App() {
         ...otherMod,
         other_mod_images: (otherMod.other_mod_images || []).map((img) => ({
           ...img,
-          image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+          image_url: img.image_path
+            ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+            : '',
+          full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
         })),
         requests: [...(otherMod.other_mod_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
@@ -721,7 +749,10 @@ export default function App() {
             render_dds_url: item.attire.render_dds_path ? getAssetUrl(item.attire.render_dds_path) : '',
             attire_images: (item.attire.attire_images || []).map((img) => ({
               ...img,
-              image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+              image_url: img.image_path
+                ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+                : '',
+              full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
             })),
             wrestler: item.attire.wrestler ? {
               ...item.attire.wrestler,
@@ -735,7 +766,10 @@ export default function App() {
             ...item.arena,
             arena_images: (item.arena.arena_images || []).map((img) => ({
               ...img,
-              image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+              image_url: img.image_path
+                ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+                : '',
+              full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
             }))
           } : null,
 
@@ -744,7 +778,10 @@ export default function App() {
             render_dds_url: item.title_belt.render_dds_path ? getAssetUrl(item.title_belt.render_dds_path) : '',
             title_belt_images: (item.title_belt.title_belt_images || []).map((img) => ({
               ...img,
-              image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+              image_url: img.image_path
+                ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+                : '',
+              full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
             }))
           } : null,
 
@@ -752,13 +789,19 @@ export default function App() {
             ...item.other_mod,
             other_mod_images: (item.other_mod.other_mod_images || []).map((img) => ({
               ...img,
-              image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+              image_url: img.image_path
+                ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+                : '',
+              full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
             }))
           } : null
         }))
         collectionMap.set(collection.id, {
           ...collection,
-          cover_url: collection.cover_path ? getAssetUrl(collection.cover_path) : '',
+          cover_url: collection.cover_path
+            ? getAssetUrl(collection.cover_path, { width: 900, height: 500, quality: 70 })
+            : '',
+          cover_full_url: collection.cover_path ? getAssetUrl(collection.cover_path) : '',
           items: normalizedItems
         })
       })
@@ -1097,10 +1140,12 @@ export default function App() {
           throw new Error('Only .wem files are allowed.')
         }
 
+        const optimizedFile = await compressImage(file)
+
         const { path, fileName } = await uploadAsset({
           userId: session.user.id,
           entityId,
-          file,
+          file: optimizedFile,
           kind,
           folder: 'wrestlers'
         })
@@ -1243,10 +1288,12 @@ export default function App() {
 
       const entityId = wrestlerForm.id || wrestlerForm.temp_upload_id || uid()
 
+      const optimizedFile = await compressImage(file)
+
       const { path, fileName } = await uploadAsset({
         userId: session.user.id,
         entityId,
-        file,
+        file: optimizedFile,
         kind: 'headshot',
         folder: 'wrestlers'
       })
@@ -1279,10 +1326,12 @@ export default function App() {
 
       const entityId = collectionForm.id || collectionForm.temp_upload_id || uid()
 
+      const optimizedFile = await compressImage(file)
+
       const { path, fileName } = await uploadAsset({
         userId: session.user.id,
         entityId,
-        file,
+        file: optimizedFile,
         kind: 'cover',
         folder: 'collections'
       })
@@ -1389,7 +1438,8 @@ export default function App() {
         const file = filesOrFile
         if (!file.name.toLowerCase().endsWith('.dds')) throw new Error('Render must be a .dds file.')
         const entityId = attireForm.id || uid()
-        const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file, kind: 'render', folder: 'attires' })
+        const optimizedFile = await compressImage(file)
+        const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file: optimizedFile, kind: 'render', folder: 'attires' })
         setAttireForm((current) => ({ ...current, id: current.id || entityId, render_dds_path: path, render_dds_name: fileName, render_dds_url: getAssetUrl(path) }))
         openNotice('success', 'DDS uploaded', `${file.name} was uploaded successfully.`)
       }
@@ -1399,7 +1449,8 @@ export default function App() {
         const uploaded = []
         for (const file of files) {
           if (!file.type.startsWith('image/')) throw new Error('All screenshots must be image files.')
-          const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file, kind: 'image', folder: 'attires' })
+          const optimizedFile = await compressImage(file)
+          const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file: optimizedFile, kind: 'image', folder: 'attires' })
           uploaded.push({ path, name: fileName, url: getAssetUrl(path) })
         }
         setAttireForm((current) => ({ ...current, id: current.id || entityId, images: [...current.images, ...uploaded], pendingImageUploads: [...(current.pendingImageUploads || []), ...uploaded] }))

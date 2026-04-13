@@ -160,7 +160,7 @@ function ImageViewerModal({
           ←
         </button>
 
-        <img src={images[index]} alt={`${title} screenshot ${index + 1}`} />
+        <img loading="lazy" src={images[index]} alt={`${title} screenshot ${index + 1}`} />
 
         <button
           type="button"
@@ -251,6 +251,7 @@ function ItemThumb({ item, onOpenViewer, isHovered = false }) {
       >
         {currentImage ? (
           <img
+            loading="lazy"
             className="collection-item-thumb"
             src={currentImage}
             alt={titleText}
@@ -285,7 +286,7 @@ function ItemThumb({ item, onOpenViewer, isHovered = false }) {
               }}
               onClick={() => onOpenViewer?.(previewImages, index, titleText)}
             >
-              <img src={image} alt={`${titleText} screenshot ${index + 1}`} />
+              <img loading="lazy" src={image} alt={`${titleText} screenshot ${index + 1}`} />
             </button>
           ))}
 
