@@ -547,6 +547,8 @@ export default function DetailPanel({
 
   const [copiedNotice, setCopiedNotice] = useState(null)
 
+  const copiedNoticeTimeoutRef = useRef(null)
+
   function copyAttireLink(attire) {
     const params = new URLSearchParams()
     params.set('page', 'mods')
@@ -562,7 +564,8 @@ export default function DetailPanel({
           wrestlerName: wrestler.wrestler_name
         })
 
-        setTimeout(() => {
+        clearTimeout(copiedNoticeTimeoutRef.current)
+        copiedNoticeTimeoutRef.current = setTimeout(() => {
           setCopiedNotice(null)
         }, 1000)
       })
@@ -572,9 +575,16 @@ export default function DetailPanel({
   }
 
   useEffect(() => {
+    return () => {
+      clearTimeout(copiedNoticeTimeoutRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!highlightedAttireId) return
     if (!wrestler?.attires?.length) return
     if (attireViewMode !== 'compact') return
+    if (!(wrestler.attires || []).some((attire) => attire.id === highlightedAttireId)) return
 
     const timer = setTimeout(() => {
       highlightedAttireRef.current?.scrollIntoView({
@@ -593,7 +603,7 @@ export default function DetailPanel({
     }
   }, [highlightedAttireId, wrestler?.id, wrestler?.attires?.length, attireViewMode, onClearHighlightedAttire])
 
-   useEffect(() => {
+  useEffect(() => {
     if (!highlightedAttireId || attireViewMode !== 'gallery') return
 
     const node = attireRefs.current[highlightedAttireId]
@@ -604,6 +614,8 @@ export default function DetailPanel({
       block: 'start'
     })
 
+    node.classList.remove('attire-card-highlight-flash')
+    void node.offsetWidth
     node.classList.add('attire-card-highlight-flash')
 
     clearTimeout(highlightTimeoutRef.current)
@@ -616,8 +628,39 @@ export default function DetailPanel({
 
   useEffect(() => {
     if (attireViewMode !== 'gallery') return
-    return undefined
-  }, [attireViewMode])
+
+    const attires = wrestler?.attires || []
+    if (!attires.length) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
+
+        if (!visible.length) return
+
+        const topEntry = visible[0]
+        const attireId = topEntry.target.getAttribute('data-attire-id')
+
+        if (attireId && attireId !== highlightedAttireId) {
+          onHighlightAttire?.(attireId)
+        }
+      },
+      {
+        root: null,
+        rootMargin: '-20% 0px -45% 0px',
+        threshold: [0.2, 0.35, 0.5, 0.7]
+      }
+    )
+
+    attires.forEach((attire) => {
+      const node = attireRefs.current[attire.id]
+      if (node) observer.observe(node)
+    })
+
+    return () => observer.disconnect()
+  }, [wrestler?.id, wrestler?.attires, attireViewMode, highlightedAttireId, onHighlightAttire])
 
   if (!wrestler) {
     return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
@@ -770,14 +813,6 @@ export default function DetailPanel({
                     }`}
                     key={attire.id}
                   >
-                    <button
-                      type="button"
-                      className="attire-link-copy-btn"
-                      onClick={() => copyAttireLink(attire)}
-                      title="Copy attire link"
-                    >
-                      🔗
-                    </button>
                     <div className="attire-card-top">
                       <div className="attire-title-stack">
                         <h3>{attire.name}</h3>
@@ -799,8 +834,22 @@ export default function DetailPanel({
                           <span>{titleCase(attire.mod_type)}</span>
                         </div>
                       </div>
+                      <div className="attire-card-top-right">
+                        <span className={statusClass(attire.status)}>{titleCase(attire.status)}</span>
 
-                      <span className={statusClass(attire.status)}>{titleCase(attire.status)}</span>
+                        <button
+                          type="button"
+                          className="attire-link-copy-btn"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            copyAttireLink(attire)
+                          }}
+                          title="Copy attire link"
+                        >
+                          🔗
+                        </button>
+                      </div>
                     </div>
 
                     <div className="attire-visuals single-column-visuals">

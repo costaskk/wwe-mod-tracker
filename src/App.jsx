@@ -421,57 +421,6 @@ export default function App() {
     fetchAll()
   }, [session])
 
-  useEffect(() => {
-    function syncFromUrl() {
-      const params = new URLSearchParams(window.location.search)
-      const slug = params.get('collection')
-      const page = params.get('page')
-      const wrestlerId = params.get('wrestler')
-      const attireId = params.get('attire')
-
-      if (slug) {
-        setCurrentPage('collections')
-      } else if (page === 'collections') {
-        setCurrentPage('collections')
-      } else if (page === 'arenas') {
-        setCurrentPage('arenas')
-      } else if (page === 'titles') {
-        setCurrentPage('titles')
-      } else if (page === 'other_mods') {
-        setCurrentPage('other_mods')
-      } else if (page === 'admin') {
-        setCurrentPage('admin')
-      } else if (page === 'issues') {
-        setCurrentPage('issues')
-      } else if (page === 'mods') {
-        setCurrentPage('mods')
-      } else {
-        setCurrentPage('all_mods')
-      }
-
-      if (page === 'mods' && wrestlerId) {
-        setWrestlerSelectSignal({
-          wrestlerId,
-          attireId: attireId || null,
-          forceGallery: Boolean(attireId),
-          ts: Date.now()
-        })
-      }
-
-      if (!slug) {
-        setSelectedCollection(null)
-      } else {
-        const found = collections.find((item) => item.slug === slug)
-        setSelectedCollection(found || null)
-      }
-    }
-
-    syncFromUrl()
-    window.addEventListener('popstate', syncFromUrl)
-
-    return () => window.removeEventListener('popstate', syncFromUrl)
-  }, [collections])
-
   async function fetchCurrentUserProfile() {
     if (!session?.user?.id) return { data: null, error: null }
 
@@ -868,7 +817,16 @@ export default function App() {
       setCreators(creatorResult.data || [])
       setCollections(repairedCollections)
       setSelectedCollection(collectionFromUrl || null)
-      setSelectedId((current) => current || normalizedWrestlers[0]?.id || null)
+      setSelectedId((current) => {
+        if (current) return current
+
+        const params = new URLSearchParams(window.location.search)
+        const wrestlerFromUrl = params.get('wrestler')
+
+        if (wrestlerFromUrl) return current
+
+        return normalizedWrestlers[0]?.id || null
+      })
       setInstalledIds(new Set((installsResult.data || []).map((item) => item.attire_id)))
       setInstalledArenaIds(new Set((installedArenasResult.data || []).map((item) => item.arena_id)))
       setInstalledTitleIds(new Set((installedTitlesResult.data || []).map((item) => item.title_belt_id)))
@@ -1016,21 +974,21 @@ export default function App() {
   }, [myCollections, collectionPicker, session])
 
   useEffect(() => {
-    // 🔥 DO NOT override selection if URL navigation is in progress
     if (wrestlerSelectSignal?.wrestlerId) return
 
-    if (!selectedId && visibleWrestlers[0]) {
-      setSelectedId(visibleWrestlers[0].id)
+    if (!selectedId && filteredWrestlers[0]) {
+      setSelectedId(filteredWrestlers[0].id)
       return
     }
 
     if (
       selectedId &&
-      !visibleWrestlers.some((item) => item.id === selectedId)
+      !filteredWrestlers.some((item) => item.id === selectedId)
     ) {
-      setSelectedId(visibleWrestlers[0]?.id || null)
+      setSelectedId(filteredWrestlers[0]?.id || null)
+      setHighlightedAttireId(null)
     }
-  }, [visibleWrestlers, selectedId, wrestlerSelectSignal])
+  }, [filteredWrestlers, selectedId, wrestlerSelectSignal])
 
   async function updateProfile(userId, changes) {
     if (!isAdmin) return
@@ -2093,7 +2051,9 @@ export default function App() {
 
   function goWrestlersPage() {
     setSelectedCollection(null)
+    setHighlightedAttireId(null)
     setCurrentPage('mods')
+    setVisibleModsCount(modsPerPage)
     window.history.replaceState({}, '', `${window.location.pathname}?page=mods`)
   }
 
@@ -2222,13 +2182,16 @@ export default function App() {
     const { wrestlerId, attireId, forceGallery } = wrestlerSelectSignal
 
     const index = filteredWrestlers.findIndex((w) => w.id === wrestlerId)
-    if (index === -1) return
 
-    const nextPage = Math.floor(index / modsPerPage) + 1
-
-    if (modsPage !== nextPage) {
-      setModsPage(nextPage)
+    if (index === -1) {
+      setWrestlerSelectSignal(null)
       return
+    }
+
+    const neededVisibleCount = Math.max(modsPerPage, index + 1)
+
+    if (visibleModsCount < neededVisibleCount) {
+      setVisibleModsCount(neededVisibleCount)
     }
 
     if (selectedId !== wrestlerId) {
@@ -2239,18 +2202,14 @@ export default function App() {
       setAttireViewMode('gallery')
     }
 
-    if (attireId) {
-      setHighlightedAttireId(attireId)
-    } else {
-      setHighlightedAttireId(null)
-    }
+    setHighlightedAttireId(attireId || null)
 
     setWrestlerSelectSignal(null)
   }, [
     wrestlerSelectSignal,
     currentPage,
     filteredWrestlers,
-    modsPage,
+    visibleModsCount,
     modsPerPage,
     selectedId,
     attireViewMode
@@ -2278,8 +2237,24 @@ export default function App() {
       const params = new URLSearchParams(window.location.search)
 
       const page = params.get('page')
+      const slug = params.get('collection')
       const wrestlerId = params.get('wrestler')
       const attireId = params.get('attire')
+
+      if (slug || page === 'collections') {
+        setCurrentPage('collections')
+
+        if (slug) {
+          const found = collections.find((item) => item.slug === slug)
+          setSelectedCollection(found || null)
+        } else {
+          setSelectedCollection(null)
+        }
+
+        return
+      }
+
+      setSelectedCollection(null)
 
       if (page === 'mods') {
         setCurrentPage('mods')
@@ -2295,11 +2270,6 @@ export default function App() {
           setHighlightedAttireId(null)
         }
 
-        return
-      }
-
-      if (page === 'collections') {
-        setCurrentPage('collections')
         return
       }
 
@@ -2342,7 +2312,7 @@ export default function App() {
     return () => {
       window.removeEventListener('popstate', syncModsStateFromUrl)
     }
-  }, [])
+  }, [collections])
 
   async function shareCollection(collection) {
     const url = `${window.location.origin}${window.location.pathname}?page=collections&collection=${collection.slug}`

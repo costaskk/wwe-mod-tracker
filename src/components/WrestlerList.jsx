@@ -151,23 +151,11 @@ export default function WrestlerList({
                       className={isSelected ? 'selected-row' : ''}
                       onClick={() => {
                         onSelect(wrestler.id)
-
-                        const params = new URLSearchParams(window.location.search)
-                        params.set('page', 'mods')
-                        params.set('wrestler', wrestler.id)
-
-                        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`)
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
                           onSelect(wrestler.id)
-
-                          const params = new URLSearchParams(window.location.search)
-                          params.set('page', 'mods')
-                          params.set('wrestler', wrestler.id)
-
-                          window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`)
                         }
                       }}
                       tabIndex={0}
@@ -234,12 +222,6 @@ export default function WrestlerList({
                   className={`list-card wrestler-list-card ${isSelected ? 'selected' : ''}`}
                   onClick={() => {
                     onSelect(wrestler.id)
-
-                    const params = new URLSearchParams(window.location.search)
-                    params.set('page', 'mods')
-                    params.set('wrestler', wrestler.id)
-
-                    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`)
                   }}
                 >
                   <div className="list-card-top with-thumb">
