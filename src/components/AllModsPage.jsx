@@ -110,10 +110,23 @@ export default function AllModsPage({
 
         const linkStatusOk =
           linkStatusFilter === 'all' ||
-          (linkStatusFilter === 'active' && !hasMissingLink && !hasDeadLink) ||
-          (linkStatusFilter === 'missing' && hasMissingLink) ||
-          (linkStatusFilter === 'dead' && hasDeadLink) ||
-          (linkStatusFilter === 'issues' && (hasMissingLink || hasDeadLink))
+
+          // Only working links
+          (linkStatusFilter === 'active' &&
+            !hasMissingLink &&
+            !hasDeadLink) ||
+
+          // Missing links only
+          (linkStatusFilter === 'missing' &&
+            hasMissingLink) ||
+
+          // Dead links only
+          (linkStatusFilter === 'dead' &&
+            hasDeadLink) ||
+
+          // ANY issue (missing OR dead)
+          (linkStatusFilter === 'issues' &&
+            (hasMissingLink || hasDeadLink))
 
         return (
         queryOk &&

@@ -517,30 +517,33 @@ export function getDownloadProvider(url = '') {
   if (value.includes('pixeldrain.com')) return 'pixeldrain'
   if (value.includes('dropbox.com')) return 'dropbox'
   if (value.includes('onedrive.live.com')) return 'onedrive'
+  if (value.includes('drive.proton.me')) return 'proton_drive'
 
   return 'link'
 }
 
-export function getDownloadProviderLabel(provider = '') {
+export function getDownloadProviderMark(provider = '') {
   switch (provider) {
     case 'mediafire':
-      return 'MediaFire'
+      return 'MF'
     case 'mega':
-      return 'MEGA'
+      return 'M'
     case 'google_drive':
-      return 'Google Drive'
+      return 'GD'
     case 'discord':
-      return 'Discord'
+      return 'DC'
     case 'patreon':
-      return 'Patreon'
+      return 'P'
     case 'pixeldrain':
-      return 'PixelDrain'
+      return 'PD'
     case 'dropbox':
-      return 'Dropbox'
+      return 'DB'
     case 'onedrive':
-      return 'OneDrive'
+      return 'OD'
+    case 'proton_drive':
+      return 'PR'
     default:
-      return 'Link'
+      return '↗'
   }
 }
 

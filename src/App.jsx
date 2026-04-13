@@ -2404,27 +2404,43 @@ export default function App() {
 
   const stats = computeStats(wrestlers, collections, arenas, titleBelts, otherMods)
 
-  const issuesCount = useMemo(() => {
-    const countOpenLinkIssues = (items = []) =>
-      items.reduce((sum, item) => {
-        const requests = item.requests || []
-        return (
-          sum +
-          requests.filter(
-            (request) =>
-              request.status === 'open' &&
-              (request.request_type === 'missing_link' ||
-                request.request_type === 'dead_link')
-          ).length
-        )
-      }, 0)
+  const { deadLinksCount, missingLinksCount } = useMemo(() => {
+    const countIssues = (items = []) =>
+      items.reduce(
+        (acc, item) => {
+          const requests = item.requests || []
 
-    return (
-      countOpenLinkIssues(wrestlers) +
-      countOpenLinkIssues(arenas) +
-      countOpenLinkIssues(titleBelts) +
-      countOpenLinkIssues(otherMods)
+          requests.forEach((req) => {
+            if (req.status !== 'open') return
+
+            if (req.request_type === 'dead_link') {
+              acc.dead++
+            }
+
+            if (req.request_type === 'missing_link') {
+              acc.missing++
+            }
+          })
+
+          return acc
+        },
+        { dead: 0, missing: 0 }
+      )
+
+    const totals = [wrestlers, arenas, titleBelts, otherMods].reduce(
+      (acc, list) => {
+        const res = countIssues(list)
+        acc.dead += res.dead
+        acc.missing += res.missing
+        return acc
+      },
+      { dead: 0, missing: 0 }
     )
+
+    return {
+      deadLinksCount: totals.dead,
+      missingLinksCount: totals.missing
+    }
   }, [wrestlers, arenas, titleBelts, otherMods])
 
   if (!isSupabaseConfigured) {
@@ -2447,7 +2463,8 @@ export default function App() {
           currentProfile={null}
           canContribute={false}
           onBrowseAdmin={() => {}}
-          issuesCount={0}
+          deadLinksCount={0}
+          missingLinksCount={0}
         />
         <div className="message error">Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY before running the app.</div>
       </div>
@@ -2472,8 +2489,9 @@ export default function App() {
         currentPage={currentPage}
         currentProfile={currentProfile}
         canContribute={canContribute}
-        onBrowseAdmin={goAdminPage}
-        issuesCount={issuesCount}
+        onBrowseAdmin={goAdminPage} 
+        deadLinksCount={deadLinksCount}
+        missingLinksCount={missingLinksCount}
       />
       <AuthPanel session={session} currentProfile={currentProfile} />
       <StatsGrid stats={stats} />

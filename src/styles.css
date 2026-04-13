@@ -651,17 +651,22 @@ button:disabled {
 }
 
 @media (max-width: 760px) {
-  .nav-chip.has-badge {
-    padding-right: 2rem;
+  .nav-chip.has-badge.multi-badge {
+    padding-right: .9rem;
+    gap: 5px;
   }
 
-  .nav-chip-badge {
-    top: -5px;
-    right: -5px;
-    min-width: 18px;
-    height: 18px;
-    font-size: 0.66rem;
+  .nav-chip.has-badge.multi-badge .nav-chip-badge {
+    min-width: 17px;
+    height: 17px;
+    font-size: 0.64rem;
+    padding: 0 5px;
   }
+
+  .nav-chip-badges {
+    gap: 3px;
+  }
+
   .allmods-stats-grid,
   .stats-inline-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3464,6 +3469,11 @@ select option {
   background: rgba(102, 153, 255, 0.1);
 }
 
+.provider-proton_drive {
+  border-color: rgba(140, 92, 255, 0.28);
+  background: rgba(140, 92, 255, 0.1);
+}
+
 .provider-link {
   border-color: var(--line);
   background: rgba(255, 255, 255, 0.05);
@@ -3869,30 +3879,47 @@ select option {
   background: rgba(63,166,255,.12);
 }
 
-.nav-chip.has-badge {
-  position: relative;
+.nav-chip.has-badge.multi-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: static;
 }
 
-.nav-chip-badge {
-  position: absolute;
-  top: -6px;
-  right: -6px;
+.nav-chip-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-chip.has-badge.multi-badge .nav-chip-badge {
+  position: static;
+  top: auto;
+  right: auto;
   min-width: 18px;
   height: 18px;
-  padding: 0 5px;
+  padding: 0 6px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #ff4d6d, #ff7a59);
-  color: #fff;
   font-size: 0.68rem;
   font-weight: 800;
   line-height: 1;
-  box-shadow:
-    0 0 0 3px rgba(10, 16, 24, 0.95),
-    0 8px 18px rgba(255, 77, 109, 0.28);
+  box-shadow: none;
   pointer-events: none;
+}
+
+.nav-chip.has-badge.multi-badge .nav-chip-badge.danger {
+  background: linear-gradient(135deg, #ff4d6d, #ff7a59);
+  color: #fff;
+  border: 1px solid rgba(255, 77, 109, 0.35);
+}
+
+.nav-chip.has-badge.multi-badge .nav-chip-badge.warning {
+  background: linear-gradient(135deg, #ffcc4d, #ff9f43);
+  color: #1b1400;
+  border: 1px solid rgba(255, 185, 59, 0.4);
 }
 
 .mod-badges-inline {

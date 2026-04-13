@@ -18,7 +18,8 @@ export default function Header({
   session,
   currentProfile,
   canContribute,
-  issuesCount = 0
+  deadLinksCount = 0,
+  missingLinksCount = 0
 }) {
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const addMenuRef = useRef(null)
@@ -135,15 +136,24 @@ export default function Header({
 
             <button
               type="button"
-              className={`nav-chip has-badge ${currentPage === 'issues' ? 'active' : ''}`}
+              className={`nav-chip has-badge multi-badge ${currentPage === 'issues' ? 'active' : ''}`}
               onClick={onBrowseIssues}
             >
               Issues
-              {issuesCount > 0 ? (
-                <span className="nav-chip-badge">
-                  {issuesCount > 99 ? '99+' : issuesCount}
-                </span>
-              ) : null}
+
+              <div className="nav-chip-badges">
+                {deadLinksCount > 0 && (
+                  <span className="nav-chip-badge danger">
+                    {deadLinksCount > 99 ? '99+' : deadLinksCount}
+                  </span>
+                )}
+
+                {missingLinksCount > 0 && (
+                  <span className="nav-chip-badge warning">
+                    {missingLinksCount > 99 ? '99+' : missingLinksCount}
+                  </span>
+                )}
+              </div>
             </button>
 
             {isAdmin ? (
