@@ -1016,6 +1016,7 @@ export default function App() {
   }, [myCollections, collectionPicker, session])
 
   useEffect(() => {
+    // 🔥 DO NOT override selection if URL navigation is in progress
     if (wrestlerSelectSignal?.wrestlerId) return
 
     if (!selectedId && visibleWrestlers[0]) {
@@ -1023,7 +1024,10 @@ export default function App() {
       return
     }
 
-    if (selectedId && !visibleWrestlers.some((item) => item.id === selectedId)) {
+    if (
+      selectedId &&
+      !visibleWrestlers.some((item) => item.id === selectedId)
+    ) {
       setSelectedId(visibleWrestlers[0]?.id || null)
     }
   }, [visibleWrestlers, selectedId, wrestlerSelectSignal])
