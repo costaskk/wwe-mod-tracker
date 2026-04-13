@@ -2171,6 +2171,10 @@ select option {
   position: relative;
 }
 
+.attire-card-top {
+  padding-right: 50px;
+}
+
 .attire-link-copy-btn {
   position: absolute;
   top: 14px;
