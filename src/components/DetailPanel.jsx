@@ -534,17 +534,67 @@ export default function DetailPanel({
   onOpenCollectionPicker,
   onOpenImageViewer,
   highlightedAttireId,
-  onHighlightAttire
+  onHighlightAttire,
+  onClearHighlightedAttire
 }) {
-  const attireRefs = useRef({})
 
-  const canEditWrestler = Boolean(
-    session && wrestler?.owner_id && canManageContent(wrestler.owner_id)
-  )
+  const canEditWrestler = Boolean(session && wrestler?.owner_id && canManageContent(wrestler.owner_id))
+
+  const highlightedAttireRef = useRef(null)
+
+  const attireRefs = useRef({})
+  const highlightTimeoutRef = useRef(null)
 
   useEffect(() => {
+    if (!highlightedAttireId) return
     if (!wrestler?.attires?.length) return
+
+    const timer = setTimeout(() => {
+      highlightedAttireRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      })
+    }, 150)
+
+    const clearTimer = setTimeout(() => {
+      onClearHighlightedAttire?.()
+    }, 3500)
+
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(clearTimer)
+    }
+  }, [highlightedAttireId, wrestler, onClearHighlightedAttire])
+
+  if (!wrestler) {
+    return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
+  }
+
+  useEffect(() => {
+    if (!highlightedAttireId || attireViewMode !== 'gallery') return
+
+    const node = attireRefs.current[highlightedAttireId]
+    if (!node) return
+
+    node.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    })
+
+    node.classList.add('attire-card-highlight-flash')
+
+    clearTimeout(highlightTimeoutRef.current)
+    highlightTimeoutRef.current = setTimeout(() => {
+      node.classList.remove('attire-card-highlight-flash')
+    }, 1800)
+
+    return () => clearTimeout(highlightTimeoutRef.current)
+  }, [highlightedAttireId, attireViewMode, wrestler?.id])
+
+  useEffect(() => {
     if (attireViewMode !== 'gallery') return
+    const attires = wrestler?.attires || []
+    if (!attires.length) return
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -568,21 +618,13 @@ export default function DetailPanel({
       }
     )
 
-    wrestler.attires.forEach((attire) => {
+    attires.forEach((attire) => {
       const node = attireRefs.current[attire.id]
       if (node) observer.observe(node)
     })
 
     return () => observer.disconnect()
   }, [wrestler?.id, wrestler?.attires, attireViewMode, highlightedAttireId, onHighlightAttire])
-
-  if (!wrestler) {
-    return (
-      <section className="panel soft-panel empty-state">
-        Choose a wrestler to browse the database.
-      </section>
-    )
-  }
 
   const canAccessRestrictedFiles = Boolean(canContribute)
 
