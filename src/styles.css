@@ -651,20 +651,17 @@ button:disabled {
 }
 
 @media (max-width: 760px) {
-  .nav-chip.has-badge.multi-badge {
-    padding-right: .9rem;
-    gap: 5px;
+  .nav-chip-badges {
+    top: -6px;
+    right: -8px;
+    gap: 3px;
   }
 
-  .nav-chip.has-badge.multi-badge .nav-chip-badge {
+  .nav-chip-badge {
     min-width: 17px;
     height: 17px;
     font-size: 0.64rem;
     padding: 0 5px;
-  }
-
-  .nav-chip-badges {
-    gap: 3px;
   }
 
   .allmods-stats-grid,
@@ -3866,6 +3863,7 @@ select option {
 }
 
 .nav-chip {
+  position: relative;
   border: 1px solid var(--line);
   background: rgba(255,255,255,0.04);
   color: var(--muted);
@@ -3879,23 +3877,22 @@ select option {
   background: rgba(63,166,255,.12);
 }
 
-.nav-chip.has-badge.multi-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  position: static;
+.nav-chip.has-badge {
+  overflow: visible;
 }
 
 .nav-chip-badges {
-  display: inline-flex;
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  display: flex;
   align-items: center;
   gap: 4px;
+  pointer-events: none;
+  z-index: 2;
 }
 
-.nav-chip.has-badge.multi-badge .nav-chip-badge {
-  position: static;
-  top: auto;
-  right: auto;
+.nav-chip-badge {
   min-width: 18px;
   height: 18px;
   padding: 0 6px;
@@ -3906,20 +3903,22 @@ select option {
   font-size: 0.68rem;
   font-weight: 800;
   line-height: 1;
-  box-shadow: none;
-  pointer-events: none;
+  box-shadow:
+    0 0 0 2px rgba(10, 16, 24, 0.96),
+    0 6px 14px rgba(0, 0, 0, 0.24);
+  white-space: nowrap;
 }
 
-.nav-chip.has-badge.multi-badge .nav-chip-badge.danger {
+.nav-chip-badge.danger {
   background: linear-gradient(135deg, #ff4d6d, #ff7a59);
   color: #fff;
   border: 1px solid rgba(255, 77, 109, 0.35);
 }
 
-.nav-chip.has-badge.multi-badge .nav-chip-badge.warning {
-  background: linear-gradient(135deg, #ffcc4d, #ff9f43);
-  color: #1b1400;
-  border: 1px solid rgba(255, 185, 59, 0.4);
+.nav-chip-badge.warning {
+  background: linear-gradient(135deg, #ffd54a, #ffb020);
+  color: #1f1600;
+  border: 1px solid rgba(255, 196, 64, 0.42);
 }
 
 .mod-badges-inline {

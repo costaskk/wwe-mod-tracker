@@ -136,24 +136,26 @@ export default function Header({
 
             <button
               type="button"
-              className={`nav-chip has-badge multi-badge ${currentPage === 'issues' ? 'active' : ''}`}
+              className={`nav-chip has-badge ${currentPage === 'issues' ? 'active' : ''}`}
               onClick={onBrowseIssues}
             >
-              Issues
+              <span>Issues</span>
 
-              <div className="nav-chip-badges">
-                {deadLinksCount > 0 && (
-                  <span className="nav-chip-badge danger">
-                    {deadLinksCount > 99 ? '99+' : deadLinksCount}
-                  </span>
-                )}
+              {(deadLinksCount > 0 || missingLinksCount > 0) ? (
+                <span className="nav-chip-badges">
+                  {deadLinksCount > 0 ? (
+                    <span className="nav-chip-badge danger">
+                      {deadLinksCount > 99 ? '99+' : deadLinksCount}
+                    </span>
+                  ) : null}
 
-                {missingLinksCount > 0 && (
-                  <span className="nav-chip-badge warning">
-                    {missingLinksCount > 99 ? '99+' : missingLinksCount}
-                  </span>
-                )}
-              </div>
+                  {missingLinksCount > 0 ? (
+                    <span className="nav-chip-badge warning">
+                      {missingLinksCount > 99 ? '99+' : missingLinksCount}
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
             </button>
 
             {isAdmin ? (

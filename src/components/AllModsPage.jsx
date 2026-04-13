@@ -135,25 +135,26 @@ export default function AllModsPage({
         creatorOk &&
         sourceGameOk &&
         installOk &&
-        installOk
+        linkStatusOk
         )
     })
 
     return sortUnifiedMods(filtered, sortBy)
     }, [
-    allMods,
-    query,
-    categoryFilter,
-    subtypeFilter,
-    creatorFilter,
-    sourceGameFilter,
-    installFilter,
-    sortBy,
-    installedIds,
-    installedArenaIds,
-    installedTitleIds,
-    installedOtherModIds
-  ])
+      allMods,
+      query,
+      categoryFilter,
+      subtypeFilter,
+      creatorFilter,
+      sourceGameFilter,
+      installFilter,
+      linkStatusFilter,
+      sortBy,
+      installedIds,
+      installedArenaIds,
+      installedTitleIds,
+      installedOtherModIds
+    ])
 
   const decorateFeedItems = useMemo(() => {
     return function decorate(items = []) {
