@@ -13,6 +13,8 @@ export default function AllModsFilters({
   setSourceGameFilter,
   installFilter,
   setInstallFilter,
+  linkStatusFilter,
+  setLinkStatusFilter,
   sortBy,
   setSortBy,
   creators = [],
@@ -37,6 +39,8 @@ export default function AllModsFilters({
     setSubtypeFilter('all')
     setCreatorFilter('all')
     setSourceGameFilter('all')
+    setLinkStatusFilter('all')
+    setInstallFilter('all')
     setSortBy('newest')
   }
 
@@ -151,7 +155,19 @@ export default function AllModsFilters({
                 <option value="not_installed">Not installed only</option>
                 </select>
             </label>
-
+            <label>
+              Link status
+              <select
+                value={linkStatusFilter}
+                onChange={(event) => setLinkStatusFilter(event.target.value)}
+              >
+                <option value="all">All links</option>
+                <option value="active">Active only</option>
+                <option value="missing">Missing only</option>
+                <option value="dead">Dead only</option>
+                <option value="issues">Missing or dead</option>
+              </select>
+            </label>
             <label>
                 Other Mod subtype
                 <select

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { formatDate } from '../lib/utils'
 
 function Toggle({ value, onChange, options }) {
@@ -40,8 +41,38 @@ export default function WrestlerList({
   viewMode,
   setViewMode,
   pagination,
-  onPageChange
+  onPageChange,
+  onLoadMore,
+  hasMore
 }) {
+
+    const loadMoreRef = useRef(null)
+
+    useEffect(() => {
+      if (!onLoadMore || !hasMore) return
+
+      const node = loadMoreRef.current
+      if (!node) return
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const first = entries[0]
+          if (first?.isIntersecting) {
+            onLoadMore()
+          }
+        },
+        {
+          root: null,
+          rootMargin: '200px 0px',
+          threshold: 0.1
+        }
+      )
+
+      observer.observe(node)
+
+      return () => observer.disconnect()
+    }, [onLoadMore, hasMore, wrestlers.length])
+
   const pageStart = pagination ? (pagination.page - 1) * pagination.perPage + 1 : 0
   const pageEnd = pagination ? Math.min(pagination.page * pagination.perPage, pagination.totalItems) : wrestlers.length
   const pageNumbers = pagination ? buildPageNumbers(pagination.page, pagination.totalPages) : []
@@ -205,8 +236,17 @@ export default function WrestlerList({
           )}
         </div>
       )}
-
-      {pagination && pagination.totalPages > 1 ? (
+      {onLoadMore ? (
+        hasMore ? (
+          <div ref={loadMoreRef} className="list-load-more-trigger">
+            <div className="muted-text small-text">Loading more wrestlers…</div>
+          </div>
+        ) : wrestlers.length > 0 ? (
+          <div className="list-load-more-trigger">
+            <div className="muted-text small-text">No more wrestlers to load.</div>
+          </div>
+        ) : null
+      ) : pagination && pagination.totalPages > 1 ? (
         <div className="pagination-row">
           <button
             className="ghost-button small-btn"

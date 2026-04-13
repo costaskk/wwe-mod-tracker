@@ -55,6 +55,7 @@ export default function AllModsPage({
   }, [wrestlers, arenas, titleBelts, otherMods])
 
   const [installFilter, setInstallFilter] = useState('all')
+  const [linkStatusFilter, setLinkStatusFilter] = useState('all')
 
   const hasActiveFilters = Boolean(
     query.trim() ||
@@ -63,6 +64,7 @@ export default function AllModsPage({
       creatorFilter !== 'all' ||
       sourceGameFilter !== 'all' ||
       installFilter !== 'all' ||
+      linkStatusFilter !== 'all' ||
       sortBy !== 'newest'
   )
 
@@ -103,12 +105,23 @@ export default function AllModsPage({
         (installFilter === 'installed' && isInstalled) ||
         (installFilter === 'not_installed' && !isInstalled)
 
+        const hasMissingLink = !item.hasDownload
+        const hasDeadLink = Boolean(item.openDeadLinks && item.openDeadLinks > 0)
+
+        const linkStatusOk =
+          linkStatusFilter === 'all' ||
+          (linkStatusFilter === 'active' && !hasMissingLink && !hasDeadLink) ||
+          (linkStatusFilter === 'missing' && hasMissingLink) ||
+          (linkStatusFilter === 'dead' && hasDeadLink) ||
+          (linkStatusFilter === 'issues' && (hasMissingLink || hasDeadLink))
+
         return (
         queryOk &&
         categoryOk &&
         subtypeOk &&
         creatorOk &&
         sourceGameOk &&
+        installOk &&
         installOk
         )
     })
@@ -419,7 +432,7 @@ export default function AllModsPage({
 
   useEffect(() => {
     setPage(1)
-  }, [query, categoryFilter, subtypeFilter, creatorFilter, sourceGameFilter, installFilter, sortBy])
+  }, [query, categoryFilter, subtypeFilter, creatorFilter, sourceGameFilter, installFilter, linkStatusFilter, sortBy])
 
   useEffect(() => {
     if (page > pagination.totalPages) {
@@ -443,6 +456,8 @@ export default function AllModsPage({
             setSourceGameFilter={setSourceGameFilter}
             installFilter={installFilter}
             setInstallFilter={setInstallFilter}
+            linkStatusFilter={linkStatusFilter}
+            setLinkStatusFilter={setLinkStatusFilter}
             sortBy={sortBy}
             setSortBy={setSortBy}
             creators={creators}

@@ -183,6 +183,14 @@ code {
   scrollbar-color: rgba(63, 166, 255, 0.55) rgba(255, 255, 255, 0.06);
 }
 
+.list-load-more-trigger {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 56px;
+  margin-top: 10px;
+}
+
 .list-scroll::-webkit-scrollbar,
 .wrestler-table-wrap::-webkit-scrollbar,
 .modal-scroll::-webkit-scrollbar,
@@ -1004,7 +1012,17 @@ button:disabled {
   min-width: 0;
 }
 
+.filter-row-grid-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
 
+@media (max-width: 860px) {
+  .filter-row-grid-two {
+    grid-template-columns: 1fr;
+  }
+}
 
 .panel-header,
 .with-actions,

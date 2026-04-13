@@ -114,6 +114,8 @@ export default function App() {
   const [otherModsCreateSignal, setOtherModsCreateSignal] = useState(0)
   const [otherModsSelectSignal, setOtherModsSelectSignal] = useState(null)
 
+
+  const [visibleModsCount, setVisibleModsCount] = useState(modsPerPage)
   //const isApproved = Boolean(session && currentProfile?.approval_status === 'approved')
 
   // 🔥 NEW: unified permission flag
@@ -857,8 +859,7 @@ export default function App() {
 
         const hasOpenRequests = (wrestler.requests || []).some((request) => request.status === 'open')
         const missingOnlyOk = !showMissingOnly || filteredAttires.some((attire) => attire.status !== 'complete' || !attire.download_url?.trim()) || hasOpenRequests
-        const wrestlerQueryOk = !q || [wrestler.wrestler_name, wrestler.notes, ...(wrestler.tags || [])].join(' ').toLowerCase().includes(q)
-        const include = missingOnlyOk && (filteredAttires.length > 0 || wrestlerQueryOk)
+        const include = missingOnlyOk && filteredAttires.length > 0
 
         return include ? { ...wrestler, attires: filteredAttires } : null
       })
@@ -866,8 +867,18 @@ export default function App() {
   }, [wrestlers, query, showMissingOnly, creatorFilter, sourceGameFilter, installFilter, collections, missingDownloadOnly, deadLinkOnly, installedIds])
 
 
-  const paginatedMods = useMemo(() => paginateItems(filteredWrestlers, modsPage, modsPerPage), [filteredWrestlers, modsPage])
-  const visibleWrestlers = paginatedMods.items
+  const visibleWrestlers = useMemo(() => {
+    return filteredWrestlers.slice(0, visibleModsCount)
+  }, [filteredWrestlers, visibleModsCount])
+
+  const paginatedMods = useMemo(() => {
+    return {
+      page: 1,
+      totalPages: Math.max(1, Math.ceil(filteredWrestlers.length / modsPerPage)),
+      totalItems: filteredWrestlers.length,
+      items: visibleWrestlers
+    }
+  }, [filteredWrestlers, visibleWrestlers, modsPerPage])
 
   useEffect(() => {
     setModsPage(1)
@@ -878,6 +889,17 @@ export default function App() {
       setModsPage(paginatedMods.totalPages)
     }
   }, [modsPage, paginatedMods.totalPages])
+
+  useEffect(() => {
+    setVisibleModsCount(modsPerPage)
+  }, [query, creatorFilter, sourceGameFilter, installFilter, missingDownloadOnly, deadLinkOnly, showMissingOnly])
+
+
+  function loadMoreWrestlers() {
+    setVisibleModsCount((current) =>
+      Math.min(current + modsPerPage, filteredWrestlers.length)
+    )
+  }
 
   const myCollections = useMemo(
     () => session ? collections.filter((item) => item.owner_id === session.user.id) : [],
@@ -2332,28 +2354,27 @@ export default function App() {
   const stats = computeStats(wrestlers, collections, arenas, titleBelts, otherMods)
 
   const issuesCount = useMemo(() => {
-  const wrestlerIssues = wrestlers.reduce(
-    (sum, wrestler) => sum + (wrestler.requests || []).filter((item) => item.status === 'open').length,
-    0
-  )
+    const countOpenLinkIssues = (items = []) =>
+      items.reduce((sum, item) => {
+        const requests = item.requests || []
+        return (
+          sum +
+          requests.filter(
+            (request) =>
+              request.status === 'open' &&
+              (request.request_type === 'missing_link' ||
+                request.request_type === 'dead_link')
+          ).length
+        )
+      }, 0)
 
-  const arenaIssues = arenas.reduce(
-    (sum, arena) => sum + (arena.requests || []).filter((item) => item.status === 'open').length,
-    0
-  )
-
-  const titleIssues = titleBelts.reduce(
-    (sum, title) => sum + (title.requests || []).filter((item) => item.status === 'open').length,
-    0
-  )
-
-  const otherModIssues = otherMods.reduce(
-    (sum, mod) => sum + (mod.requests || []).filter((item) => item.status === 'open').length,
-    0
-  )
-
-  return wrestlerIssues + arenaIssues + titleIssues + otherModIssues
-}, [wrestlers, arenas, titleBelts, otherMods])
+    return (
+      countOpenLinkIssues(wrestlers) +
+      countOpenLinkIssues(arenas) +
+      countOpenLinkIssues(titleBelts) +
+      countOpenLinkIssues(otherMods)
+    )
+  }, [wrestlers, arenas, titleBelts, otherMods])
 
   if (!isSupabaseConfigured) {
     return (
@@ -2700,6 +2721,8 @@ export default function App() {
                 setViewMode={setWrestlerViewMode}
                 pagination={paginatedMods}
                 onPageChange={setModsPage}
+                onLoadMore={loadMoreWrestlers}
+                hasMore={visibleModsCount < filteredWrestlers.length}
               />
             </div>
 
