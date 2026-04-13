@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import {
   formatDate,
@@ -532,8 +532,33 @@ export default function DetailPanel({
   attireViewMode,
   setAttireViewMode,
   onOpenCollectionPicker,
-  onOpenImageViewer
+  onOpenImageViewer,
+  highlightedAttireId,
+  onClearHighlightedAttire
 }) {
+
+  const highlightedAttireRef = useRef(null)
+
+  useEffect(() => {
+    if (!highlightedAttireId) return
+    if (!wrestler?.attires?.length) return
+
+    const timer = setTimeout(() => {
+      highlightedAttireRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      })
+    }, 150)
+
+    const clearTimer = setTimeout(() => {
+      onClearHighlightedAttire?.()
+    }, 3500)
+
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(clearTimer)
+    }
+  }, [highlightedAttireId, wrestler, onClearHighlightedAttire])
 
   if (!wrestler) {
     return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
@@ -637,22 +662,27 @@ export default function DetailPanel({
                 const requestInfo = requestSummary(wrestler.requests || [], 'attire_id', attire.id)
 
                 return (
-                  <CompactRow
+                  <div
                     key={attire.id}
-                    attire={attire}
-                    wrestler={wrestler}
-                    session={session}
-                    canContribute={canContribute}
-                    canManageContent={canManageContent}
-                    installed={installed}
-                    requestInfo={requestInfo}
-                    onToggleInstalled={onToggleInstalled}
-                    onEditAttire={onEditAttire}
-                    onDeleteAttire={onDeleteAttire}
-                    onCreateRequest={onCreateRequest}
-                    onResolveLink={onResolveLink}
-                    onOpenCollectionPicker={onOpenCollectionPicker}
-                  />
+                    ref={highlightedAttireId === attire.id ? highlightedAttireRef : null}
+                    className={highlightedAttireId === attire.id ? 'highlighted-attire-card' : ''}
+                  >
+                    <CompactRow
+                      attire={attire}
+                      wrestler={wrestler}
+                      session={session}
+                      canContribute={canContribute}
+                      canManageContent={canManageContent}
+                      installed={installed}
+                      requestInfo={requestInfo}
+                      onToggleInstalled={onToggleInstalled}
+                      onEditAttire={onEditAttire}
+                      onDeleteAttire={onDeleteAttire}
+                      onCreateRequest={onCreateRequest}
+                      onResolveLink={onResolveLink}
+                      onOpenCollectionPicker={onOpenCollectionPicker}
+                    />
+                  </div>
                 )
               })
             )}
@@ -671,7 +701,13 @@ export default function DetailPanel({
                 const canEditAttire = session && canManageContent(attire.owner_id)
 
                 return (
-                  <article className="attire-card improved-attire-card elevated-card" key={attire.id}>
+                  <article
+                    className={`attire-card improved-attire-card elevated-card ${
+                      highlightedAttireId === attire.id ? 'highlighted-attire-card' : ''
+                    }`}
+                    key={attire.id}
+                    ref={highlightedAttireId === attire.id ? highlightedAttireRef : null}
+                  >
                     <div className="attire-card-top">
                       <div className="attire-title-stack">
                         <h3>{attire.name}</h3>

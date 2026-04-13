@@ -100,6 +100,10 @@ export default function App() {
   const isAdmin = currentProfile?.role === 'admin'
   const isStaff = isModerator || isAdmin
 
+  const [highlightedAttireId, setHighlightedAttireId] = useState(null)
+  
+  const [wrestlerSelectSignal, setWrestlerSelectSignal] = useState(null)
+
   const [arenaCreateSignal, setArenaCreateSignal] = useState(0)
   const [arenaSelectSignal, setArenaSelectSignal] = useState(null)
 
@@ -2117,15 +2121,16 @@ export default function App() {
 
   function openAttireFromAllMods(item) {
     const wrestlerId = item?.raw?.wrestler_id
-    if (!wrestlerId) return
+    const attireId = item?.entityId || item?.raw?.id
 
-    const index = filteredWrestlers.findIndex((entry) => entry.id === wrestlerId)
-    if (index >= 0) {
-      const nextPage = Math.floor(index / modsPerPage) + 1
-      setModsPage(nextPage)
-    }
+    if (!wrestlerId || !attireId) return
 
-    setSelectedId(wrestlerId)
+    setWrestlerSelectSignal({
+      wrestlerId,
+      attireId,
+      ts: Date.now()
+    })
+
     setCurrentPage('mods')
     window.history.replaceState({}, '', `${window.location.pathname}?page=mods`)
   }
@@ -2181,7 +2186,26 @@ export default function App() {
     window.history.replaceState({}, '', `${window.location.pathname}?page=admin`)
   }
 
+  useEffect(() => {
+    if (!wrestlerSelectSignal?.wrestlerId) return
+    if (currentPage !== 'mods') return
+    if (!filteredWrestlers.length) return
 
+    const { wrestlerId, attireId } = wrestlerSelectSignal
+
+    const index = filteredWrestlers.findIndex((item) => item.id === wrestlerId)
+    if (index === -1) return
+
+    const nextPage = Math.floor(index / modsPerPage) + 1
+    setModsPage(nextPage)
+    setSelectedId(wrestlerId)
+
+    if (attireId) {
+      setHighlightedAttireId(attireId)
+    }
+
+    setWrestlerSelectSignal(null)
+  }, [wrestlerSelectSignal, currentPage, filteredWrestlers, modsPerPage])
 
   async function shareCollection(collection) {
     const url = `${window.location.origin}${window.location.pathname}?page=collections&collection=${collection.slug}`
@@ -2799,6 +2823,8 @@ export default function App() {
               setAttireViewMode={setAttireViewMode}
               onOpenCollectionPicker={openCollectionPicker}
               onOpenImageViewer={openImageViewer}
+              highlightedAttireId={highlightedAttireId}
+              onClearHighlightedAttire={() => setHighlightedAttireId(null)}
             />
           </div>
         </>

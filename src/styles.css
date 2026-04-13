@@ -62,6 +62,36 @@ h1 {
   margin-bottom: 12px;
 }
 
+.highlighted-attire-card {
+  animation: highlightedAttirePulse 2.8s ease;
+}
+
+@keyframes highlightedAttirePulse {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(63, 166, 255, 0.55),
+      0 0 0 rgba(63, 166, 255, 0);
+    border-color: rgba(63, 166, 255, 0.9);
+    background: rgba(63, 166, 255, 0.12);
+  }
+
+  35% {
+    box-shadow:
+      0 0 0 10px rgba(63, 166, 255, 0.18),
+      0 0 28px rgba(63, 166, 255, 0.18);
+    border-color: rgba(63, 166, 255, 0.75);
+    background: rgba(63, 166, 255, 0.1);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(63, 166, 255, 0),
+      0 0 0 rgba(63, 166, 255, 0);
+    border-color: inherit;
+    background: inherit;
+  }
+}
+
 code {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--line);

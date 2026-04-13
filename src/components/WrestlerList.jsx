@@ -48,6 +48,17 @@ export default function WrestlerList({
 
     const loadMoreRef = useRef(null)
 
+    const selectedRef = useRef(null)
+
+    useEffect(() => {
+      if (selectedRef.current) {
+        selectedRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        })
+      }
+    }, [selectedId])
+
     useEffect(() => {
       if (!onLoadMore || !hasMore) return
 
@@ -125,6 +136,7 @@ export default function WrestlerList({
                   return (
                     <tr
                       key={wrestler.id}
+                      ref={isSelected ? selectedRef : null}
                       className={isSelected ? 'selected-row' : ''}
                       onClick={() => onSelect(wrestler.id)}
                       onKeyDown={(e) => {
@@ -193,6 +205,7 @@ export default function WrestlerList({
                 <button
                   type="button"
                   key={wrestler.id}
+                  ref={isSelected ? selectedRef : null}
                   className={`list-card wrestler-list-card ${isSelected ? 'selected' : ''}`}
                   onClick={() => onSelect(wrestler.id)}
                 >
