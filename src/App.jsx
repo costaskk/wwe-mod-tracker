@@ -426,6 +426,8 @@ export default function App() {
       const params = new URLSearchParams(window.location.search)
       const slug = params.get('collection')
       const page = params.get('page')
+      const wrestlerId = params.get('wrestler')
+      const attireId = params.get('attire')
 
       if (slug) {
         setCurrentPage('collections')
@@ -441,25 +443,32 @@ export default function App() {
         setCurrentPage('admin')
       } else if (page === 'issues') {
         setCurrentPage('issues')
-      } else if (page === 'all_mods') {
-        setCurrentPage('all_mods')
       } else if (page === 'mods') {
         setCurrentPage('mods')
       } else {
         setCurrentPage('all_mods')
       }
 
-      if (!slug) {
-        setSelectedCollection(null)
-        return
+      if (page === 'mods' && wrestlerId) {
+        setWrestlerSelectSignal({
+          wrestlerId,
+          attireId: attireId || null,
+          forceGallery: Boolean(attireId),
+          ts: Date.now()
+        })
       }
 
-      const found = collections.find((item) => item.slug === slug)
-      setSelectedCollection(found || null)
+      if (!slug) {
+        setSelectedCollection(null)
+      } else {
+        const found = collections.find((item) => item.slug === slug)
+        setSelectedCollection(found || null)
+      }
     }
 
     syncFromUrl()
     window.addEventListener('popstate', syncFromUrl)
+
     return () => window.removeEventListener('popstate', syncFromUrl)
   }, [collections])
 
@@ -2132,12 +2141,16 @@ export default function App() {
       ts: Date.now()
     })
 
-    setTimeout(() => {
-      setCurrentPage('mods')
-    }, 0)
-
     setCurrentPage('mods')
-    window.history.replaceState({}, '', `${window.location.pathname}?page=mods`)
+
+    const params = new URLSearchParams()
+    params.set('page', 'mods')
+    params.set('wrestler', wrestlerId)
+    if (attireId) {
+      params.set('attire', attireId)
+    }
+
+    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`)
   }
 
   function openArenaFromAllMods(item) {
@@ -2194,22 +2207,18 @@ export default function App() {
   useEffect(() => {
     if (!wrestlerSelectSignal?.wrestlerId) return
     if (currentPage !== 'mods') return
-
-    // 🚨 DO NOT run until data is ready
     if (!filteredWrestlers.length) return
 
     const { wrestlerId, attireId, forceGallery } = wrestlerSelectSignal
 
     const index = filteredWrestlers.findIndex((w) => w.id === wrestlerId)
-
-    // 🚨 If wrestler not found yet → WAIT (don't clear signal)
     if (index === -1) return
 
     const nextPage = Math.floor(index / modsPerPage) + 1
 
     if (modsPage !== nextPage) {
       setModsPage(nextPage)
-      return // wait next render
+      return
     }
 
     if (selectedId !== wrestlerId) {
@@ -2222,11 +2231,11 @@ export default function App() {
 
     if (attireId) {
       setHighlightedAttireId(attireId)
+    } else {
+      setHighlightedAttireId(null)
     }
 
-    // ✅ ONLY clear AFTER success
     setWrestlerSelectSignal(null)
-
   }, [
     wrestlerSelectSignal,
     currentPage,
@@ -2236,6 +2245,23 @@ export default function App() {
     selectedId,
     attireViewMode
   ])
+
+  useEffect(() => {
+    if (currentPage !== 'mods') return
+    if (!selectedId) return
+
+    const params = new URLSearchParams(window.location.search)
+    params.set('page', 'mods')
+    params.set('wrestler', selectedId)
+
+    if (highlightedAttireId) {
+      params.set('attire', highlightedAttireId)
+    } else {
+      params.delete('attire')
+    }
+
+    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`)
+  }, [currentPage, selectedId, highlightedAttireId])
 
   async function shareCollection(collection) {
     const url = `${window.location.origin}${window.location.pathname}?page=collections&collection=${collection.slug}`
@@ -2854,6 +2880,7 @@ export default function App() {
               onOpenCollectionPicker={openCollectionPicker}
               onOpenImageViewer={openImageViewer}
               highlightedAttireId={highlightedAttireId}
+              onHighlightAttire={setHighlightedAttireId}
               onClearHighlightedAttire={() => setHighlightedAttireId(null)}
             />
           </div>

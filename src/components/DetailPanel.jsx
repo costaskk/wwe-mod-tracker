@@ -534,6 +534,7 @@ export default function DetailPanel({
   onOpenCollectionPicker,
   onOpenImageViewer,
   highlightedAttireId,
+  onHighlightAttire,
   onClearHighlightedAttire
 }) {
 
@@ -563,8 +564,67 @@ export default function DetailPanel({
   }, [highlightedAttireId, wrestler, onClearHighlightedAttire])
 
   if (!wrestler) {
+
+    const attireRefs = useRef({})
+    const highlightTimeoutRef = useRef(null)
     return <section className="panel soft-panel empty-state">Choose a wrestler to browse the database.</section>
   }
+
+  useEffect(() => {
+    if (!highlightedAttireId || attireViewMode !== 'gallery') return
+
+    const node = attireRefs.current[highlightedAttireId]
+    if (!node) return
+
+    node.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    })
+
+    node.classList.add('attire-card-highlight-flash')
+
+    clearTimeout(highlightTimeoutRef.current)
+    highlightTimeoutRef.current = setTimeout(() => {
+      node.classList.remove('attire-card-highlight-flash')
+    }, 1800)
+
+    return () => clearTimeout(highlightTimeoutRef.current)
+  }, [highlightedAttireId, attireViewMode, wrestler?.id])
+
+  useEffect(() => {
+    if (attireViewMode !== 'gallery') return
+    const attires = wrestler?.attires || []
+    if (!attires.length) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
+
+        if (!visible.length) return
+
+        const topEntry = visible[0]
+        const attireId = topEntry.target.getAttribute('data-attire-id')
+
+        if (attireId && attireId !== highlightedAttireId) {
+          onHighlightAttire?.(attireId)
+        }
+      },
+      {
+        root: null,
+        rootMargin: '-20% 0px -45% 0px',
+        threshold: [0.2, 0.35, 0.5, 0.7]
+      }
+    )
+
+    attires.forEach((attire) => {
+      const node = attireRefs.current[attire.id]
+      if (node) observer.observe(node)
+    })
+
+    return () => observer.disconnect()
+  }, [wrestler?.id, wrestler?.attires, attireViewMode, highlightedAttireId, onHighlightAttire])
 
   const canAccessRestrictedFiles = Boolean(canContribute)
 
@@ -702,12 +762,19 @@ export default function DetailPanel({
 
                 return (
                   <article
-                  className={`attire-card improved-attire-card elevated-card ${
-                    highlightedAttireId === attire.id ? 'highlighted-attire-card' : ''
-                  }`}
-                  key={attire.id}
-                  ref={highlightedAttireId === attire.id ? highlightedAttireRef : null}
-                >
+                    ref={(node) => {
+                      if (node) {
+                        attireRefs.current[attire.id] = node
+                      } else {
+                        delete attireRefs.current[attire.id]
+                      }
+                    }}
+                    data-attire-id={attire.id}
+                    className={`attire-card improved-attire-card elevated-card ${
+                      highlightedAttireId === attire.id ? 'attire-card-highlighted' : ''
+                    }`}
+                    key={attire.id}
+                  >
                     <div className="attire-card-top">
                       <div className="attire-title-stack">
                         <h3>{attire.name}</h3>

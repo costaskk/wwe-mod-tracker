@@ -92,6 +92,35 @@ h1 {
   }
 }
 
+.attire-card-highlighted {
+  border-color: rgba(63, 166, 255, 0.42);
+  box-shadow:
+    0 0 0 1px rgba(63, 166, 255, 0.18),
+    0 18px 36px rgba(0, 0, 0, 0.22);
+}
+
+.attire-card-highlight-flash {
+  animation: attireHighlightFlash 1.6s ease;
+}
+
+@keyframes attireHighlightFlash {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(63, 166, 255, 0.65),
+      0 18px 36px rgba(0, 0, 0, 0.22);
+  }
+  35% {
+    box-shadow:
+      0 0 0 8px rgba(63, 166, 255, 0.18),
+      0 18px 36px rgba(0, 0, 0, 0.22);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(63, 166, 255, 0),
+      0 18px 36px rgba(0, 0, 0, 0.22);
+  }
+}
+
 code {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--line);
