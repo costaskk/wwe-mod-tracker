@@ -22,6 +22,7 @@ import ResolveLinkModal from './components/ResolveLinkModal'
 import StatsGrid from './components/StatsGrid'
 import WrestlerEditorModal from './components/WrestlerEditorModal'
 import WrestlerList from './components/WrestlerList'
+import { buildUnifiedModsFeed } from './lib/utils' // ✅ make sure this exists
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { getAssetUrl, removeAssets, tryAutoMatchHeadshot, uploadAsset } from './lib/storage'
 import {
@@ -2405,41 +2406,26 @@ export default function App() {
   const stats = computeStats(wrestlers, collections, arenas, titleBelts, otherMods)
 
   const { deadLinksCount, missingLinksCount } = useMemo(() => {
-    const countIssues = (items = []) =>
-      items.reduce(
-        (acc, item) => {
-          const requests = item.requests || []
+    const unified = buildUnifiedModsFeed({
+      wrestlers,
+      arenas,
+      titleBelts,
+      otherMods
+    })
 
-          requests.forEach((req) => {
-            if (req.status !== 'open') return
+    const dead = unified.reduce(
+      (sum, item) => sum + (item.openDeadLinks || 0),
+      0
+    )
 
-            if (req.request_type === 'dead_link') {
-              acc.dead++
-            }
-
-            if (req.request_type === 'missing_link') {
-              acc.missing++
-            }
-          })
-
-          return acc
-        },
-        { dead: 0, missing: 0 }
-      )
-
-    const totals = [wrestlers, arenas, titleBelts, otherMods].reduce(
-      (acc, list) => {
-        const res = countIssues(list)
-        acc.dead += res.dead
-        acc.missing += res.missing
-        return acc
-      },
-      { dead: 0, missing: 0 }
+    const missing = unified.reduce(
+      (sum, item) => sum + (item.hasMissingLink ? 1 : 0),
+      0
     )
 
     return {
-      deadLinksCount: totals.dead,
-      missingLinksCount: totals.missing
+      deadLinksCount: dead,
+      missingLinksCount: missing
     }
   }, [wrestlers, arenas, titleBelts, otherMods])
 

@@ -707,6 +707,20 @@ export function buildUnifiedModsFeed({
     (wrestler.attires || []).map((attire) => {
       const images = attire.attire_images || attire.images || []
       const links = parseDownloadLinks(attire.download_url || '')
+      const requests = attire.requests || wrestler.requests || []
+      const openDeadLinks = requests.filter(
+        (req) =>
+          req.status === 'open' &&
+          req.attire_id === attire.id &&
+          req.request_type === 'dead_link'
+      ).length
+      const openMissingLinks = requests.filter(
+        (req) =>
+          req.status === 'open' &&
+          req.attire_id === attire.id &&
+          req.request_type === 'missing_link'
+      ).length
+      const hasDownload = links.length > 0
 
       return {
         id: attire.id,
@@ -721,7 +735,10 @@ export function buildUnifiedModsFeed({
         createdAt: attire.created_at || '',
         updatedAt: attire.updated_at || '',
         ownerId: attire.owner_id || '',
-        hasDownload: links.length > 0,
+        hasDownload,
+        hasMissingLink: !hasDownload,
+        openDeadLinks,
+        openMissingLinks,
         linkCount: links.length,
         downloadCount: links.length,
         installCount: 0,
@@ -752,6 +769,14 @@ export function buildUnifiedModsFeed({
   const arenaItems = arenas.map((arena) => {
     const images = arena.arena_images || arena.images || []
     const links = parseDownloadLinks(arena.download_url || '')
+    const requests = arena.requests || []
+    const openDeadLinks = requests.filter(
+      (req) => req.status === 'open' && req.request_type === 'dead_link'
+    ).length
+    const openMissingLinks = requests.filter(
+      (req) => req.status === 'open' && req.request_type === 'missing_link'
+    ).length
+    const hasDownload = links.length > 0
 
     return {
       id: arena.id,
@@ -766,7 +791,10 @@ export function buildUnifiedModsFeed({
       createdAt: arena.created_at || '',
       updatedAt: arena.updated_at || '',
       ownerId: arena.owner_id || '',
-      hasDownload: links.length > 0,
+      hasDownload,
+      hasMissingLink: !hasDownload,
+      openDeadLinks,
+      openMissingLinks,
       linkCount: links.length,
       downloadCount: links.length,
       installCount: 0,
@@ -791,6 +819,14 @@ export function buildUnifiedModsFeed({
   const titleItems = titleBelts.map((title) => {
     const images = title.title_belt_images || title.images || []
     const links = parseDownloadLinks(title.download_url || '')
+    const requests = title.requests || []
+    const openDeadLinks = requests.filter(
+      (req) => req.status === 'open' && req.request_type === 'dead_link'
+    ).length
+    const openMissingLinks = requests.filter(
+      (req) => req.status === 'open' && req.request_type === 'missing_link'
+    ).length
+    const hasDownload = links.length > 0
 
     return {
       id: title.id,
@@ -805,7 +841,10 @@ export function buildUnifiedModsFeed({
       createdAt: title.created_at || '',
       updatedAt: title.updated_at || '',
       ownerId: title.owner_id || '',
-      hasDownload: links.length > 0,
+      hasDownload,
+      hasMissingLink: !hasDownload,
+      openDeadLinks,
+      openMissingLinks,
       linkCount: links.length,
       downloadCount: links.length,
       installCount: 0,
@@ -830,6 +869,14 @@ export function buildUnifiedModsFeed({
   const otherItems = otherMods.map((otherMod) => {
     const images = otherMod.other_mod_images || otherMod.images || []
     const links = parseDownloadLinks(otherMod.download_url || '')
+    const requests = otherMod.requests || []
+    const openDeadLinks = requests.filter(
+      (req) => req.status === 'open' && req.request_type === 'dead_link'
+    ).length
+    const openMissingLinks = requests.filter(
+      (req) => req.status === 'open' && req.request_type === 'missing_link'
+    ).length
+    const hasDownload = links.length > 0
 
     return {
       id: otherMod.id,
@@ -844,7 +891,10 @@ export function buildUnifiedModsFeed({
       createdAt: otherMod.created_at || '',
       updatedAt: otherMod.updated_at || '',
       ownerId: otherMod.owner_id || '',
-      hasDownload: links.length > 0,
+      hasDownload,
+      hasMissingLink: !hasDownload,
+      openDeadLinks,
+      openMissingLinks,
       linkCount: links.length,
       downloadCount: links.length,
       installCount: 0,

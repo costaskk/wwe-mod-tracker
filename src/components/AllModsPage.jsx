@@ -105,7 +105,7 @@ export default function AllModsPage({
         (installFilter === 'installed' && isInstalled) ||
         (installFilter === 'not_installed' && !isInstalled)
 
-        const hasMissingLink = !item.hasDownload
+        const hasMissingLink = Boolean(item.hasMissingLink)
         const hasDeadLink = Boolean(item.openDeadLinks && item.openDeadLinks > 0)
 
         const linkStatusOk =
