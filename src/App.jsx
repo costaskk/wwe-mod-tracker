@@ -843,8 +843,25 @@ export default function App() {
   const filteredWrestlers = useMemo(() => {
     const q = query.toLowerCase().trim()
 
+    const hasAttireLevelFilters =
+      creatorFilter !== 'all' ||
+      sourceGameFilter !== 'all' ||
+      installFilter !== 'all' ||
+      missingDownloadOnly ||
+      deadLinkOnly
+
     return wrestlers
       .map((wrestler) => {
+        const wrestlerHaystack = [
+          wrestler.wrestler_name,
+          wrestler.notes,
+          ...(wrestler.tags || [])
+        ]
+          .join(' ')
+          .toLowerCase()
+
+        const wrestlerMatchesQuery = !q || wrestlerHaystack.includes(q)
+
         const filteredAttires = (wrestler.attires || []).filter((attire) => {
           const haystack = [
             wrestler.wrestler_name,
@@ -857,30 +874,95 @@ export default function App() {
             attire.source_game,
             JSON.stringify(attire.moveset_json || {}),
             JSON.stringify(attire.profile_json || {})
-          ].join(' ').toLowerCase()
+          ]
+            .join(' ')
+            .toLowerCase()
 
           const queryOk = !q || haystack.includes(q)
-          const creatorOk = creatorFilter === 'all' || attire.creator_name === creatorFilter
-          const sourceGameOk = sourceGameFilter === 'all' || attire.source_game === sourceGameFilter
+          const creatorOk =
+            creatorFilter === 'all' || attire.creator_name === creatorFilter
+          const sourceGameOk =
+            sourceGameFilter === 'all' || attire.source_game === sourceGameFilter
           const installedOk =
             installFilter === 'all' ||
             (installFilter === 'installed' && installedIds.has(attire.id)) ||
             (installFilter === 'not_installed' && !installedIds.has(attire.id))
-          const requestInfo = (wrestler.requests || []).filter((request) => request.attire_id === attire.id && request.status === 'open')
-          const hasDeadLink = requestInfo.some((request) => request.request_type === 'dead_link')
-          const missingDownloadOk = !missingDownloadOnly || !attire.download_url?.trim()
-          const deadLinkOk = !deadLinkOnly || hasDeadLink
-          return queryOk && creatorOk && sourceGameOk && installedOk && missingDownloadOk && deadLinkOk
+
+          const requestInfo = (wrestler.requests || []).filter(
+            (request) =>
+              request.attire_id === attire.id &&
+              request.status === 'open'
+          )
+
+          const hasDeadLink = requestInfo.some(
+            (request) => request.request_type === 'dead_link'
+          )
+
+          const missingDownloadOk =
+            !missingDownloadOnly || !attire.download_url?.trim()
+
+          const deadLinkOk =
+            !deadLinkOnly || hasDeadLink
+
+          return (
+            queryOk &&
+            creatorOk &&
+            sourceGameOk &&
+            installedOk &&
+            missingDownloadOk &&
+            deadLinkOk
+          )
         })
 
-        const hasOpenRequests = (wrestler.requests || []).some((request) => request.status === 'open')
-        const missingOnlyOk = !showMissingOnly || filteredAttires.some((attire) => attire.status !== 'complete' || !attire.download_url?.trim()) || hasOpenRequests
-        const include = missingOnlyOk && filteredAttires.length > 0
+        const hasOpenRequests = (wrestler.requests || []).some(
+          (request) => request.status === 'open'
+        )
 
-        return include ? { ...wrestler, attires: filteredAttires } : null
+        const missingOnlyOk =
+          !showMissingOnly ||
+          filteredAttires.some(
+            (attire) =>
+              attire.status !== 'complete' || !attire.download_url?.trim()
+          ) ||
+          hasOpenRequests
+
+        const hasAttires = (wrestler.attires || []).length > 0
+
+        if (missingOnlyOk && filteredAttires.length > 0) {
+          return {
+            ...wrestler,
+            attires: filteredAttires
+          }
+        }
+
+        if (!hasAttires) {
+          const shouldShowEmptyWrestler =
+            wrestlerMatchesQuery &&
+            !hasAttireLevelFilters &&
+            !showMissingOnly
+
+          if (shouldShowEmptyWrestler) {
+            return {
+              ...wrestler,
+              attires: []
+            }
+          }
+        }
+
+        return null
       })
       .filter(Boolean)
-  }, [wrestlers, query, showMissingOnly, creatorFilter, sourceGameFilter, installFilter, collections, missingDownloadOnly, deadLinkOnly, installedIds])
+  }, [
+    wrestlers,
+    query,
+    showMissingOnly,
+    creatorFilter,
+    sourceGameFilter,
+    installFilter,
+    missingDownloadOnly,
+    deadLinkOnly,
+    installedIds
+  ])
 
 
   const visibleWrestlers = useMemo(() => {
