@@ -703,7 +703,7 @@ export default function App() {
           titantron_images: (item.titantron_images || []).map((img) => ({
             ...img,
             image_url: img.image_path
-              ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+              ? getAssetUrl(img.image_path, { width: 640, quality: 65 }) || ''
               : '',
             full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
           }))
@@ -712,18 +712,22 @@ export default function App() {
           ...attire,
           mod_type: attire.mod_type === 'port' ? 'port' : 'original',
           render_dds_url: attire.render_dds_path
-            ? getAssetUrl(attire.render_dds_path, { width: 700, height: 700, quality: 70, resize: 'contain' })
+            ? getAssetUrl(attire.render_dds_path, { width: 700, quality: 70, resize: 'contain' })
             : '',
-          render_dds_full_url: attire.render_dds_path ? getAssetUrl(attire.render_dds_path) : '',
+          render_dds_full_url: attire.render_dds_path
+            ? getAssetUrl(attire.render_dds_path)
+            : '',
           attire_images: (attire.attire_images || []).map((img) => ({
             ...img,
             image_url: img.image_path
-              ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+              ? getAssetUrl(img.image_path, { width: 640, quality: 65 }) || ''
               : '',
             full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
           }))
         }))),
-        requests: [...(wrestler.mod_requests || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        requests: [...(wrestler.mod_requests || [])].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        )
       }))
 
       const normalizedArenas = (arenaResult.data || []).map((arena) => ({
@@ -731,7 +735,7 @@ export default function App() {
         arena_images: (arena.arena_images || []).map((img) => ({
           ...img,
           image_url: img.image_path
-            ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+            ? getAssetUrl(img.image_path, { width: 640, quality: 65 }) || ''
             : '',
           full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
         })),
@@ -743,13 +747,15 @@ export default function App() {
       const normalizedTitles = (titleResult.data || []).map((title) => ({
         ...title,
         render_dds_url: title.render_dds_path
-          ? getAssetUrl(title.render_dds_path, { width: 700, height: 700, quality: 70, resize: 'contain' })
+          ? getAssetUrl(title.render_dds_path, { width: 700, quality: 70, resize: 'contain' })
           : '',
-        render_dds_full_url: title.render_dds_path ? getAssetUrl(title.render_dds_path) : '',
+        render_dds_full_url: title.render_dds_path
+          ? getAssetUrl(title.render_dds_path)
+          : '',
         title_belt_images: (title.title_belt_images || []).map((img) => ({
           ...img,
           image_url: img.image_path
-            ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+            ? getAssetUrl(img.image_path, { width: 640, quality: 65 }) || ''
             : '',
           full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
         })),
@@ -767,7 +773,7 @@ export default function App() {
         other_mod_images: (otherMod.other_mod_images || []).map((img) => ({
           ...img,
           image_url: img.image_path
-            ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
+            ? getAssetUrl(img.image_path, { width: 640, quality: 65 }) || ''
             : '',
           full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
         })),

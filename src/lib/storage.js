@@ -10,7 +10,7 @@ export async function uploadAsset({ userId, entityId, file, kind, folder = 'atti
   const path = `${userId}/${folder}/${entityId}/${kind}-${Date.now()}-${safeName}`
 
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-    cacheControl: '31536000', // 1 year cache (important for performance)
+    cacheControl: '31536000',
     upsert: true
   })
 
@@ -30,8 +30,7 @@ export async function removeAssets(paths = []) {
 }
 
 /**
- * Get asset URL
- * Supports Supabase image transformations for optimized loading
+ * Get asset URL with optional transformation
  */
 export function getAssetUrl(path, options = {}) {
   if (!path) return ''
@@ -40,32 +39,30 @@ export function getAssetUrl(path, options = {}) {
     width,
     height,
     quality = 70,
-    resize = 'cover'
+    resize = 'contain' // 🔥 safer default than 'cover'
   } = options
 
   const hasTransform = width || height
 
-  // Use Supabase transform (THIS FIXES YOUR 10MB IMAGE ISSUE)
   if (hasTransform) {
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(path, {
       transform: {
-        width,
-        height,
+        ...(width ? { width } : {}),
+        ...(height ? { height } : {}),
         quality,
         resize
       }
     })
 
-    return data.publicUrl
+    return data?.publicUrl || ''
   }
 
-  // Full original image
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
-  return data.publicUrl
+  return data?.publicUrl || ''
 }
 
 /**
- * OPTIONAL: Compress image before upload (fixes future large uploads)
+ * Compress image before upload
  */
 export async function compressImage(file, { maxWidth = 2200, quality = 0.82 } = {}) {
   if (!file?.type?.startsWith('image/')) return file
