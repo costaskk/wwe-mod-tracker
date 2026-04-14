@@ -53,13 +53,13 @@ function OtherModGallery({ images = [], onOpenImageViewer }) {
   }
 
   const galleryImages = images
-    .map((image) => image.full_image_url || image.url || image.image_url || '')
+    .map((image) => image.full_image_url || image.medium_url || image.thumb_url || '')
     .filter(Boolean)
 
   return (
     <div className="gallery-grid detail-gallery-grid">
       {images.map((image, index) => {
-        const src = image.url || image.image_url || ''
+        const src = image.thumb_url || image.medium_url || ''
 
         return (
           <button
@@ -191,7 +191,9 @@ export default function OtherModDetailPanel({
 
   const images = (mod.images || mod.other_mod_images || []).map((img) => ({
     ...img,
-    url: img.url || img.image_url || ''
+    thumb_url: img.thumb_url || img.url || img.image_thumb_url || '',
+    medium_url: img.medium_url || img.image_url || img.image_medium_url || img.url || '',
+    full_image_url: img.full_image_url || ''
   }))
 
   const requests = mod.requests || []
@@ -379,9 +381,23 @@ export default function OtherModDetailPanel({
                 <button
                   type="button"
                   className="secondary-button small-btn"
-                  onClick={() => onResolveLink(mod, hasDeadLink ? 'dead_link' : 'missing_link')}
+                  onClick={() => {
+                    const issueType = hasDeadLink ? 'dead_link' : 'missing_link'
+                    const newUrl = window.prompt('Enter the corrected download URL:')
+
+                    if (!newUrl || !newUrl.trim()) return
+
+                    onResolveLink(
+                      mod,
+                      issueType,
+                      newUrl.trim(),
+                      hasDeadLink
+                        ? 'Fixed dead link via detail panel'
+                        : 'Added missing download link via detail panel'
+                    )
+                  }}
                 >
-                  Resolve link
+                  Fix link
                 </button>
               ) : null}
 

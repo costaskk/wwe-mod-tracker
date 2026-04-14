@@ -57,7 +57,8 @@ function getCollectionItemData(item) {
           ? otherMod?.other_mod_images?.[0]
           : null
 
-  const thumbUrl = image?.image_url || image?.url || ''
+  const thumbUrl = image?.thumb_url || image?.image_url || image?.url || ''
+  const previewUrl = image?.full_image_url || image?.medium_url || image?.image_url || image?.url || ''
   const downloadUrl = entity?.download_url || ''
   const linkCount = parseDownloadLinks(downloadUrl).length
 
@@ -72,6 +73,7 @@ function getCollectionItemData(item) {
     subtitle,
     creatorName,
     thumbUrl,
+    previewUrl,
     downloadUrl,
     linkCount
   }
@@ -433,7 +435,7 @@ export default function CollectionView({
                   <button
                     type="button"
                     className="collection-thumb-button"
-                    onClick={() => setPreviewImage(thumbUrl)}
+                    onClick={() => setPreviewImage(previewUrl || thumbUrl)}
                   >
                     <img className="collection-item-thumb" src={thumbUrl} alt={displayName} />
                   </button>

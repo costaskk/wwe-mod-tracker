@@ -14,7 +14,7 @@ import {
   uid,
 } from '../lib/utils'
 import { testDownloadLink, parseDownloadLinks } from '../lib/utils'
-import { getAssetUrl, removeAssets, uploadAsset } from '../lib/storage'
+import { getAssetUrl, removeAssets, uploadImageWithVariants } from '../lib/storage'
 
 export default function ArenaPage({
   arenas = [],
@@ -120,14 +120,14 @@ export default function ArenaPage({
 
   const paginatedArenas = useMemo(
     () => paginateItems(decoratedArenas, arenaPage, arenasPerPage),
-    [filteredArenas, arenaPage]
+    [decoratedArenas, arenaPage]
   )
 
   const visibleArenas = paginatedArenas.items
 
   const selectedArena = useMemo(
     () => decoratedArenas.find((item) => item.id === selectedArenaId) || visibleArenas[0] || null,
-    [filteredArenas, visibleArenas, selectedArenaId]
+    [decoratedArenas, visibleArenas, selectedArenaId]
   )
 
   useEffect(() => {
@@ -199,7 +199,7 @@ export default function ArenaPage({
         throw new Error(`Arena already exists: ${duplicateArena.name}`)
       }
 
-      const parsedLinks = parseDownloadLinks(form.download_url || '')
+      const parsedLinks = parseDownloadLinks(arenaForm.download_url || '')
 
       if (parsedLinks.length) {
         const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
@@ -221,29 +221,6 @@ export default function ArenaPage({
 
       let arenaId = arenaForm.id
 
-      if (parsedLinks.length) {
-        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
-        const hasDeadLink = results.some((item) => item?.status === 'dead')
-
-        if (hasDeadLink) {
-          const { data: existingDeadRequests } = await supabase
-            .from('arena_requests')
-            .select('id')
-            .eq('arena_id', arenaId)
-            .eq('status', 'open')
-            .eq('request_type', 'dead_link')
-            .limit(1)
-
-          if (!existingDeadRequests?.length) {
-            await supabase.from('arena_requests').insert({
-              arena_id: arenaId,
-              request_type: 'dead_link',
-              notes: 'Automatically detected dead link during save.'
-            })
-          }
-        }
-      }
-
       if (arenaForm.persisted) {
         const { error } = await supabase
           .from('arenas')
@@ -264,7 +241,38 @@ export default function ArenaPage({
 
         arenaId = data.id
         setSelectedArenaId(data.id)
+
+
         openNotice('success', 'Arena added', `${arenaForm.name} was added successfully.`)
+      }
+
+      if (parsedLinks.length) {
+        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
+        const hasDeadLink = results.some((item) => item?.status === 'dead')
+
+        if (hasDeadLink && arenaId) {
+          const { data: existingDeadRequests, error: existingDeadRequestsError } = await supabase
+            .from('arena_requests')
+            .select('id')
+            .eq('arena_id', arenaId)
+            .eq('status', 'open')
+            .eq('request_type', 'dead_link')
+            .limit(1)
+
+          if (existingDeadRequestsError) throw existingDeadRequestsError
+
+          if (!existingDeadRequests?.length) {
+            const { error: insertDeadRequestError } = await supabase
+              .from('arena_requests')
+              .insert({
+                arena_id: arenaId,
+                request_type: 'dead_link',
+                notes: 'Automatically detected dead link during save.'
+              })
+
+            if (insertDeadRequestError) throw insertDeadRequestError
+          }
+        }
       }
 
       if (Array.isArray(arenaForm.pendingImageUploads) && arenaForm.pendingImageUploads.length) {
@@ -272,6 +280,8 @@ export default function ArenaPage({
           arena_id: arenaId,
           owner_id: session.user.id,
           image_path: item.path,
+          image_medium_path: item.medium_path || '',
+          image_thumb_path: item.thumb_path || '',
           image_name: item.name
         }))
 
@@ -304,7 +314,7 @@ export default function ArenaPage({
             throw new Error('All screenshots must be image files.')
           }
 
-          const { path, fileName } = await uploadAsset({
+          const { originalPath, mediumPath, thumbPath, fileName } = await uploadImageWithVariants({
             userId: session.user.id,
             entityId,
             file,
@@ -313,9 +323,15 @@ export default function ArenaPage({
           })
 
           uploaded.push({
-            path,
+            path: originalPath,
+            medium_path: mediumPath,
+            thumb_path: thumbPath,
             name: fileName,
-            url: getAssetUrl(path)
+            url: getAssetUrl(thumbPath),
+            thumb_url: getAssetUrl(thumbPath),
+            image_url: getAssetUrl(mediumPath),
+            medium_url: getAssetUrl(mediumPath),
+            full_image_url: getAssetUrl(originalPath)
           })
         }
 
@@ -353,11 +369,18 @@ export default function ArenaPage({
     if (!canDeleteContent) return
 
     try {
-      if (path) {
-        await removeAssets([path])
-      }
 
       if (kind === 'image') {
+        const imageToRemove = (arenaForm.images || []).find((img) => img.path === path)
+
+        if (imageToRemove) {
+          await removeAssets([
+            imageToRemove.path,
+            imageToRemove.medium_path,
+            imageToRemove.thumb_path
+          ])
+        }
+
         setArenaForm((current) => ({
           ...current,
           images: (current.images || []).filter((img) => img.path !== path),
@@ -504,8 +527,12 @@ export default function ArenaPage({
             setSaving(true)
 
             const paths = (arena.arena_images || [])
-            .map((img) => img.image_path)
-            .filter(Boolean)
+              .flatMap((img) => [
+                img.image_path,
+                img.image_medium_path,
+                img.image_thumb_path
+              ])
+              .filter(Boolean)
 
             if (paths.length) {
             await removeAssets(paths)

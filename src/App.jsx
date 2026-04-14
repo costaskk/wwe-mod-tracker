@@ -1,5 +1,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
+import useAppData from './hooks/useAppData'
+import { createCreator } from './lib/creatorHelpers'
 import AllModsPage from './components/AllModsPage'
 import AdminPanel from './components/AdminPanel'
 import AuthPanel from './components/AuthPanel'
@@ -24,7 +26,14 @@ import WrestlerEditorModal from './components/WrestlerEditorModal'
 import WrestlerList from './components/WrestlerList'
 import { buildUnifiedModsFeed } from './lib/utils' // ✅ make sure this exists
 import { isSupabaseConfigured, supabase } from './lib/supabase'
-import { getAssetUrl, removeAssets, tryAutoMatchHeadshot, uploadAsset } from './lib/storage'
+import {
+  compressImage,
+  getAssetUrl,
+  removeAssets,
+  tryAutoMatchHeadshot,
+  uploadAsset,
+  uploadImageWithVariants
+} from './lib/storage'
 import { testDownloadLink, parseDownloadLinks } from './lib/utils'
 import {
   uid,
@@ -52,17 +61,7 @@ import {
 
 export default function App() {
   const [session, setSession] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [currentProfile, setCurrentProfile] = useState(null)
-  const [profiles, setProfiles] = useState([])
   const [updatingProfile, setUpdatingProfile] = useState(false)
-  const [wrestlers, setWrestlers] = useState([])
-  const [arenas, setArenas] = useState([])
-  const [creators, setCreators] = useState([])
-  const [collections, setCollections] = useState([])
-  const [installedIds, setInstalledIds] = useState(new Set())
-  const [installedArenaIds, setInstalledArenaIds] = useState(new Set())
   const [selectedId, setSelectedId] = useState(null)
   const [selectedCollection, setSelectedCollection] = useState(null)
 
@@ -108,14 +107,8 @@ export default function App() {
   const [arenaCreateSignal, setArenaCreateSignal] = useState(0)
   const [arenaSelectSignal, setArenaSelectSignal] = useState(null)
 
-  const [titleBelts, setTitleBelts] = useState([])
-  const [installedTitleIds, setInstalledTitleIds] = useState(new Set())
-
   const [titleCreateSignal, setTitleCreateSignal] = useState(0)
   const [titleSelectSignal, setTitleSelectSignal] = useState(null)
-  
-  const [otherMods, setOtherMods] = useState([])
-  const [installedOtherModIds, setInstalledOtherModIds] = useState(new Set())
 
   const [otherModsCreateSignal, setOtherModsCreateSignal] = useState(0)
   const [otherModsSelectSignal, setOtherModsSelectSignal] = useState(null)
@@ -137,6 +130,36 @@ export default function App() {
     index: 0
   })
 
+  const {
+    loading,
+    error,
+    currentProfile,
+    profiles,
+    wrestlers,
+    arenas,
+    titleBelts,
+    otherMods,
+    creators,
+    collections,
+    installedIds,
+    installedArenaIds,
+    installedTitleIds,
+    installedOtherModIds,
+    setProfiles,
+    setCurrentProfile,
+    setWrestlers,
+    setArenas,
+    setTitleBelts,
+    setOtherMods,
+    setCreators,
+    setCollections,
+    setInstalledIds,
+    setInstalledArenaIds,
+    setInstalledTitleIds,
+    setInstalledOtherModIds,
+    fetchAll
+  } = useAppData(session)
+
   function canManageContent(ownerId) {
     if (!session) return false
     return session.user.id === ownerId || isStaff
@@ -144,78 +167,6 @@ export default function App() {
 
   function openNotice(type, title, message) {
     setNotice({ type, title, message })
-  }
-
-  async function compressImage(file) {
-    if (!(file instanceof File)) {
-      return file
-    }
-
-    // Do not try to "compress" non-image files.
-    // Keep DDS, WEM, JSON and anything else untouched.
-    if (!file.type || !file.type.startsWith('image/')) {
-      return file
-    }
-
-    return new Promise((resolve) => {
-      const img = new Image()
-      const reader = new FileReader()
-
-      reader.onload = (event) => {
-        img.onload = () => {
-          const maxWidth = 1920
-          const maxHeight = 1920
-
-          let { width, height } = img
-
-          if (width > maxWidth || height > maxHeight) {
-            const ratio = Math.min(maxWidth / width, maxHeight / height)
-            width = Math.round(width * ratio)
-            height = Math.round(height * ratio)
-          }
-
-          const canvas = document.createElement('canvas')
-          canvas.width = width
-          canvas.height = height
-
-          const ctx = canvas.getContext('2d')
-          if (!ctx) {
-            resolve(file)
-            return
-          }
-
-          ctx.drawImage(img, 0, 0, width, height)
-
-          canvas.toBlob(
-            (blob) => {
-              if (!blob) {
-                resolve(file)
-                return
-              }
-
-              const compressed = new File(
-                [blob],
-                file.name,
-                {
-                  type: file.type === 'image/png' ? 'image/png' : 'image/jpeg',
-                  lastModified: Date.now()
-                }
-              )
-
-              resolve(compressed)
-            },
-            file.type === 'image/png' ? 'image/png' : 'image/jpeg',
-            0.82
-          )
-        }
-
-        img.onerror = () => resolve(file)
-        img.src = event.target?.result
-      }
-
-      reader.onerror = () => resolve(file)
-      reader.readAsDataURL(file)
-    })
   }
 
   function addTitantron() {
@@ -257,30 +208,34 @@ export default function App() {
       if (!titantron) throw new Error('Titantron not found.')
 
       const entityId = wrestlerForm.id || wrestlerForm.temp_upload_id || uid()
-      const uploaded = []
-
-      for (const file of files) {
+      files.forEach((file) => {
         if (!file.type.startsWith('image/')) {
           throw new Error('Titantron screenshots must be image files.')
         }
+      })
 
-        const optimizedFile = await compressImage(file)
+      const uploaded = await Promise.all(
+        files.map(async (file) => {
+          const { originalPath, mediumPath, thumbPath, fileName } = await uploadImageWithVariants({
+            userId: session.user.id,
+            entityId,
+            file,
+            kind: 'titantron_image',
+            folder: 'wrestlers'
+          })
 
-        const { path, fileName } = await uploadAsset({
-          userId: session.user.id,
-          entityId,
-          file: optimizedFile,
-          kind: 'titantron_image',
-          folder: 'wrestlers'
+          return {
+            id: uid(),
+            path: originalPath,
+            medium_path: mediumPath,
+            thumb_path: thumbPath,
+            name: fileName,
+            url: getAssetUrl(thumbPath),
+            image_url: getAssetUrl(mediumPath),
+            full_image_url: getAssetUrl(originalPath)
+          }
         })
-
-        uploaded.push({
-          id: uid(),
-          path,
-          name: fileName,
-          url: getAssetUrl(path)
-        })
-      }
+      )
 
       setWrestlerForm((current) => ({
         ...current,
@@ -315,11 +270,16 @@ export default function App() {
     try {
       setUploading(true)
 
-      if (screenshotPath) {
-        await removeAssets([screenshotPath])
-      }
-
       const titantron = (wrestlerForm.titantrons || []).find((item) => item.id === titantronId)
+      const screenshotToRemove = (titantron?.screenshots || []).find((img) => img.path === screenshotPath)
+
+      if (screenshotToRemove) {
+        await removeAssets([
+          screenshotToRemove.path,
+          screenshotToRemove.medium_path,
+          screenshotToRemove.thumb_path
+        ].filter(Boolean))
+      }
 
       setWrestlerForm((current) => ({
         ...current,
@@ -361,7 +321,13 @@ export default function App() {
     try {
       setUploading(true)
 
-      const screenshotPaths = (titantron.screenshots || []).map((img) => img.path).filter(Boolean)
+      const screenshotPaths = (titantron.screenshots || [])
+        .flatMap((img) => [
+          img.path,
+          img.medium_path,
+          img.thumb_path
+        ])
+        .filter(Boolean)
       if (screenshotPaths.length) {
         await removeAssets(screenshotPaths)
       }
@@ -492,431 +458,7 @@ export default function App() {
   useEffect(() => {
     if (!isSupabaseConfigured) return
     fetchAll()
-  }, [session])
-
-  async function fetchCurrentUserProfile() {
-    if (!session?.user?.id) return { data: null, error: null }
-
-    return await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .maybeSingle()
-  }
-
-  async function fetchAll() {
-    setLoading(true)
-    setError('')
-
-    try {
-      const currentProfileResult = await fetchCurrentUserProfile()
-
-      if (currentProfileResult.error) {
-        setError(currentProfileResult.error.message || 'Failed to load your profile.')
-        return
-      }
-
-      const myProfile = currentProfileResult.data || null
-
-      const publicCollectionsQuery = supabase
-        .from('collections')
-        .select(`
-          *,
-          collection_items (
-            *,
-            attire:attires (
-              *,
-              wrestler:wrestlers (*),
-              attire_images (*)
-            ),
-            arena:arenas (
-              *,
-              arena_images (*)
-            ),
-            title_belt:title_belts (
-              *,
-              title_belt_images (*)
-            ),
-            other_mod:other_mods (
-              *,
-              other_mod_images (*)
-            )
-          )
-        `)
-        .eq('visibility', 'public')
-        .order('updated_at', { ascending: false })
-
-      const ownCollectionsQuery = session?.user?.id
-        ? supabase
-            .from('collections')
-            .select(`
-              *,
-              collection_items (
-                *,
-                attire:attires (
-                  *,
-                  wrestler:wrestlers (*),
-                  attire_images (*)
-                ),
-                arena:arenas (
-                  *,
-                  arena_images (*)
-                ),
-                title_belt:title_belts (
-                  *,
-                  title_belt_images (*)
-                ),
-                other_mod:other_mods (
-                  *,
-                  other_mod_images (*)
-                )
-              )
-            `)
-            .eq('owner_id', session.user.id)
-            .order('updated_at', { ascending: false })
-        : Promise.resolve({ data: [], error: null })
-
-      const [
-        wrestlerResult,
-        arenaResult,
-        creatorResult,
-        titleResult,
-        otherModsResult,
-        installedOtherModsResult,
-        installsResult,
-        installedArenasResult,
-        installedTitlesResult,
-        publicCollectionsResult,
-        ownCollectionsResult
-      ] = await Promise.all([
-        supabase
-          .from('wrestlers')
-          .select(`
-            *,
-            wrestler_audio_files (*),
-            wrestler_titantrons (
-              *,
-              titantron_images (*)
-            ),
-            attires (
-              *,
-              attire_images (*)
-            ),
-            mod_requests (*)
-          `)
-          .order('wrestler_name', { ascending: true }),
-
-        supabase
-          .from('arenas')
-          .select(`
-            *,
-            arena_images (*),
-            arena_requests (*)
-          `)
-          .order('name', { ascending: true }),
-
-        supabase.from('creators').select('*').order('name', { ascending: true }),
-
-        supabase
-          .from('title_belts')
-          .select(`
-            *,
-            title_belt_images (*),
-            title_belt_audio_files (*),
-            title_belt_requests (*)
-          `)
-          .order('name', { ascending: true }),
-
-        supabase
-          .from('other_mods')
-          .select(`
-            *,
-            other_mod_images (*),
-            other_mod_requests (*)
-          `)
-          .order('name', { ascending: true }),
-
-        session?.user?.id
-          ? supabase.from('user_installed_other_mods').select('other_mod_id').eq('user_id', session.user.id)
-          : Promise.resolve({ data: [], error: null }),
-
-        session?.user?.id
-          ? supabase.from('user_installed_attires').select('attire_id').eq('user_id', session.user.id)
-          : Promise.resolve({ data: [], error: null }),
-
-        session?.user?.id
-          ? supabase.from('user_installed_arenas').select('arena_id').eq('user_id', session.user.id)
-          : Promise.resolve({ data: [], error: null }),
-
-        session?.user?.id
-          ? supabase.from('user_installed_title_belts').select('title_belt_id').eq('user_id', session.user.id)
-          : Promise.resolve({ data: [], error: null }),
-
-        publicCollectionsQuery,
-        ownCollectionsQuery
-      ])
-
-      if (
-        wrestlerResult.error ||
-        arenaResult.error ||
-        creatorResult.error ||
-        titleResult.error ||
-        installsResult.error ||
-        installedArenasResult.error ||
-        installedTitlesResult.error ||
-        publicCollectionsResult.error ||
-        ownCollectionsResult.error ||
-        otherModsResult.error ||
-        installedOtherModsResult.error
-      ) {
-        setError(
-          wrestlerResult.error?.message ||
-          arenaResult.error?.message ||
-          creatorResult.error?.message ||
-          titleResult.error?.message ||
-          installsResult.error?.message ||
-          installedArenasResult.error?.message ||
-          installedTitlesResult.error?.message ||
-          publicCollectionsResult.error?.message ||
-          ownCollectionsResult.error?.message ||
-          otherModsResult.error?.message ||
-          installedOtherModsResult.error?.message ||
-          'Failed to load data.'
-        )
-        return
-      }
-
-      const normalizedWrestlers = (wrestlerResult.data || []).map((wrestler) => ({
-        ...wrestler,
-        headshot_url: wrestler.headshot_path
-          ? getAssetUrl(wrestler.headshot_path, { width: 320, height: 320, quality: 70 })
-          : (wrestler.headshot_external_url || ''),
-        headshot_full_url: wrestler.headshot_path
-          ? getAssetUrl(wrestler.headshot_path)
-          : (wrestler.headshot_external_url || ''),
-        audio_files: (wrestler.wrestler_audio_files || []).map((file) => ({
-          ...file,
-          file_url: file.file_path ? getAssetUrl(file.file_path) : ''
-        })),
-        titantrons: (wrestler.wrestler_titantrons || []).map((item) => ({
-          ...item,
-          titantron_images: (item.titantron_images || []).map((img) => ({
-            ...img,
-            image_url: img.image_path
-              ? getAssetUrl(img.image_path, { width: 640, quality: 65 }) || ''
-              : '',
-            full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
-          }))
-        })),
-        attires: sortAttires((wrestler.attires || []).map((attire) => ({
-          ...attire,
-          mod_type: attire.mod_type === 'port' ? 'port' : 'original',
-          render_dds_url: attire.render_dds_path
-            ? getAssetUrl(attire.render_dds_path, { width: 700, quality: 70, resize: 'contain' })
-            : '',
-          render_dds_full_url: attire.render_dds_path
-            ? getAssetUrl(attire.render_dds_path)
-            : '',
-          attire_images: (attire.attire_images || []).map((img) => ({
-            ...img,
-            image_url: img.image_path
-              ? getAssetUrl(img.image_path, { width: 640, quality: 65 }) || ''
-              : '',
-            full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
-          }))
-        }))),
-        requests: [...(wrestler.mod_requests || [])].sort(
-          (a, b) => new Date(b.created_at) - new Date(a.created_at)
-        )
-      }))
-
-      const normalizedArenas = (arenaResult.data || []).map((arena) => ({
-        ...arena,
-        arena_images: (arena.arena_images || []).map((img) => ({
-          ...img,
-          image_url: img.image_path
-            ? getAssetUrl(img.image_path, { width: 640, quality: 65 }) || ''
-            : '',
-          full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
-        })),
-        requests: [...(arena.arena_requests || [])].sort(
-          (a, b) => new Date(b.created_at) - new Date(a.created_at)
-        )
-      }))
-
-      const normalizedTitles = (titleResult.data || []).map((title) => ({
-        ...title,
-        render_dds_url: title.render_dds_path
-          ? getAssetUrl(title.render_dds_path, { width: 700, quality: 70, resize: 'contain' })
-          : '',
-        render_dds_full_url: title.render_dds_path
-          ? getAssetUrl(title.render_dds_path)
-          : '',
-        title_belt_images: (title.title_belt_images || []).map((img) => ({
-          ...img,
-          image_url: img.image_path
-            ? getAssetUrl(img.image_path, { width: 640, quality: 65 }) || ''
-            : '',
-          full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
-        })),
-        audio_files: (title.title_belt_audio_files || []).map((file) => ({
-          ...file,
-          file_url: file.file_path ? getAssetUrl(file.file_path) : ''
-        })),
-        requests: [...(title.title_belt_requests || [])].sort(
-          (a, b) => new Date(b.created_at) - new Date(a.created_at)
-        )
-      }))
-
-      const normalizedOtherMods = (otherModsResult.data || []).map((otherMod) => ({
-        ...otherMod,
-        other_mod_images: (otherMod.other_mod_images || []).map((img) => ({
-          ...img,
-          image_url: img.image_path
-            ? getAssetUrl(img.image_path, { width: 640, quality: 65 }) || ''
-            : '',
-          full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
-        })),
-        requests: [...(otherMod.other_mod_requests || [])].sort(
-          (a, b) => new Date(b.created_at) - new Date(a.created_at)
-        )
-      }))
-
-      const collectionMap = new Map()
-      ;[...(publicCollectionsResult.data || []), ...(ownCollectionsResult.data || [])].forEach((collection) => {
-        const normalizedItems = (collection.collection_items || []).map((item) => ({
-          ...item,
-          attire: item.attire ? {
-            ...item.attire,
-            render_dds_url: item.attire.render_dds_path ? getAssetUrl(item.attire.render_dds_path) : '',
-            attire_images: (item.attire.attire_images || []).map((img) => ({
-              ...img,
-              image_url: img.image_path
-                ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
-                : '',
-              full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
-            })),
-            wrestler: item.attire.wrestler ? {
-              ...item.attire.wrestler,
-              headshot_url: item.attire.wrestler.headshot_path
-                ? getAssetUrl(item.attire.wrestler.headshot_path)
-                : (item.attire.wrestler.headshot_external_url || '')
-            } : null
-          } : null,
-
-          arena: item.arena ? {
-            ...item.arena,
-            arena_images: (item.arena.arena_images || []).map((img) => ({
-              ...img,
-              image_url: img.image_path
-                ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
-                : '',
-              full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
-            }))
-          } : null,
-
-          title_belt: item.title_belt ? {
-            ...item.title_belt,
-            render_dds_url: item.title_belt.render_dds_path ? getAssetUrl(item.title_belt.render_dds_path) : '',
-            title_belt_images: (item.title_belt.title_belt_images || []).map((img) => ({
-              ...img,
-              image_url: img.image_path
-                ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
-                : '',
-              full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
-            }))
-          } : null,
-
-          other_mod: item.other_mod ? {
-            ...item.other_mod,
-            other_mod_images: (item.other_mod.other_mod_images || []).map((img) => ({
-              ...img,
-              image_url: img.image_path
-                ? getAssetUrl(img.image_path, { width: 640, height: 360, quality: 65 })
-                : '',
-              full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
-            }))
-          } : null
-        }))
-        collectionMap.set(collection.id, {
-          ...collection,
-          cover_url: collection.cover_path
-            ? getAssetUrl(collection.cover_path, { width: 900, height: 500, quality: 70 })
-            : '',
-          cover_full_url: collection.cover_path ? getAssetUrl(collection.cover_path) : '',
-          items: normalizedItems
-        })
-      })
-
-      const mergedCollections = [...collectionMap.values()].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-      const seenSlugs = new Set()
-      const repairedCollections = await Promise.all(
-        mergedCollections.map(async (collection) => {
-          if (!collection.slug || seenSlugs.has(collection.slug)) {
-            const newSlug = uniqueCollectionSlug(collection.name, collection.owner_id)
-
-            const { error: slugUpdateError } = await supabase
-              .from('collections')
-              .update({ slug: newSlug })
-              .eq('id', collection.id)
-
-            if (slugUpdateError) throw slugUpdateError
-
-            seenSlugs.add(newSlug)
-            return { ...collection, slug: newSlug }
-          }
-
-          seenSlugs.add(collection.slug)
-          return collection
-        })
-      )
-      const slug = new URLSearchParams(window.location.search).get('collection')
-      const collectionFromUrl = slug ? repairedCollections.find((item) => item.slug === slug) : null
-
-      let loadedProfiles = myProfile ? [myProfile] : []
-
-      if (myProfile?.role === 'admin') {
-        const adminProfilesResult = await supabase
-          .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false })
-
-        if (adminProfilesResult.error) {
-          throw adminProfilesResult.error
-        }
-
-        loadedProfiles = adminProfilesResult.data || []
-      }
-
-      setProfiles(loadedProfiles)
-      setCurrentProfile(myProfile)
-      setWrestlers(normalizedWrestlers)
-      setArenas(normalizedArenas)
-      setTitleBelts(normalizedTitles)
-      setCreators(creatorResult.data || [])
-      setCollections(repairedCollections)
-      setSelectedCollection(collectionFromUrl || null)
-      setSelectedId((current) => {
-        if (current) return current
-
-        const params = new URLSearchParams(window.location.search)
-        const wrestlerFromUrl = params.get('wrestler')
-
-        if (wrestlerFromUrl) return current
-
-        return normalizedWrestlers[0]?.id || null
-      })
-      setInstalledIds(new Set((installsResult.data || []).map((item) => item.attire_id)))
-      setInstalledArenaIds(new Set((installedArenasResult.data || []).map((item) => item.arena_id)))
-      setInstalledTitleIds(new Set((installedTitlesResult.data || []).map((item) => item.title_belt_id)))
-      setOtherMods(normalizedOtherMods)
-      setInstalledOtherModIds(new Set((installedOtherModsResult.data || []).map((item) => item.other_mod_id)))
-    } catch (err) {
-      setError(err.message || 'Failed to load data.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [session, fetchAll])
 
   const filteredWrestlers = useMemo(() => {
     const q = query.toLowerCase().trim()
@@ -1183,10 +725,11 @@ export default function App() {
         notes: wrestlerForm.notes.trim(),
         tags: parseTags(wrestlerForm.tags_text),
         headshot_path: wrestlerForm.headshot_path || '',
+        headshot_medium_path: wrestlerForm.headshot_medium_path || '',
+        headshot_thumb_path: wrestlerForm.headshot_thumb_path || '',
         headshot_name: wrestlerForm.headshot_name || '',
         headshot_external_url: wrestlerForm.headshot_external_url || ''
       }
-
 
       let wrestlerId = wrestlerForm.id
 
@@ -1252,6 +795,8 @@ export default function App() {
             wrestler_titantron_id: titantronRowId,
             owner_id: session.user.id,
             image_path: img.path,
+            image_medium_path: img.medium_path || '',
+            image_thumb_path: img.thumb_path || '',
             image_name: img.name
           }))
 
@@ -1276,33 +821,33 @@ export default function App() {
       setUploading(true)
 
       const entityId = wrestlerForm.id || wrestlerForm.temp_upload_id || uid()
-      const uploadedRows = []
-
-      for (const file of files) {
+      files.forEach((file) => {
         if (!file.name.toLowerCase().endsWith('.wem')) {
           throw new Error('Only .wem files are allowed.')
         }
+      })
 
-        const optimizedFile = await compressImage(file)
+      const uploadedRows = await Promise.all(
+        files.map(async (file) => {
+          const { path, fileName } = await uploadAsset({
+            userId: session.user.id,
+            entityId,
+            file,
+            kind,
+            folder: 'wrestlers'
+          })
 
-        const { path, fileName } = await uploadAsset({
-          userId: session.user.id,
-          entityId,
-          file: optimizedFile,
-          kind,
-          folder: 'wrestlers'
+          return {
+            id: uid(),
+            wrestler_id: wrestlerForm.id || null,
+            owner_id: session.user.id,
+            audio_type: kind,
+            file_path: path,
+            file_name: fileName,
+            file_url: getAssetUrl(path)
+          }
         })
-
-        uploadedRows.push({
-          id: uid(),
-          wrestler_id: wrestlerForm.id || null,
-          owner_id: session.user.id,
-          audio_type: kind,
-          file_path: path,
-          file_name: fileName,
-          file_url: getAssetUrl(path)
-        })
-      }
+      )
 
       setWrestlerForm((current) => ({
         ...current,
@@ -1359,6 +904,17 @@ export default function App() {
 
       const parsedLinks = parseDownloadLinks(attireForm.download_url || '')
 
+      if (attireForm.persisted) {
+        const { error } = await supabase.from('attires').update(payload).eq('id', attireForm.id)
+        if (error) throw error
+        openNotice('success', 'Attire updated', `${attireForm.name} was updated successfully.`)
+      } else {
+        const { data, error } = await supabase.from('attires').insert(payload).select('id').single()
+        if (error) throw error
+        attireId = data.id
+        openNotice('success', 'Attire added', `${attireForm.name} was added successfully.`)
+      }
+
       if (parsedLinks.length) {
         try {
           const results = await Promise.all(
@@ -1407,19 +963,14 @@ export default function App() {
         }
       }
 
-      if (attireForm.persisted) {
-        const { error } = await supabase.from('attires').update(payload).eq('id', attireForm.id)
-        if (error) throw error
-        openNotice('success', 'Attire updated', `${attireForm.name} was updated successfully.`)
-      } else {
-        const { data, error } = await supabase.from('attires').insert(payload).select('id').single()
-        if (error) throw error
-        attireId = data.id
-        openNotice('success', 'Attire added', `${attireForm.name} was added successfully.`)
-      }
-
       if (Array.isArray(attireForm.pendingImageUploads) && attireForm.pendingImageUploads.length) {
-        const inserts = attireForm.pendingImageUploads.map((item) => ({ attire_id: attireId, image_path: item.path, image_name: item.name }))
+        const inserts = attireForm.pendingImageUploads.map((item) => ({
+          attire_id: attireId,
+          image_path: item.path,
+          image_medium_path: item.medium_path || '',
+          image_thumb_path: item.thumb_path || '',
+          image_name: item.name
+        }))
         const { error } = await supabase.from('attire_images').insert(inserts)
         if (error) throw error
       }
@@ -1490,12 +1041,10 @@ export default function App() {
 
       const entityId = wrestlerForm.id || wrestlerForm.temp_upload_id || uid()
 
-      const optimizedFile = await compressImage(file)
-
-      const { path, fileName } = await uploadAsset({
+      const { originalPath, mediumPath, thumbPath, fileName } = await uploadImageWithVariants({
         userId: session.user.id,
         entityId,
-        file: optimizedFile,
+        file,
         kind: 'headshot',
         folder: 'wrestlers'
       })
@@ -1503,9 +1052,11 @@ export default function App() {
       setWrestlerForm((current) => ({
         ...current,
         temp_upload_id: current.temp_upload_id || (!current.id ? entityId : ''),
-        headshot_path: path,
+        headshot_path: originalPath,
+        headshot_medium_path: mediumPath,
+        headshot_thumb_path: thumbPath,
         headshot_name: fileName,
-        headshot_url: getAssetUrl(path),
+        headshot_url: getAssetUrl(mediumPath),
         headshot_external_url: '',
         auto_match_urls: [],
         auto_match_titles: []
@@ -1559,7 +1110,17 @@ export default function App() {
     try {
       setUploading(true)
       const { imageUrl, sourceTitle } = await tryAutoMatchHeadshot(wrestlerForm.wrestler_name, wrestlerForm.auto_match_titles || [], wrestlerForm.auto_match_urls || [])
-      setWrestlerForm((current) => ({ ...current, headshot_path: '', headshot_name: `Auto-matched image: ${sourceTitle}`, headshot_url: imageUrl, headshot_external_url: imageUrl, auto_match_titles: [...(current.auto_match_titles || []), sourceTitle], auto_match_urls: [...(current.auto_match_urls || []), imageUrl] }))
+      setWrestlerForm((current) => ({
+        ...current,
+        headshot_path: '',
+        headshot_medium_path: '',
+        headshot_thumb_path: '',
+        headshot_name: `Auto-matched image: ${sourceTitle}`,
+        headshot_url: imageUrl,
+        headshot_external_url: imageUrl,
+        auto_match_titles: [...(current.auto_match_titles || []), sourceTitle],
+        auto_match_urls: [...(current.auto_match_urls || []), imageUrl]
+      }))
       openNotice('success', 'Headshot matched', `Found a public headshot from ${sourceTitle}. Press Try auto-match again for another option.`)
     } catch (err) {
       openNotice('info', 'No alternative image found', err.message || 'Could not auto-match a different headshot.')
@@ -1570,9 +1131,25 @@ export default function App() {
 
   async function removeWrestlerHeadshot() {
     if (!canDeleteContent) return
+
     try {
-      if (wrestlerForm.headshot_path) await removeAssets([wrestlerForm.headshot_path])
-      setWrestlerForm((current) => ({ ...current, headshot_path: '', headshot_name: '', headshot_url: '', headshot_external_url: '', auto_match_titles: [], auto_match_urls: [] }))
+      await removeAssets([
+        wrestlerForm.headshot_path,
+        wrestlerForm.headshot_medium_path,
+        wrestlerForm.headshot_thumb_path
+      ].filter(Boolean))
+
+      setWrestlerForm((current) => ({
+        ...current,
+        headshot_path: '',
+        headshot_medium_path: '',
+        headshot_thumb_path: '',
+        headshot_name: '',
+        headshot_url: '',
+        headshot_external_url: '',
+        auto_match_titles: [],
+        auto_match_urls: []
+      }))
     } catch (err) {
       openNotice('error', 'Could not remove headshot', err.message || 'Could not remove headshot.')
     }
@@ -1640,21 +1217,46 @@ export default function App() {
         const file = filesOrFile
         if (!file.name.toLowerCase().endsWith('.dds')) throw new Error('Render must be a .dds file.')
         const entityId = attireForm.id || uid()
-        const optimizedFile = await compressImage(file)
-        const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file: optimizedFile, kind: 'render', folder: 'attires' })
+        const { path, fileName } = await uploadAsset({
+          userId: session.user.id,
+          entityId,
+          file,
+          kind: 'render',
+          folder: 'attires'
+        })
         setAttireForm((current) => ({ ...current, id: current.id || entityId, render_dds_path: path, render_dds_name: fileName, render_dds_url: getAssetUrl(path) }))
         openNotice('success', 'DDS uploaded', `${file.name} was uploaded successfully.`)
       }
       if (kind === 'image') {
         const files = filesOrFile
         const entityId = attireForm.id || uid()
-        const uploaded = []
-        for (const file of files) {
-          if (!file.type.startsWith('image/')) throw new Error('All screenshots must be image files.')
-          const optimizedFile = await compressImage(file)
-          const { path, fileName } = await uploadAsset({ userId: session.user.id, entityId, file: optimizedFile, kind: 'image', folder: 'attires' })
-          uploaded.push({ path, name: fileName, url: getAssetUrl(path) })
-        }
+        files.forEach((file) => {
+          if (!file.type.startsWith('image/')) {
+            throw new Error('All screenshots must be image files.')
+          }
+        })
+
+        const uploaded = await Promise.all(
+          files.map(async (file) => {
+            const { originalPath, mediumPath, thumbPath, fileName } = await uploadImageWithVariants({
+              userId: session.user.id,
+              entityId,
+              file,
+              kind: 'image',
+              folder: 'attires'
+            })
+
+            return {
+              path: originalPath,
+              medium_path: mediumPath,
+              thumb_path: thumbPath,
+              name: fileName,
+              url: getAssetUrl(thumbPath),
+              image_url: getAssetUrl(mediumPath),
+              full_image_url: getAssetUrl(originalPath)
+            }
+          })
+        )
         setAttireForm((current) => ({ ...current, id: current.id || entityId, images: [...current.images, ...uploaded], pendingImageUploads: [...(current.pendingImageUploads || []), ...uploaded] }))
         openNotice('success', 'Screenshots uploaded', `${uploaded.length} screenshot${uploaded.length === 1 ? '' : 's'} uploaded successfully.`)
       }
@@ -1669,11 +1271,23 @@ export default function App() {
     if (!canDeleteContent) return
 
     try {
-      if (path) {
-        await removeAssets([path])
+
+      if (kind === 'image') {
+        const imageToRemove = (attireForm.images || []).find((img) => img.path === path)
+
+        if (imageToRemove) {
+          await removeAssets([
+            imageToRemove.path,
+            imageToRemove.medium_path,
+            imageToRemove.thumb_path
+          ].filter(Boolean))
+        }
       }
 
       if (kind === 'render') {
+        if (path) {
+          await removeAssets([path])
+        }
         if (attireForm.persisted) {
           const { error } = await supabase
             .from('attires')
@@ -1766,41 +1380,29 @@ export default function App() {
   }
 
   async function addAttireCreator() {
-    if (!canContribute) return
-    const name = newCreatorName.trim()
-    if (!name) return
+    if (!canContribute) return null
 
     setAddingCreator(true)
     try {
-      const { data, error } = await supabase
-        .from('creators')
-        .insert({ name })
-        .select('*')
-        .single()
-
-      if (error) throw error
-
-      setCreators((current) => {
-        const exists = current.some((item) => item.id === data.id || item.name === data.name)
-        if (exists) return current
-        return [...current, data].sort((a, b) => a.name.localeCompare(b.name))
+      const data = await createCreator({
+        name: newCreatorName,
+        setCreators,
+        setNewCreatorName,
+        openNotice
       })
 
-      setAttireForm((current) => ({
-        ...current,
-        creator_name: data.name
-      }))
+      if (data?.name) {
+        setAttireForm((current) => ({
+          ...current,
+          creator_name: data.name
+        }))
+        setCreatorFilter(data.name)
+      }
 
-      setCreatorFilter(data.name)
-      setNewCreatorName('')
-
-      openNotice(
-        'success',
-        'Creator added',
-        `${data.name} is now available in the creator dropdown.`
-      )
+      return data
     } catch (err) {
       openNotice('error', 'Could not add creator', err.message || 'Could not add creator.')
+      return null
     } finally {
       setAddingCreator(false)
     }
@@ -1809,34 +1411,14 @@ export default function App() {
   async function addArenaCreator() {
     if (!canContribute) return null
 
-    const name = newCreatorName.trim()
-    if (!name) return null
-
     setAddingCreator(true)
     try {
-      const { data, error } = await supabase
-        .from('creators')
-        .insert({ name })
-        .select('*')
-        .single()
-
-      if (error) throw error
-
-      setCreators((current) => {
-        const exists = current.some((item) => item.id === data.id || item.name === data.name)
-        if (exists) return current
-        return [...current, data].sort((a, b) => a.name.localeCompare(b.name))
+      return await createCreator({
+        name: newCreatorName,
+        setCreators,
+        setNewCreatorName,
+        openNotice
       })
-
-      setNewCreatorName('')
-
-      openNotice(
-        'success',
-        'Creator added',
-        `${data.name} is now available in the creator dropdown.`
-      )
-
-      return data
     } catch (err) {
       openNotice('error', 'Could not add creator', err.message || 'Could not add creator.')
       return null
@@ -2681,7 +2263,11 @@ export default function App() {
       onConfirm: async () => {
         const paths = [
           attire.render_dds_path,
-          ...(attire.attire_images || []).map((img) => img.image_path)
+          ...(attire.attire_images || []).flatMap((img) => [
+            img.image_path,
+            img.image_medium_path,
+            img.image_thumb_path
+          ])
         ].filter(Boolean)
 
         if (paths.length) {
@@ -2710,7 +2296,11 @@ export default function App() {
       confirmLabel: 'Delete wrestler',
       tone: 'danger',
       onConfirm: async () => {
-        const assetPaths = [wrestler.headshot_path]
+        const assetPaths = [
+          wrestler.headshot_path,
+          wrestler.headshot_medium_path,
+          wrestler.headshot_thumb_path
+        ].filter(Boolean)
         for (const audio of wrestler.audio_files || []) {
           if (audio.file_path) assetPaths.push(audio.file_path)
         }
@@ -2718,12 +2308,16 @@ export default function App() {
         for (const titantron of wrestler.titantrons || []) {
           for (const img of titantron.titantron_images || []) {
             if (img.image_path) assetPaths.push(img.image_path)
+            if (img.image_medium_path) assetPaths.push(img.image_medium_path)
+            if (img.image_thumb_path) assetPaths.push(img.image_thumb_path)
           }
         }
         for (const attire of wrestler.attires || []) {
           if (attire.render_dds_path) assetPaths.push(attire.render_dds_path)
           for (const img of attire.attire_images || []) {
             if (img.image_path) assetPaths.push(img.image_path)
+            if (img.image_medium_path) assetPaths.push(img.image_medium_path)
+            if (img.image_thumb_path) assetPaths.push(img.image_thumb_path)
           }
         }
         await removeAssets(assetPaths)

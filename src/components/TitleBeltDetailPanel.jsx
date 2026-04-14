@@ -52,13 +52,24 @@ function TitleGallery({ images = [], onOpenImageViewer }) {
   }
 
   const galleryImages = images
-    .map((image) => image.full_image_url || image.url || image.image_url || '')
+    .map((image) =>
+      image.full_image_url ||
+      image.medium_url ||
+      image.image_url ||
+      image.url ||
+      ''
+    )
     .filter(Boolean)
 
   return (
     <div className="gallery-grid detail-gallery-grid">
       {images.map((image, index) => {
-        const src = image.url || image.image_url || ''
+        const src =
+          image.thumb_url ||
+          image.medium_url ||
+          image.image_url ||
+          image.url ||
+          ''
 
         return (
           <button
@@ -113,57 +124,6 @@ function AudioSection({ files = [] }) {
           </div>
         </div>
       ))}
-    </div>
-  )
-}
-
-function DdsPreview({ url, name, onOpenImageViewer }) {
-  const [failed, setFailed] = useState(false)
-
-  if (!url) {
-    return (
-      <div className="render-placeholder">
-        <div className="render-badge">DDS</div>
-        <div className="muted-text">No DDS render uploaded</div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="dds-display improved-dds-display">
-      {!failed ? (
-        <button
-          type="button"
-          className="gallery-button-reset dds-preview-button"
-          onClick={() => onPreview(url)}
-        >
-          <img
-            loading="lazy"
-            className="upload-preview dds-inline-preview"
-            src={url}
-            alt={name || 'DDS render'}
-            onError={() => setFailed(true)}
-          />
-        </button>
-      ) : (
-        <div className="render-placeholder">
-          <div className="render-badge">DDS</div>
-          <div className="muted-text">Preview not available in this browser</div>
-        </div>
-      )}
-
-      <div className="muted-text small-text dds-file-name">
-        {name || 'DDS render uploaded'}
-      </div>
-
-      <a
-        className="ghost-button small-btn"
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-      >
-        Open file
-      </a>
     </div>
   )
 }
@@ -393,9 +353,10 @@ export default function TitleBeltDetailPanel({
                     className="ghost-button small-btn"
                     onClick={() =>
                         onCreateRequest?.(
-                        title,
-                        'missing_link',
-                        'Please add a download link for this title belt.'
+                          title.id,
+                          'missing_link',
+                          title.name,
+                          'Please add a download link for this title belt.'
                         )
                     }
                     >
@@ -408,9 +369,10 @@ export default function TitleBeltDetailPanel({
                     className="ghost-button small-btn"
                     onClick={() =>
                     onCreateRequest?.(
-                        title,
-                        'dead_link',
-                        'Please check this title belt download link.'
+                      title.id,
+                      'dead_link',
+                      title.name,
+                      'Please check this title belt download link.'
                     )
                     }
                 >
@@ -422,9 +384,10 @@ export default function TitleBeltDetailPanel({
                     className="ghost-button small-btn"
                     onClick={() =>
                     onCreateRequest?.(
-                        title,
-                        'general_request',
-                        ''
+                      title.id,
+                      'general_request',
+                      title.name,
+                      ''
                     )
                     }
                 >
@@ -432,13 +395,25 @@ export default function TitleBeltDetailPanel({
                 </button>
 
                 {canManageContent(title.owner_id) && (hasDeadLink || hasMissingDownload) && onResolveLink ? (
-                    <button
+                  <button
                     type="button"
                     className="secondary-button small-btn"
-                    onClick={() => onResolveLink(title, hasDeadLink ? 'dead_link' : 'missing_link')}
-                    >
-                    Resolve link
-                    </button>
+                    onClick={() => {
+                      const newUrl = window.prompt('Enter the corrected download URL:')
+
+                      if (!newUrl || !newUrl.trim()) return
+
+                      onResolveLink(
+                        title,
+                        newUrl.trim(),
+                        hasDeadLink
+                          ? 'Fixed dead link via detail panel'
+                          : 'Added missing download link via detail panel'
+                      )
+                    }}
+                  >
+                    Fix link
+                  </button>
                 ) : null}
 
                 {canManageContent(title.owner_id) && hasMissingDownload ? (
@@ -457,15 +432,22 @@ export default function TitleBeltDetailPanel({
         <div className="panel-header">
           <div>
             <h2>DDS render</h2>
-            <p className="subtle-copy">Preview for the title belt render file.</p>
+            <p className="subtle-copy">Download the render file.</p>
           </div>
         </div>
 
-        <DdsPreview
-            url={title.render_dds_url}
-            name={title.render_dds_name || `${title.name} render`}
-            onOpenImageViewer={onOpenImageViewer}
-        />
+        {title.render_dds_url ? (
+          <a
+            className="ghost-button small-btn"
+            href={title.render_dds_url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Download DDS ({title.render_dds_name || 'render.dds'})
+          </a>
+        ) : (
+          <div className="upload-placeholder">No DDS render uploaded</div>
+        )}
       </div>
 
       <div className="panel soft-panel improved-attire-card">

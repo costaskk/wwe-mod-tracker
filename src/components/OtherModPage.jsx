@@ -15,7 +15,7 @@ import {
   testDownloadLink,
   uid
 } from '../lib/utils'
-import { getAssetUrl, removeAssets, uploadAsset } from '../lib/storage'
+import { getAssetUrl, removeAssets, uploadImageWithVariants } from '../lib/storage'
 
 export default function OtherModPage({
   otherMods = [],
@@ -309,6 +309,8 @@ export default function OtherModPage({
           other_mod_id: otherModId,
           owner_id: session.user.id,
           image_path: item.path,
+          image_medium_path: item.medium_path || '',
+          image_thumb_path: item.thumb_path || '',
           image_name: item.name
         }))
 
@@ -341,7 +343,7 @@ export default function OtherModPage({
             throw new Error('All screenshots must be image files.')
           }
 
-          const { path, fileName } = await uploadAsset({
+          const { originalPath, mediumPath, thumbPath, fileName } = await uploadImageWithVariants({
             userId: session.user.id,
             entityId,
             file,
@@ -350,9 +352,15 @@ export default function OtherModPage({
           })
 
           uploaded.push({
-            path,
+            path: originalPath,
+            medium_path: mediumPath,
+            thumb_path: thumbPath,
             name: fileName,
-            url: getAssetUrl(path)
+            url: getAssetUrl(thumbPath),
+            image_url: getAssetUrl(mediumPath),
+            full_image_url: getAssetUrl(originalPath),
+            thumb_url: getAssetUrl(thumbPath),
+            medium_url: getAssetUrl(mediumPath)
           })
         }
 
@@ -391,9 +399,13 @@ export default function OtherModPage({
     if (!canDeleteContent) return
 
     try {
-      if (path) {
-        await removeAssets([path])
-      }
+      const targetImage = (form.images || []).find((img) => img.path === path)
+
+      await removeAssets([
+        targetImage?.path,
+        targetImage?.medium_path,
+        targetImage?.thumb_path
+      ].filter(Boolean))
 
       if (kind === 'image') {
         setForm((current) => ({
@@ -531,8 +543,12 @@ export default function OtherModPage({
             setSaving(true)
 
             const imagePaths = (otherMod.other_mod_images || otherMod.images || [])
-            .map((img) => img.image_path || img.path)
-            .filter(Boolean)
+              .flatMap((img) => [
+                img.image_path || img.path,
+                img.medium_path,
+                img.thumb_path
+              ])
+              .filter(Boolean)
 
             if (imagePaths.length) {
             await removeAssets(imagePaths)

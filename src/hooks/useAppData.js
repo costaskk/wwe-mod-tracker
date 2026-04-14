@@ -1,0 +1,496 @@
+import { useCallback, useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { getAssetUrl } from '../lib/storage'
+import { sortAttires, uniqueCollectionSlug } from '../lib/utils'
+
+export default function useAppData(session) {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [currentProfile, setCurrentProfile] = useState(null)
+  const [profiles, setProfiles] = useState([])
+
+  const [wrestlers, setWrestlers] = useState([])
+  const [arenas, setArenas] = useState([])
+  const [titleBelts, setTitleBelts] = useState([])
+  const [otherMods, setOtherMods] = useState([])
+  const [creators, setCreators] = useState([])
+  const [collections, setCollections] = useState([])
+
+  const [installedIds, setInstalledIds] = useState(new Set())
+  const [installedArenaIds, setInstalledArenaIds] = useState(new Set())
+  const [installedTitleIds, setInstalledTitleIds] = useState(new Set())
+  const [installedOtherModIds, setInstalledOtherModIds] = useState(new Set())
+
+  const fetchCurrentUserProfile = useCallback(async () => {
+    if (!session?.user?.id) return { data: null, error: null }
+
+    return await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .maybeSingle()
+  }, [session])
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true)
+    setError('')
+
+    try {
+      const currentProfileResult = await fetchCurrentUserProfile()
+
+      if (currentProfileResult.error) {
+        setError(currentProfileResult.error.message || 'Failed to load your profile.')
+        return
+      }
+
+      const myProfile = currentProfileResult.data || null
+
+      const publicCollectionsQuery = supabase
+        .from('collections')
+        .select(`
+          *,
+          collection_items (
+            *,
+            attire:attires (
+              *,
+              wrestler:wrestlers (*),
+              attire_images (*)
+            ),
+            arena:arenas (
+              *,
+              arena_images (*)
+            ),
+            title_belt:title_belts (
+              *,
+              title_belt_images (*)
+            ),
+            other_mod:other_mods (
+              *,
+              other_mod_images (*)
+            )
+          )
+        `)
+        .eq('visibility', 'public')
+        .order('updated_at', { ascending: false })
+
+      const ownCollectionsQuery = session?.user?.id
+        ? supabase
+            .from('collections')
+            .select(`
+              *,
+              collection_items (
+                *,
+                attire:attires (
+                  *,
+                  wrestler:wrestlers (*),
+                  attire_images (*)
+                ),
+                arena:arenas (
+                  *,
+                  arena_images (*)
+                ),
+                title_belt:title_belts (
+                  *,
+                  title_belt_images (*)
+                ),
+                other_mod:other_mods (
+                  *,
+                  other_mod_images (*)
+                )
+              )
+            `)
+            .eq('owner_id', session.user.id)
+            .order('updated_at', { ascending: false })
+        : Promise.resolve({ data: [], error: null })
+
+      const [
+        wrestlerResult,
+        arenaResult,
+        creatorResult,
+        titleResult,
+        otherModsResult,
+        installedOtherModsResult,
+        installsResult,
+        installedArenasResult,
+        installedTitlesResult,
+        publicCollectionsResult,
+        ownCollectionsResult
+      ] = await Promise.all([
+        supabase
+          .from('wrestlers')
+          .select(`
+            *,
+            wrestler_audio_files (*),
+            wrestler_titantrons (
+              *,
+              titantron_images (*)
+            ),
+            attires (
+              *,
+              attire_images (*)
+            ),
+            mod_requests (*)
+          `)
+          .order('wrestler_name', { ascending: true }),
+
+        supabase
+          .from('arenas')
+          .select(`
+            *,
+            arena_images (*),
+            arena_requests (*)
+          `)
+          .order('name', { ascending: true }),
+
+        supabase.from('creators').select('*').order('name', { ascending: true }),
+
+        supabase
+          .from('title_belts')
+          .select(`
+            *,
+            title_belt_images (*),
+            title_belt_audio_files (*),
+            title_belt_requests (*)
+          `)
+          .order('name', { ascending: true }),
+
+        supabase
+          .from('other_mods')
+          .select(`
+            *,
+            other_mod_images (*),
+            other_mod_requests (*)
+          `)
+          .order('name', { ascending: true }),
+
+        session?.user?.id
+          ? supabase.from('user_installed_other_mods').select('other_mod_id').eq('user_id', session.user.id)
+          : Promise.resolve({ data: [], error: null }),
+
+        session?.user?.id
+          ? supabase.from('user_installed_attires').select('attire_id').eq('user_id', session.user.id)
+          : Promise.resolve({ data: [], error: null }),
+
+        session?.user?.id
+          ? supabase.from('user_installed_arenas').select('arena_id').eq('user_id', session.user.id)
+          : Promise.resolve({ data: [], error: null }),
+
+        session?.user?.id
+          ? supabase.from('user_installed_title_belts').select('title_belt_id').eq('user_id', session.user.id)
+          : Promise.resolve({ data: [], error: null }),
+
+        publicCollectionsQuery,
+        ownCollectionsQuery
+      ])
+
+      const errors = [
+        wrestlerResult.error,
+        arenaResult.error,
+        creatorResult.error,
+        titleResult.error,
+        otherModsResult.error,
+        installedOtherModsResult.error,
+        installsResult.error,
+        installedArenasResult.error,
+        installedTitlesResult.error,
+        publicCollectionsResult.error,
+        ownCollectionsResult.error
+      ].filter(Boolean)
+
+      if (errors.length) {
+        console.error('fetchAll errors:', errors)
+        setError(errors[0].message || 'Failed to load data.')
+        return
+      }
+
+      const normalizedWrestlers = (wrestlerResult.data || []).map((wrestler) => ({
+        ...wrestler,
+        headshot_url: wrestler.headshot_medium_path
+          ? getAssetUrl(wrestler.headshot_medium_path)
+          : wrestler.headshot_thumb_path
+            ? getAssetUrl(wrestler.headshot_thumb_path)
+            : wrestler.headshot_path
+              ? getAssetUrl(wrestler.headshot_path)
+              : (wrestler.headshot_external_url || ''),
+        headshot_full_url: wrestler.headshot_path
+          ? getAssetUrl(wrestler.headshot_path)
+          : (wrestler.headshot_external_url || ''),
+        audio_files: (wrestler.wrestler_audio_files || []).map((file) => ({
+          ...file,
+          file_url: file.file_path ? getAssetUrl(file.file_path) : ''
+        })),
+        titantrons: (wrestler.wrestler_titantrons || []).map((item) => ({
+          ...item,
+          titantron_images: (item.titantron_images || []).map((img) => ({
+            ...img,
+            image_url: img.image_medium_path
+              ? getAssetUrl(img.image_medium_path)
+              : img.image_thumb_path
+                ? getAssetUrl(img.image_thumb_path)
+                : img.image_path
+                  ? getAssetUrl(img.image_path)
+                  : '',
+            full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+          }))
+        })),
+        attires: sortAttires((wrestler.attires || []).map((attire) => ({
+          ...attire,
+          mod_type: attire.mod_type === 'port' ? 'port' : 'original',
+          render_dds_url: '',
+          render_dds_full_url: attire.render_dds_path ? getAssetUrl(attire.render_dds_path) : '',
+          attire_images: (attire.attire_images || []).map((img) => ({
+            ...img,
+            image_url: img.image_medium_path
+              ? getAssetUrl(img.image_medium_path)
+              : img.image_thumb_path
+                ? getAssetUrl(img.image_thumb_path)
+                : img.image_path
+                  ? getAssetUrl(img.image_path)
+                  : '',
+            full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+          }))
+        }))),
+        requests: [...(wrestler.mod_requests || [])].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        )
+      }))
+
+      const normalizedArenas = (arenaResult.data || []).map((arena) => ({
+        ...arena,
+        arena_images: (arena.arena_images || []).map((img) => ({
+          ...img,
+          image_url: img.image_medium_path
+            ? getAssetUrl(img.image_medium_path)
+            : img.image_thumb_path
+              ? getAssetUrl(img.image_thumb_path)
+              : img.image_path
+                ? getAssetUrl(img.image_path)
+                : '',
+          full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+        })),
+        requests: [...(arena.arena_requests || [])].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        )
+      }))
+
+      const normalizedTitles = (titleResult.data || []).map((title) => ({
+        ...title,
+        render_dds_url: '',
+        render_dds_full_url: title.render_dds_path ? getAssetUrl(title.render_dds_path) : '',
+        title_belt_images: (title.title_belt_images || []).map((img) => ({
+          ...img,
+          image_url: img.image_medium_path
+            ? getAssetUrl(img.image_medium_path)
+            : img.image_thumb_path
+              ? getAssetUrl(img.image_thumb_path)
+              : img.image_path
+                ? getAssetUrl(img.image_path)
+                : '',
+          full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+        })),
+        audio_files: (title.title_belt_audio_files || []).map((file) => ({
+          ...file,
+          file_url: file.file_path ? getAssetUrl(file.file_path) : ''
+        })),
+        requests: [...(title.title_belt_requests || [])].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        )
+      }))
+
+      const normalizedOtherMods = (otherModsResult.data || []).map((otherMod) => ({
+        ...otherMod,
+        other_mod_images: (otherMod.other_mod_images || []).map((img) => ({
+          ...img,
+          image_url: img.image_medium_path
+            ? getAssetUrl(img.image_medium_path)
+            : img.image_thumb_path
+              ? getAssetUrl(img.image_thumb_path)
+              : img.image_path
+                ? getAssetUrl(img.image_path)
+                : '',
+          full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+        })),
+        requests: [...(otherMod.other_mod_requests || [])].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        )
+      }))
+
+      const collectionMap = new Map()
+      ;[...(publicCollectionsResult.data || []), ...(ownCollectionsResult.data || [])].forEach((collection) => {
+        const normalizedItems = (collection.collection_items || []).map((item) => ({
+          ...item,
+          attire: item.attire
+            ? {
+                ...item.attire,
+                render_dds_url: '',
+                attire_images: (item.attire.attire_images || []).map((img) => ({
+                  ...img,
+                  image_url: img.image_medium_path
+                    ? getAssetUrl(img.image_medium_path)
+                    : img.image_thumb_path
+                      ? getAssetUrl(img.image_thumb_path)
+                      : img.image_path
+                        ? getAssetUrl(img.image_path)
+                        : '',
+                  full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+                })),
+                wrestler: item.attire.wrestler
+                  ? {
+                      ...item.attire.wrestler,
+                      headshot_url: item.attire.wrestler.headshot_medium_path
+                        ? getAssetUrl(item.attire.wrestler.headshot_medium_path)
+                        : item.attire.wrestler.headshot_thumb_path
+                          ? getAssetUrl(item.attire.wrestler.headshot_thumb_path)
+                          : item.attire.wrestler.headshot_path
+                            ? getAssetUrl(item.attire.wrestler.headshot_path)
+                            : (item.attire.wrestler.headshot_external_url || '')
+                    }
+                  : null
+              }
+            : null,
+          arena: item.arena
+            ? {
+                ...item.arena,
+                arena_images: (item.arena.arena_images || []).map((img) => ({
+                  ...img,
+                  image_url: img.image_medium_path
+                    ? getAssetUrl(img.image_medium_path)
+                    : img.image_thumb_path
+                      ? getAssetUrl(img.image_thumb_path)
+                      : img.image_path
+                        ? getAssetUrl(img.image_path)
+                        : '',
+                  full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+                }))
+              }
+            : null,
+          title_belt: item.title_belt
+            ? {
+                ...item.title_belt,
+                render_dds_url: '',
+                title_belt_images: (item.title_belt.title_belt_images || []).map((img) => ({
+                  ...img,
+                  image_url: img.image_medium_path
+                    ? getAssetUrl(img.image_medium_path)
+                    : img.image_thumb_path
+                      ? getAssetUrl(img.image_thumb_path)
+                      : img.image_path
+                        ? getAssetUrl(img.image_path)
+                        : '',
+                  full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+                }))
+              }
+            : null,
+          other_mod: item.other_mod
+            ? {
+                ...item.other_mod,
+                other_mod_images: (item.other_mod.other_mod_images || []).map((img) => ({
+                  ...img,
+                  image_url: img.image_medium_path
+                    ? getAssetUrl(img.image_medium_path)
+                    : img.image_thumb_path
+                      ? getAssetUrl(img.image_thumb_path)
+                      : img.image_path
+                        ? getAssetUrl(img.image_path)
+                        : '',
+                  full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+                }))
+              }
+            : null
+        }))
+
+        collectionMap.set(collection.id, {
+          ...collection,
+          cover_url: collection.cover_path ? getAssetUrl(collection.cover_path) : '',
+          cover_full_url: collection.cover_path ? getAssetUrl(collection.cover_path) : '',
+          items: normalizedItems
+        })
+      })
+
+      const mergedCollections = [...collectionMap.values()].sort(
+        (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
+      )
+
+      const seenSlugs = new Set()
+      const repairedCollections = await Promise.all(
+        mergedCollections.map(async (collection) => {
+          if (!collection.slug || seenSlugs.has(collection.slug)) {
+            const newSlug = uniqueCollectionSlug(collection.name, collection.owner_id)
+            const { error: slugUpdateError } = await supabase
+              .from('collections')
+              .update({ slug: newSlug })
+              .eq('id', collection.id)
+
+            if (slugUpdateError) throw slugUpdateError
+
+            seenSlugs.add(newSlug)
+            return { ...collection, slug: newSlug }
+          }
+
+          seenSlugs.add(collection.slug)
+          return collection
+        })
+      )
+
+      let loadedProfiles = myProfile ? [myProfile] : []
+
+      if (myProfile?.role === 'admin') {
+        const adminProfilesResult = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (adminProfilesResult.error) throw adminProfilesResult.error
+        loadedProfiles = adminProfilesResult.data || []
+      }
+
+      setProfiles(loadedProfiles)
+      setCurrentProfile(myProfile)
+      setWrestlers(normalizedWrestlers)
+      setArenas(normalizedArenas)
+      setTitleBelts(normalizedTitles)
+      setOtherMods(normalizedOtherMods)
+      setCreators(creatorResult.data || [])
+      setCollections(repairedCollections)
+
+      setInstalledIds(new Set((installsResult.data || []).map((item) => item.attire_id)))
+      setInstalledArenaIds(new Set((installedArenasResult.data || []).map((item) => item.arena_id)))
+      setInstalledTitleIds(new Set((installedTitlesResult.data || []).map((item) => item.title_belt_id)))
+      setInstalledOtherModIds(new Set((installedOtherModsResult.data || []).map((item) => item.other_mod_id)))
+    } catch (err) {
+      setError(err.message || 'Failed to load data.')
+    } finally {
+      setLoading(false)
+    }
+  }, [fetchCurrentUserProfile, session])
+
+  return {
+    loading,
+    error,
+    currentProfile,
+    profiles,
+    wrestlers,
+    arenas,
+    titleBelts,
+    otherMods,
+    creators,
+    collections,
+    installedIds,
+    installedArenaIds,
+    installedTitleIds,
+    installedOtherModIds,
+    setProfiles,
+    setCurrentProfile,
+    setWrestlers,
+    setArenas,
+    setTitleBelts,
+    setOtherMods,
+    setCreators,
+    setCollections,
+    setInstalledIds,
+    setInstalledArenaIds,
+    setInstalledTitleIds,
+    setInstalledOtherModIds,
+    fetchAll
+  }
+}

@@ -14,7 +14,7 @@ import {
   testDownloadLink,
   uid
 } from '../lib/utils'
-import { getAssetUrl, removeAssets, uploadAsset } from '../lib/storage'
+import { getAssetUrl, removeAssets, uploadAsset, uploadImageWithVariants } from '../lib/storage'
 
 export default function TitleBeltPage({
   titleBelts = [],
@@ -223,29 +223,6 @@ export default function TitleBeltPage({
 
       let titleId = form.id
 
-      if (parsedLinks.length) {
-        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
-        const hasDeadLink = results.some((item) => item?.status === 'dead')
-
-        if (hasDeadLink) {
-          const { data: existingDeadRequests } = await supabase
-            .from('title_belt_requests')
-            .select('id')
-            .eq('title_belt_id', titleId)
-            .eq('status', 'open')
-            .eq('request_type', 'dead_link')
-            .limit(1)
-
-          if (!existingDeadRequests?.length) {
-            await supabase.from('title_belt_requests').insert({
-              title_belt_id: titleId,
-              request_type: 'dead_link',
-              notes: 'Automatically detected dead link during save.'
-            })
-          }
-        }
-      }
-
       if (form.persisted) {
         const { error } = await supabase
           .from('title_belts')
@@ -269,11 +246,42 @@ export default function TitleBeltPage({
         openNotice('success', 'Title belt added', `${form.name} was added successfully.`)
       }
 
+      if (parsedLinks.length && titleId) {
+        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
+        const hasDeadLink = results.some((item) => item?.status === 'dead')
+
+        if (hasDeadLink) {
+          const { data: existingDeadRequests, error: existingDeadRequestsError } = await supabase
+            .from('title_belt_requests')
+            .select('id')
+            .eq('title_belt_id', titleId)
+            .eq('status', 'open')
+            .eq('request_type', 'dead_link')
+            .limit(1)
+
+          if (existingDeadRequestsError) throw existingDeadRequestsError
+
+          if (!existingDeadRequests?.length) {
+            const { error: insertDeadRequestError } = await supabase
+              .from('title_belt_requests')
+              .insert({
+                title_belt_id: titleId,
+                request_type: 'dead_link',
+                notes: 'Automatically detected dead link during save.'
+              })
+
+            if (insertDeadRequestError) throw insertDeadRequestError
+          }
+        }
+      }
+
       if (Array.isArray(form.pendingImageUploads) && form.pendingImageUploads.length) {
         const imageInserts = form.pendingImageUploads.map((item) => ({
           title_belt_id: titleId,
           owner_id: session.user.id,
           image_path: item.path,
+          image_medium_path: item.medium_path || '',
+          image_thumb_path: item.thumb_path || '',
           image_name: item.name
         }))
 
@@ -346,7 +354,7 @@ export default function TitleBeltPage({
             throw new Error('All screenshots must be image files.')
           }
 
-          const { path, fileName } = await uploadAsset({
+          const { originalPath, mediumPath, thumbPath, fileName } = await uploadImageWithVariants({
             userId: session.user.id,
             entityId,
             file,
@@ -355,9 +363,15 @@ export default function TitleBeltPage({
           })
 
           uploaded.push({
-            path,
+            path: originalPath,
+            medium_path: mediumPath,
+            thumb_path: thumbPath,
             name: fileName,
-            url: getAssetUrl(path)
+            url: getAssetUrl(thumbPath),
+            thumb_url: getAssetUrl(thumbPath),
+            image_url: getAssetUrl(mediumPath),
+            medium_url: getAssetUrl(mediumPath),
+            full_image_url: getAssetUrl(originalPath)
           })
         }
 
@@ -448,11 +462,22 @@ export default function TitleBeltPage({
     if (!canDeleteContent) return
 
     try {
-      if (path) {
-        await removeAssets([path])
+      if (kind === 'image') {
+        const imageToRemove = (form.images || []).find((img) => img.path === path)
+
+        if (imageToRemove) {
+          await removeAssets([
+            imageToRemove.path,
+            imageToRemove.medium_path,
+            imageToRemove.thumb_path
+          ].filter(Boolean))
+        }
       }
 
       if (kind === 'render') {
+        if (path) {
+          await removeAssets([path])
+        }
         setForm((current) => ({
           ...current,
           render_dds_path: '',
@@ -629,8 +654,12 @@ export default function TitleBeltPage({
             setSaving(true)
 
             const imagePaths = (title.title_belt_images || [])
-            .map((img) => img.image_path)
-            .filter(Boolean)
+              .flatMap((img) => [
+                img.image_path,
+                img.image_medium_path,
+                img.image_thumb_path
+              ])
+              .filter(Boolean)
 
             const audioPaths = (title.audio_files || title.title_belt_audio_files || [])
             .map((file) => file.file_path)

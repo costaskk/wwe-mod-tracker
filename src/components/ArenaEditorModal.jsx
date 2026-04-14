@@ -96,10 +96,13 @@ export default function ArenaEditorModal({
     return found
   }, [arenas, form.name, form.id, form.persisted, normalizedName])
 
-  const parsedLinks = useMemo(
-    () => [...new Set(parseDownloadLinks(form.download_url || ''))],
-    [form.download_url]
-  )
+  const parsedLinks = useMemo(() => {
+    const raw = parseDownloadLinks(form.download_url || '')
+
+    const normalized = raw.map((link) => normalizeLinkForCheck(link))
+
+    return [...new Set(normalized)]
+  }, [form.download_url])
 
   const [linkCheckResults, setLinkCheckResults] = useState({})
   const [isCheckingLinks, setIsCheckingLinks] = useState(false)
@@ -120,7 +123,7 @@ export default function ArenaEditorModal({
         const results = await Promise.all(
           parsedLinks.map(async (link) => {
             try {
-              const result = await testDownloadLink(normalizeLinkForCheck(link))
+              const result = await testDownloadLink(link)
               return [link, result]
             } catch (error) {
               return [
@@ -279,7 +282,7 @@ export default function ArenaEditorModal({
                             <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
                             <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
                           </div>
-
+                        
                           <div
                             className={`link-health-pill ${
                               result?.ok

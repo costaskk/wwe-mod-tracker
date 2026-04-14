@@ -1,12 +1,12 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import os from 'node:os'
 import sharp from 'sharp'
 import { createClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const BUCKET = process.env.SUPABASE_BUCKET || 'mod-assets'
+const CACHE_FILE = './scripts/recompressed-files.json'
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment')
@@ -15,13 +15,24 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp'])
-const SKIP_FOLDERS = new Set([
-  // add folders here if you want to exclude any
-])
-
+const SKIP_FOLDERS = new Set([])
 const MAX_WIDTH = 1920
 const JPEG_QUALITY = 82
 const PNG_QUALITY = 80
+
+async function loadProcessedMap() {
+  try {
+    const raw = await fs.readFile(CACHE_FILE, 'utf8')
+    return JSON.parse(raw)
+  } catch {
+    return {}
+  }
+}
+
+async function saveProcessedMap(map) {
+  await fs.mkdir(path.dirname(CACHE_FILE), { recursive: true })
+  await fs.writeFile(CACHE_FILE, JSON.stringify(map, null, 2), 'utf8')
+}
 
 async function listAllFiles(bucket, folder = '') {
   const all = []
@@ -37,13 +48,8 @@ async function listAllFiles(bucket, folder = '') {
         sortBy: { column: 'name', order: 'asc' }
       })
 
-    if (error) {
-      throw error
-    }
-
-    if (!data || data.length === 0) {
-      break
-    }
+    if (error) throw error
+    if (!data || data.length === 0) break
 
     for (const item of data) {
       const itemPath = folder ? `${folder}/${item.name}` : item.name
@@ -58,10 +64,7 @@ async function listAllFiles(bucket, folder = '') {
       }
     }
 
-    if (data.length < limit) {
-      break
-    }
-
+    if (data.length < limit) break
     offset += limit
   }
 
@@ -78,9 +81,7 @@ async function downloadToBuffer(bucket, filePath) {
     .from(bucket)
     .download(filePath)
 
-  if (error) {
-    throw error
-  }
+  if (error) throw error
 
   const arrayBuffer = await data.arrayBuffer()
   return Buffer.from(arrayBuffer)
@@ -115,7 +116,7 @@ async function recompressBuffer(inputBuffer, filePath) {
   }).toBuffer()
 }
 
-async function uploadBuffer(bucket, filePath, buffer, originalPath) {
+async function uploadBuffer(bucket, filePath, buffer) {
   const ext = path.extname(filePath).toLowerCase()
   const contentType =
     ext === '.png' ? 'image/png'
@@ -130,24 +131,31 @@ async function uploadBuffer(bucket, filePath, buffer, originalPath) {
       cacheControl: '31536000'
     })
 
-  if (error) {
-    throw error
-  }
+  if (error) throw error
 }
 
 async function main() {
+  const processedMap = await loadProcessedMap()
+
   console.log(`Scanning bucket: ${BUCKET}`)
   const files = await listAllFiles(BUCKET)
-
   const imageFiles = files.filter(isImageFile)
+
   console.log(`Found ${imageFiles.length} image files`)
 
   let processed = 0
   let skipped = 0
+  let alreadyProcessed = 0
   let savedBytes = 0
 
   for (const filePath of imageFiles) {
     try {
+      if (processedMap[filePath]) {
+        alreadyProcessed += 1
+        console.log(`SKIP  ${filePath} (already optimized before)`)
+        continue
+      }
+
       const originalBuffer = await downloadToBuffer(BUCKET, filePath)
       const recompressedBuffer = await recompressBuffer(originalBuffer, filePath)
 
@@ -158,6 +166,12 @@ async function main() {
       }
 
       await uploadBuffer(BUCKET, filePath, recompressedBuffer)
+
+      processedMap[filePath] = {
+        optimizedAt: new Date().toISOString(),
+        beforeBytes: originalBuffer.length,
+        afterBytes: recompressedBuffer.length
+      }
 
       processed += 1
       savedBytes += originalBuffer.length - recompressedBuffer.length
@@ -170,10 +184,13 @@ async function main() {
     }
   }
 
+  await saveProcessedMap(processedMap)
+
   console.log('---')
-  console.log(`Processed: ${processed}`)
-  console.log(`Skipped:   ${skipped}`)
-  console.log(`Saved:     ${(savedBytes / 1024 / 1024).toFixed(2)} MB`)
+  console.log(`Processed:         ${processed}`)
+  console.log(`Skipped:           ${skipped}`)
+  console.log(`Already processed: ${alreadyProcessed}`)
+  console.log(`Saved:             ${(savedBytes / 1024 / 1024).toFixed(2)} MB`)
 }
 
 main().catch((error) => {

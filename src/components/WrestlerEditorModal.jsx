@@ -200,7 +200,7 @@ function TitantronEditorList({
                       <div className="gallery-tile" key={img.id || img.path || imgIndex}>
                         <img
                           className="gallery-img"
-                          src={img.url || img.image_url}
+                          src={img.thumb_url || img.url || img.image_url}
                           alt={img.name || img.image_name || item.title || 'Titantron screenshot'}
                         />
                         <button
@@ -367,10 +367,15 @@ export default function WrestlerEditorModal({
                     <p>Upload a headshot, or try a public auto-match. Press the button again to look for an alternative image.</p>
                   </div>
 
-                  {form.headshot_url ? (
+                  {(form.headshot_url || form.headshot_thumb_url || form.headshot_medium_url || form.headshot_full_url) ? (
                     <img
                       className="upload-preview portrait-preview spotlight-image"
-                      src={form.headshot_url}
+                      src={
+                        form.headshot_thumb_url ||
+                        form.headshot_url ||
+                        form.headshot_medium_url ||
+                        form.headshot_full_url
+                      }
                       alt={form.wrestler_name || 'Headshot'}
                     />
                   ) : (

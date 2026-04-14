@@ -65,50 +65,6 @@ function JsonBrowser({ title, value }) {
   )
 }
 
-function DdsDisplay({ url, name, canAccessRestrictedFiles }) {
-  const [failed, setFailed] = useState(false)
-
-  if (!canAccessRestrictedFiles) {
-    return (
-      <div className="render-placeholder">
-        DDS renders are visible only to approved users, moderators, and admins.
-      </div>
-    )
-  }
-
-  if (!url) {
-    return <div className="render-placeholder">No render uploaded</div>
-  }
-
-  return (
-    <div className="dds-display">
-      {!failed ? (
-        <img
-          loading="lazy"
-          className="gallery-img dds-inline-preview"
-          src={url}
-          alt={name || 'DDS render'}
-          onError={() => setFailed(true)}
-        />
-      ) : (
-        <div className="render-placeholder">
-          <div className="render-badge">DDS</div>
-          <div className="render-name">Preview not available in this browser.</div>
-        </div>
-      )}
-
-      <a
-        className="secondary-button inline-btn small-btn"
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-      >
-        Open / download DDS
-      </a>
-    </div>
-  )
-}
-
 function Toggle({ value, onChange, options }) {
   return (
     <div className="view-toggle">
@@ -560,7 +516,8 @@ export default function DetailPanel({
 
     const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`
 
-    navigator.clipboard.writeText(url)
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url)
       .then(() => {
         setCopiedNotice({
           title: attire.name,
@@ -575,6 +532,7 @@ export default function DetailPanel({
       .catch((err) => {
         console.error('Could not copy attire link', err)
       })
+    }
   }
 
   useEffect(() => {
@@ -886,12 +844,12 @@ export default function DetailPanel({
                                 className="gallery-tile gallery-button-reset"
                                 onClick={() =>
                                   onOpenImageViewer?.(
-                                    validScreenshots.map((img) => img.full_image_url || img.image_url || img.url).filter(Boolean),
+                                    validScreenshots.map((img) => img.full_image_url || img.medium_url || img.image_url || img.url).filter(Boolean),
                                     index
                                   )
                                 }
                               >
-                                <img loading="lazy" className="gallery-img" src={image.image_url || image.url} alt={image.image_name || image.name || attire.name} />
+                                <img loading="lazy" className="gallery-img" src={image.thumb_url || image.image_url || image.url} alt={image.image_name || image.name || attire.name} />
                               </button>
                             ))
                           ) : (
@@ -900,14 +858,19 @@ export default function DetailPanel({
                         </div>
                       </div>
 
-                      <div className="visual-block">
-                        <div className="visual-label">DDS render</div>
-                        <DdsDisplay
-                          url={attire.render_dds_url}
-                          name={attire.render_dds_name}
-                          canAccessRestrictedFiles={canAccessRestrictedFiles}
-                        />
-                      </div>
+                      {canAccessRestrictedFiles && attire.render_dds_url ? (
+                        <div className="visual-block">
+                          <div className="visual-label">DDS file</div>
+                          <a
+                            className="secondary-button small-btn"
+                            href={attire.render_dds_url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Download DDS
+                          </a>
+                        </div>
+                      ) : null}
                     </div>
 
                     {canContribute ? (
@@ -917,10 +880,11 @@ export default function DetailPanel({
                           <div className="meta-value break-line">
                             <DownloadLinks value={attire.download_url} />
                           </div>
-                          <span className={`link-status ${attire.link_status}`}>
+                          <span className={`link-status ${attire.link_status || 'unknown'}`}>
                             {attire.link_status === 'working' && '🟢 Working'}
                             {attire.link_status === 'dead' && '🔴 Dead'}
                             {attire.link_status === 'missing' && '⚠️ Missing'}
+                            {(!attire.link_status || attire.link_status === 'unknown') && '⏳ Not checked yet'}
                           </span>
                         </div>
                         <div>
@@ -957,12 +921,12 @@ export default function DetailPanel({
                     <div className="attire-actions wrap-actions">
                       {canContribute ? (
                         <button
-                          className={`small-btn ${attire.isInstalled ? 'primary-button' : 'secondary-button'}`}
+                          className={`small-btn ${installed ? 'primary-button' : 'secondary-button'}`}
                           disabled={!session}
                           onClick={() => onToggleInstalled(attire)}
                           type="button"
                         >
-                          {attire.isInstalled ? 'Installed in my game' : 'Mark installed'}
+                          {installed ? 'Installed in my game' : 'Mark installed'}
                         </button>
                       ) : null}
 

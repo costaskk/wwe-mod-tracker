@@ -51,13 +51,13 @@ function ArenaGallery({ images = [], onOpenImageViewer }) {
   }
 
   const galleryImages = images
-    .map((image) => image.full_image_url || image.url || image.image_url || '')
+    .map((image) => image.full_image_url || image.medium_url || image.thumb_url || '')
     .filter(Boolean)
 
   return (
     <div className="gallery-grid detail-gallery-grid">
       {images.map((image, index) => {
-        const src = image.url || image.image_url || ''
+        const src = image.thumb_url || image.medium_url || ''
 
         return (
           <button
@@ -127,7 +127,8 @@ export default function ArenaDetailPanel({
   onToggleInstalled,
   onCreateRequest,
   onOpenCollectionPicker,
-  onOpenImageViewer
+  onOpenImageViewer,
+  onResolveLink
 }) {
 
   const isApprovedViewer = Boolean(
@@ -163,7 +164,9 @@ export default function ArenaDetailPanel({
 
   const images = (arena.images || arena.arena_images || []).map((img) => ({
     ...img,
-    url: img.url || img.image_url || ''
+    thumb_url: img.thumb_url || img.url || img.image_thumb_url || '',
+    medium_url: img.medium_url || img.image_url || img.image_medium_url || img.url || '',
+    full_image_url: img.full_image_url || ''
   }))
 
   const requests = arena.requests || []
@@ -294,20 +297,37 @@ export default function ArenaDetailPanel({
         <div className="wrap-actions">
             {canContribute ? (
                 <>
-                <button
+                {hasMissingDownload ? (
+                  <button
                     type="button"
                     className="ghost-button small-btn"
                     onClick={() =>
-                    onCreateRequest(
+                      onCreateRequest(
+                        arena.id,
+                        'missing_link',
+                        arena.name,
+                        'Please add a download link for this arena.'
+                      )
+                    }
+                  >
+                    Request link
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="ghost-button small-btn"
+                    onClick={() =>
+                      onCreateRequest(
                         arena.id,
                         'dead_link',
                         arena.name,
                         'Please check this arena download link.'
-                    )
+                      )
                     }
-                >
+                  >
                     Report dead link
-                </button>
+                  </button>
+                )}
 
                 <button
                     type="button"
@@ -324,12 +344,26 @@ export default function ArenaDetailPanel({
                     Request update
                 </button>
 
-                {canManageContent(arena.owner_id) && hasMissingDownload ? (
-                    <div className="pill danger-pill">Missing download link</div>
-                ) : null}
+                {canManageContent(arena.owner_id) && (hasMissingDownload || hasDeadLink) ? (
+                  <button
+                    type="button"
+                    className="secondary-button small-btn"
+                    onClick={() => {
+                      const newUrl = window.prompt('Enter the corrected download URL:')
 
-                {canManageContent(arena.owner_id) && hasDeadLink ? (
-                    <div className="pill warning-pill">Dead link needs review</div>
+                      if (!newUrl || !newUrl.trim()) return
+
+                      onResolveLink?.(
+                        arena,
+                        newUrl.trim(),
+                        hasDeadLink
+                          ? 'Fixed dead link via detail panel'
+                          : 'Added missing download link via detail panel'
+                      )
+                    }}
+                  >
+                    Fix link
+                  </button>
                 ) : null}
                 </>
             ) : null}
