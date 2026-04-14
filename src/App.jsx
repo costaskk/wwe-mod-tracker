@@ -61,6 +61,37 @@ import {
 
 export default function App() {
   const [session, setSession] = useState(null)
+
+  const {
+    loading,
+    error,
+    currentProfile,
+    profiles,
+    wrestlers,
+    arenas,
+    titleBelts,
+    otherMods,
+    creators,
+    collections,
+    installedIds,
+    installedArenaIds,
+    installedTitleIds,
+    installedOtherModIds,
+    setProfiles,
+    setCurrentProfile,
+    setWrestlers,
+    setArenas,
+    setTitleBelts,
+    setOtherMods,
+    setCreators,
+    setCollections,
+    setInstalledIds,
+    setInstalledArenaIds,
+    setInstalledTitleIds,
+    setInstalledOtherModIds,
+    fetchAll
+  } = useAppData(session)
+
   const [updatingProfile, setUpdatingProfile] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [selectedCollection, setSelectedCollection] = useState(null)
@@ -129,36 +160,6 @@ export default function App() {
     images: [],
     index: 0
   })
-
-  const {
-    loading,
-    error,
-    currentProfile,
-    profiles,
-    wrestlers,
-    arenas,
-    titleBelts,
-    otherMods,
-    creators,
-    collections,
-    installedIds,
-    installedArenaIds,
-    installedTitleIds,
-    installedOtherModIds,
-    setProfiles,
-    setCurrentProfile,
-    setWrestlers,
-    setArenas,
-    setTitleBelts,
-    setOtherMods,
-    setCreators,
-    setCollections,
-    setInstalledIds,
-    setInstalledArenaIds,
-    setInstalledTitleIds,
-    setInstalledOtherModIds,
-    fetchAll
-  } = useAppData(session)
 
   function canManageContent(ownerId) {
     if (!session) return false
@@ -419,13 +420,11 @@ export default function App() {
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      setLoading(false)
       return
     }
 
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
-      setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
