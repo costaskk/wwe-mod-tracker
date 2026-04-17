@@ -471,6 +471,8 @@ function ModCard({
             onOpenOtherMod={onOpenOtherMod}
             onToggleInstalled={onToggleInstalled}
             onAddToCollection={onAddToCollection}
+            canContribute={canContribute}
+            hasSession={hasSession}
           />
         </div>
       </div>
@@ -490,7 +492,9 @@ function CarouselSection({
   onOpenOtherMod,
   onToggleInstalled,
   onAddToCollection,
-  onOpenViewer
+  onOpenViewer,
+  canContribute = false,
+  hasSession = false
 }) {
   const railRef = useRef(null)
 
@@ -710,6 +714,8 @@ export default function AllModsList({
         onToggleInstalled={onToggleInstalled}
         onAddToCollection={onAddToCollection}
         onOpenViewer={openViewer}
+        canContribute={canContribute}
+        hasSession={hasSession}
       />
 
       <section className="panel soft-panel list-panel">
@@ -803,6 +809,8 @@ export default function AllModsList({
                 onOpenOtherMod={onOpenOtherMod}
                 onToggleInstalled={onToggleInstalled}
                 onAddToCollection={onAddToCollection}
+                canContribute={canContribute}
+                hasSession={hasSession}
               />
             ))}
           </div>

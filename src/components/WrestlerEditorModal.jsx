@@ -324,20 +324,21 @@ export default function WrestlerEditorModal({
     )
   }, [wrestlers, normalizedName, form.id])
 
+  const entranceMusicFiles = useMemo(() => {
+    return (form.audio_files || []).filter(
+      (item) => item.audio_type === 'entrance_music'
+    )
+  }, [form.audio_files])
+
+  const callnameFiles = useMemo(() => {
+    return (form.audio_files || []).filter(
+      (item) => item.audio_type === 'callname'
+    )
+  }, [form.audio_files])
+
   const suggestions = useMemo(() => {
-      const entranceMusicFiles = useMemo(() => {
-        return (form.audio_files || []).filter(
-          (item) => item.audio_type === 'entrance_music'
-        )
-      }, [form.audio_files])
-
-      const callnameFiles = useMemo(() => {
-        return (form.audio_files || []).filter(
-          (item) => item.audio_type === 'callname'
-        )
-      }, [form.audio_files])
-
     if (!normalizedName || duplicateWrestler) return []
+
     return wrestlers
       .filter((item) => {
         const name = (item.wrestler_name || '').trim().toLowerCase()
