@@ -3,3 +3,9 @@ dist
 .env
 .env.local
 .vscode
+
+.env.migration
+.env.example
+.env.*
+# Added by ggshield
+.cache_ggshield
