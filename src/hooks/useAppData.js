@@ -3,6 +3,70 @@ import { supabase } from '../lib/supabase'
 import { getAssetUrl } from '../lib/storage'
 import { sortAttires, uniqueCollectionSlug } from '../lib/utils'
 
+function asset(path, externalUrl = '') {
+  return getAssetUrl(path, externalUrl) || ''
+}
+
+function resolveImageUrls(img = {}) {
+  const full = asset(img.image_path, img.external_original_url)
+  const medium =
+    asset(img.image_medium_path, img.external_medium_url) ||
+    full
+
+  const thumb =
+    asset(img.image_thumb_path, img.external_thumb_url) ||
+    medium ||
+    full
+
+  return {
+    image_thumb_url: thumb,
+    image_medium_url: medium || thumb || full,
+    image_url: medium || thumb || full,
+    full_image_url: full || medium || thumb
+  }
+}
+
+function resolveHeadshotUrls(wrestler = {}) {
+  const full = asset(
+    wrestler.headshot_path,
+    wrestler.headshot_external_original_url || wrestler.headshot_external_url
+  )
+
+  const medium =
+    asset(
+      wrestler.headshot_medium_path,
+      wrestler.headshot_external_medium_url || wrestler.headshot_external_url
+    ) ||
+    full
+
+  const thumb =
+    asset(
+      wrestler.headshot_thumb_path,
+      wrestler.headshot_external_thumb_url || wrestler.headshot_external_url
+    ) ||
+    medium ||
+    full
+
+  return {
+    headshot_thumb_url: thumb,
+    headshot_medium_url: medium || thumb || full,
+    headshot_url: medium || thumb || full,
+    headshot_full_url: full || medium || thumb
+  }
+}
+
+function resolveRenderDdsUrls(item = {}) {
+  const url = asset(
+    item.render_dds_path,
+    item.render_dds_external_url || item.render_dds_url
+  )
+
+  return {
+    render_dds_url: url,
+    render_dds_full_url: url
+  }
+}
+
 export default function useAppData(session) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -205,49 +269,25 @@ export default function useAppData(session) {
 
       const normalizedWrestlers = (wrestlerResult.data || []).map((wrestler) => ({
         ...wrestler,
-        headshot_url: wrestler.headshot_medium_path
-          ? getAssetUrl(wrestler.headshot_medium_path)
-          : wrestler.headshot_thumb_path
-            ? getAssetUrl(wrestler.headshot_thumb_path)
-            : wrestler.headshot_path
-              ? getAssetUrl(wrestler.headshot_path)
-              : (wrestler.headshot_external_url || ''),
-        headshot_full_url: wrestler.headshot_path
-          ? getAssetUrl(wrestler.headshot_path)
-          : (wrestler.headshot_external_url || ''),
+        ...resolveHeadshotUrls(wrestler),
         audio_files: (wrestler.wrestler_audio_files || []).map((file) => ({
           ...file,
-          file_url: file.file_path ? getAssetUrl(file.file_path) : ''
+          file_url: file.download_url || file.external_url || (file.file_path ? getAssetUrl(file.file_path) : '')
         })),
         titantrons: (wrestler.wrestler_titantrons || []).map((item) => ({
           ...item,
           titantron_images: (item.titantron_images || []).map((img) => ({
             ...img,
-            image_url: img.image_medium_path
-              ? getAssetUrl(img.image_medium_path)
-              : img.image_thumb_path
-                ? getAssetUrl(img.image_thumb_path)
-                : img.image_path
-                  ? getAssetUrl(img.image_path)
-                  : '',
-            full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+            ...resolveImageUrls(img)
           }))
         })),
         attires: sortAttires((wrestler.attires || []).map((attire) => ({
           ...attire,
           mod_type: attire.mod_type === 'port' ? 'port' : 'original',
-          render_dds_url: '',
-          render_dds_full_url: attire.render_dds_path ? getAssetUrl(attire.render_dds_path) : '',
+          ...resolveRenderDdsUrls(attire),
           attire_images: (attire.attire_images || []).map((img) => ({
             ...img,
-            image_url: img.image_medium_path
-              ? getAssetUrl(img.image_medium_path)
-              : img.image_thumb_path
-                ? getAssetUrl(img.image_thumb_path)
-                : img.image_path
-                  ? getAssetUrl(img.image_path)
-                  : '',
-            full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+            ...resolveImageUrls(img)
           }))
         }))),
         requests: [...(wrestler.mod_requests || [])].sort(
@@ -259,14 +299,7 @@ export default function useAppData(session) {
         ...arena,
         arena_images: (arena.arena_images || []).map((img) => ({
           ...img,
-          image_url: img.image_medium_path
-            ? getAssetUrl(img.image_medium_path)
-            : img.image_thumb_path
-              ? getAssetUrl(img.image_thumb_path)
-              : img.image_path
-                ? getAssetUrl(img.image_path)
-                : '',
-          full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+          ...resolveImageUrls(img)
         })),
         requests: [...(arena.arena_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
@@ -275,22 +308,14 @@ export default function useAppData(session) {
 
       const normalizedTitles = (titleResult.data || []).map((title) => ({
         ...title,
-        render_dds_url: '',
-        render_dds_full_url: title.render_dds_path ? getAssetUrl(title.render_dds_path) : '',
+        ...resolveRenderDdsUrls(title),
         title_belt_images: (title.title_belt_images || []).map((img) => ({
           ...img,
-          image_url: img.image_medium_path
-            ? getAssetUrl(img.image_medium_path)
-            : img.image_thumb_path
-              ? getAssetUrl(img.image_thumb_path)
-              : img.image_path
-                ? getAssetUrl(img.image_path)
-                : '',
-          full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+          ...resolveImageUrls(img)
         })),
         audio_files: (title.title_belt_audio_files || []).map((file) => ({
           ...file,
-          file_url: file.file_path ? getAssetUrl(file.file_path) : ''
+          file_url: file.download_url || file.external_url || (file.file_path ? getAssetUrl(file.file_path) : '')
         })),
         requests: [...(title.title_belt_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
@@ -301,14 +326,7 @@ export default function useAppData(session) {
         ...otherMod,
         other_mod_images: (otherMod.other_mod_images || []).map((img) => ({
           ...img,
-          image_url: img.image_medium_path
-            ? getAssetUrl(img.image_medium_path)
-            : img.image_thumb_path
-              ? getAssetUrl(img.image_thumb_path)
-              : img.image_path
-                ? getAssetUrl(img.image_path)
-                : '',
-          full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+          ...resolveImageUrls(img)
         })),
         requests: [...(otherMod.other_mod_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
@@ -322,28 +340,15 @@ export default function useAppData(session) {
           attire: item.attire
             ? {
                 ...item.attire,
-                render_dds_url: '',
+                ...resolveRenderDdsUrls(item.attire),
                 attire_images: (item.attire.attire_images || []).map((img) => ({
                   ...img,
-                  image_url: img.image_medium_path
-                    ? getAssetUrl(img.image_medium_path)
-                    : img.image_thumb_path
-                      ? getAssetUrl(img.image_thumb_path)
-                      : img.image_path
-                        ? getAssetUrl(img.image_path)
-                        : '',
-                  full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+                  ...resolveImageUrls(img)
                 })),
                 wrestler: item.attire.wrestler
                   ? {
                       ...item.attire.wrestler,
-                      headshot_url: item.attire.wrestler.headshot_medium_path
-                        ? getAssetUrl(item.attire.wrestler.headshot_medium_path)
-                        : item.attire.wrestler.headshot_thumb_path
-                          ? getAssetUrl(item.attire.wrestler.headshot_thumb_path)
-                          : item.attire.wrestler.headshot_path
-                            ? getAssetUrl(item.attire.wrestler.headshot_path)
-                            : (item.attire.wrestler.headshot_external_url || '')
+                      ...resolveHeadshotUrls(item.attire.wrestler)
                     }
                   : null
               }
@@ -353,31 +358,17 @@ export default function useAppData(session) {
                 ...item.arena,
                 arena_images: (item.arena.arena_images || []).map((img) => ({
                   ...img,
-                  image_url: img.image_medium_path
-                    ? getAssetUrl(img.image_medium_path)
-                    : img.image_thumb_path
-                      ? getAssetUrl(img.image_thumb_path)
-                      : img.image_path
-                        ? getAssetUrl(img.image_path)
-                        : '',
-                  full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+                  ...resolveImageUrls(img)
                 }))
               }
             : null,
           title_belt: item.title_belt
             ? {
                 ...item.title_belt,
-                render_dds_url: '',
+                ...resolveRenderDdsUrls(item.title_belt),
                 title_belt_images: (item.title_belt.title_belt_images || []).map((img) => ({
                   ...img,
-                  image_url: img.image_medium_path
-                    ? getAssetUrl(img.image_medium_path)
-                    : img.image_thumb_path
-                      ? getAssetUrl(img.image_thumb_path)
-                      : img.image_path
-                        ? getAssetUrl(img.image_path)
-                        : '',
-                  full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+                  ...resolveImageUrls(img)
                 }))
               }
             : null,
@@ -386,14 +377,7 @@ export default function useAppData(session) {
                 ...item.other_mod,
                 other_mod_images: (item.other_mod.other_mod_images || []).map((img) => ({
                   ...img,
-                  image_url: img.image_medium_path
-                    ? getAssetUrl(img.image_medium_path)
-                    : img.image_thumb_path
-                      ? getAssetUrl(img.image_thumb_path)
-                      : img.image_path
-                        ? getAssetUrl(img.image_path)
-                        : '',
-                  full_image_url: img.image_path ? getAssetUrl(img.image_path) : ''
+                  ...resolveImageUrls(img)
                 }))
               }
             : null
@@ -401,8 +385,8 @@ export default function useAppData(session) {
 
         collectionMap.set(collection.id, {
           ...collection,
-          cover_url: collection.cover_path ? getAssetUrl(collection.cover_path) : '',
-          cover_full_url: collection.cover_path ? getAssetUrl(collection.cover_path) : '',
+          cover_url: getAssetUrl(collection.cover_path, collection.cover_external_url),
+          cover_full_url: getAssetUrl(collection.cover_path, collection.cover_external_url),
           items: normalizedItems
         })
       })

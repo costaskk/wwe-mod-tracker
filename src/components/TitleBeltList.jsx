@@ -91,7 +91,7 @@ export default function TitleBeltList({
               <tr>
                 <th>Title belt</th>
                 <th>Screens</th>
-                <th>Audio</th>
+                <th>Audio links</th>
                 <th>Requests</th>
                 <th>Updated</th>
                 <th aria-label="Actions"></th>
@@ -124,8 +124,13 @@ export default function TitleBeltList({
 
                   const previewImage = (title.images || title.title_belt_images || [])[0]
                   const previewUrl =
+                    previewImage?.thumb_url ||
+                    previewImage?.image_thumb_url ||
                     previewImage?.url ||
                     previewImage?.image_url ||
+                    previewImage?.medium_url ||
+                    previewImage?.image_medium_url ||
+                    previewImage?.full_image_url ||
                     ''
 
                   return (
@@ -218,8 +223,13 @@ export default function TitleBeltList({
 
               const previewImage = (title.images || title.title_belt_images || [])[0]
               const previewUrl =
+                previewImage?.thumb_url ||
+                previewImage?.image_thumb_url ||
                 previewImage?.url ||
                 previewImage?.image_url ||
+                previewImage?.medium_url ||
+                previewImage?.image_medium_url ||
+                previewImage?.full_image_url ||
                 ''
 
               const hasPreview = Boolean(previewUrl)
@@ -259,7 +269,7 @@ export default function TitleBeltList({
 
                   <div className="list-meta wrap-meta">
                     <span>{imageCount} screenshot{imageCount === 1 ? '' : 's'}</span>
-                    <span>{audioCount} audio file{audioCount === 1 ? '' : 's'}</span>
+                    <span>{audioCount} audio link{audioCount === 1 ? '' : 's'}</span>
                     <span>{openRequests} open request{openRequests === 1 ? '' : 's'}</span>
                   </div>
 

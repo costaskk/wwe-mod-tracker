@@ -124,8 +124,12 @@ function DownloadLinks({ value }) {
 }
 
 function WrestlerAudioSection({ wrestler, canAccessRestrictedFiles }) {
-  const entranceMusicFiles = (wrestler.audio_files || []).filter((item) => item.audio_type === 'entrance_music')
-  const callnameFiles = (wrestler.audio_files || []).filter((item) => item.audio_type === 'callname')
+  const entranceMusicFiles = (wrestler.audio_files || []).filter(
+    (item) => item.audio_type === 'entrance_music'
+  )
+  const callnameFiles = (wrestler.audio_files || []).filter(
+    (item) => item.audio_type === 'callname'
+  )
 
   if (!entranceMusicFiles.length && !callnameFiles.length) return null
 
@@ -135,72 +139,63 @@ function WrestlerAudioSection({ wrestler, canAccessRestrictedFiles }) {
         <div className="panel-header">
           <div>
             <h2>Wrestler audio</h2>
-            <p className="subtle-copy">Entrance music and announce callnames attached directly to this wrestler.</p>
+            <p className="subtle-copy">Entrance music and announce callname WEM links attached directly to this wrestler.</p>
           </div>
         </div>
 
         <div className="upload-placeholder">
-          WEM audio files are visible only to approved users, moderators, and admins.
+          WEM audio links are visible only to approved users, moderators, and admins.
         </div>
       </section>
     )
   }
 
   function AudioGroup({ title, items }) {
-    const [failedIds, setFailedIds] = useState({})
-
     return (
       <div className="upload-card premium-upload-card">
         <div className="upload-card-header">
           <h5>{title}</h5>
-          <p>Stored on the wrestler page. Browser playback may not work for every WEM file, so a download fallback is shown.</p>
+          <p>External WEM download links saved on the wrestler page.</p>
         </div>
 
         {items.length ? (
           <div className="wrestler-audio-list">
             {items.map((item, index) => {
-              const key = item.id || item.file_path || `${title}-${index}`
-              const failed = failedIds[key]
+              const url = item.download_url || item.external_url || item.file_url || ''
+              const key = item.id || item.temp_id || url || `${title}-${index}`
 
               return (
                 <div className="wrestler-audio-row" key={key}>
                   <div className="wrestler-audio-main">
-                    <div className="wrestler-audio-name">{item.file_name || 'Unnamed .wem file'}</div>
+                    <div className="wrestler-audio-name">
+                      {item.file_name || 'Unnamed .wem link'}
+                    </div>
 
-                    {!failed && item.file_url ? (
-                      <audio
-                        className="wrestler-audio-player"
-                        controls
-                        preload="none"
-                        onError={() => setFailedIds((current) => ({ ...current, [key]: true }))}
-                      >
-                        <source src={item.file_url} />
-                      </audio>
-                    ) : (
-                      <div className="muted-text small-text">
-                        Browser playback is not available for this WEM file.
-                      </div>
-                    )}
+                    <div className="muted-text small-text">
+                      External WEM link
+                    </div>
                   </div>
 
                   <div className="wrestler-audio-actions">
-                    {item.file_url ? (
+                    {url ? (
                       <a
                         className="ghost-button small-btn"
-                        href={item.file_url}
+                        href={url}
                         target="_blank"
                         rel="noreferrer"
                       >
                         Open / download
                       </a>
-                    ) : null}
+                    ) : (
+                      <span className="muted-text small-text">Missing link</span>
+                    )}
                   </div>
                 </div>
               )
             })}
           </div>
         ) : (
-          <div className="upload-placeholder">No files uploaded</div>
+          <div className="upload-placeholder">No audio links added</div>
         )}
       </div>
     )
@@ -211,7 +206,7 @@ function WrestlerAudioSection({ wrestler, canAccessRestrictedFiles }) {
       <div className="panel-header">
         <div>
           <h2>Wrestler audio</h2>
-          <p className="subtle-copy">Entrance music and announce callnames attached directly to this wrestler.</p>
+          <p className="subtle-copy">Entrance music and announce callname WEM links attached directly to this wrestler.</p>
         </div>
       </div>
 

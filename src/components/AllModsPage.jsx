@@ -92,12 +92,13 @@ export default function AllModsPage({
         if (item.modType === 'title') isInstalled = installedTitleIds.has(itemId)
         if (item.modType === 'other') isInstalled = installedOtherModIds.has(itemId)
 
-        const queryOk = !cleanQuery || item.searchText.includes(cleanQuery)
+        const queryOk =
+          !cleanQuery ||
+          (item.searchText || '').includes(cleanQuery)
         const categoryOk = categoryFilter === 'all' || item.modType === categoryFilter
         const subtypeOk =
-        categoryFilter !== 'other' ||
-        subtypeFilter === 'all' ||
-        item.modSubtype === subtypeFilter
+          subtypeFilter === 'all' ||
+          item.modSubtype === subtypeFilter
         const creatorOk = creatorFilter === 'all' || item.creatorName === creatorFilter
         const sourceGameOk = sourceGameFilter === 'all' || item.sourceGame === sourceGameFilter
         const installOk =
@@ -161,11 +162,17 @@ export default function AllModsPage({
       return items.map((item) => {
         const itemId = item.entityId || item.id
 
-        let isInstalled = false
-        if (item.modType === 'attire') isInstalled = installedIds.has(itemId)
-        if (item.modType === 'arena') isInstalled = installedArenaIds.has(itemId)
-        if (item.modType === 'title') isInstalled = installedTitleIds.has(itemId)
-        if (item.modType === 'other') isInstalled = installedOtherModIds.has(itemId)
+        function isItemInstalled(item, itemId) {
+          switch (item.modType) {
+            case 'attire': return installedIds.has(itemId)
+            case 'arena': return installedArenaIds.has(itemId)
+            case 'title': return installedTitleIds.has(itemId)
+            case 'other': return installedOtherModIds.has(itemId)
+            default: return false
+          }
+        }
+
+        const isInstalled = isItemInstalled(item, itemId)
 
         const matchingCollections = (collections || []).filter((collection) =>
           (collection.items || []).some((entry) => {
@@ -442,7 +449,7 @@ export default function AllModsPage({
 
   const pagination = useMemo(() => {
     return paginateItems(decoratedFilteredItems, page, perPage)
-  }, [decoratedFilteredItems, page])
+  }, [decoratedFilteredItems, page, perPage])
 
   useEffect(() => {
     setPage(1)
@@ -497,6 +504,8 @@ export default function AllModsPage({
           onOpenOtherMod={onOpenOtherMod}
           onToggleInstalled={toggleInstalled}
           onAddToCollection={addToCollection}
+          canContribute={canContribute}
+          hasSession={Boolean(session)}
         />
       </div>
     </div>

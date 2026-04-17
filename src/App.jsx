@@ -170,6 +170,20 @@ export default function App() {
     setNotice({ type, title, message })
   }
 
+  function normalizeExternalUrl(value = '') {
+    const clean = String(value || '').trim()
+    if (!clean) return ''
+    return /^https?:\/\//i.test(clean) ? clean : `https://${clean}`
+  }
+
+  function getAudioRecordKey(item = {}) {
+    return (
+      item.id ||
+      item.temp_id ||
+      `${item.audio_type || ''}:${item.download_url || item.external_url || item.file_name || ''}`
+    )
+  }
+
   function addTitantron() {
     setWrestlerForm((current) => ({
       ...current,
@@ -217,7 +231,15 @@ export default function App() {
 
       const uploaded = await Promise.all(
         files.map(async (file) => {
-          const { originalPath, mediumPath, thumbPath, fileName } = await uploadImageWithVariants({
+          const {
+            originalPath,
+            mediumPath,
+            thumbPath,
+            fileName,
+            externalOriginalUrl,
+            externalMediumUrl,
+            externalThumbUrl
+          } = await uploadImageWithVariants({
             userId: session.user.id,
             entityId,
             file,
@@ -231,9 +253,12 @@ export default function App() {
             medium_path: mediumPath,
             thumb_path: thumbPath,
             name: fileName,
-            url: getAssetUrl(thumbPath),
-            image_url: getAssetUrl(mediumPath),
-            full_image_url: getAssetUrl(originalPath)
+            external_original_url: externalOriginalUrl || '',
+            external_medium_url: externalMediumUrl || '',
+            external_thumb_url: externalThumbUrl || '',
+            url: externalThumbUrl || getAssetUrl(thumbPath),
+            image_url: externalMediumUrl || getAssetUrl(mediumPath),
+            full_image_url: externalOriginalUrl || getAssetUrl(originalPath)
           }
         })
       )
@@ -727,7 +752,23 @@ export default function App() {
         headshot_medium_path: wrestlerForm.headshot_medium_path || '',
         headshot_thumb_path: wrestlerForm.headshot_thumb_path || '',
         headshot_name: wrestlerForm.headshot_name || '',
-        headshot_external_url: wrestlerForm.headshot_external_url || ''
+        headshot_external_url:
+          wrestlerForm.headshot_external_url ||
+          wrestlerForm.headshot_external_medium_url ||
+          wrestlerForm.headshot_external_original_url ||
+          '',
+        headshot_external_original_url:
+          wrestlerForm.headshot_external_original_url ||
+          wrestlerForm.headshot_external_url ||
+          '',
+        headshot_external_medium_url:
+          wrestlerForm.headshot_external_medium_url ||
+          wrestlerForm.headshot_external_url ||
+          '',
+        headshot_external_thumb_url:
+          wrestlerForm.headshot_external_thumb_url ||
+          wrestlerForm.headshot_external_url ||
+          ''
       }
 
       let wrestlerId = wrestlerForm.id
@@ -744,13 +785,55 @@ export default function App() {
         openNotice('success', 'Wrestler added', `${wrestlerForm.wrestler_name} was added to the database.`)
       }
 
-      if (Array.isArray(wrestlerForm.pendingAudioUploads) && wrestlerForm.pendingAudioUploads.length) {
-        const inserts = wrestlerForm.pendingAudioUploads.map((item) => ({
+      const audioRecords = (wrestlerForm.audio_files || [])
+        .map((item) => {
+          const resolvedUrl = normalizeExternalUrl(
+            item.download_url || item.external_url || item.file_url || ''
+          )
+
+          return {
+            ...item,
+            wrestler_id: wrestlerId,
+            owner_id: session.user.id,
+            audio_type: item.audio_type === 'callname' ? 'callname' : 'entrance_music',
+            file_name: String(item.file_name || '').trim(),
+            resolved_url: resolvedUrl
+          }
+        })
+        .filter((item) => item.resolved_url)
+
+      const existingAudioRecords = audioRecords.filter(
+        (item) => item.id && item.persisted !== false
+      )
+
+      const newAudioRecords = audioRecords.filter(
+        (item) => !item.id || item.persisted === false
+      )
+
+      for (const item of existingAudioRecords) {
+        const { error } = await supabase
+          .from('wrestler_audio_files')
+          .update({
+            audio_type: item.audio_type,
+            file_path: null,
+            file_name: item.file_name || '',
+            external_url: item.resolved_url,
+            download_url: item.resolved_url
+          })
+          .eq('id', item.id)
+
+        if (error) throw error
+      }
+
+      if (newAudioRecords.length) {
+        const inserts = newAudioRecords.map((item) => ({
           wrestler_id: wrestlerId,
           owner_id: session.user.id,
           audio_type: item.audio_type,
-          file_path: item.file_path,
-          file_name: item.file_name
+          file_path: null,
+          file_name: item.file_name || '',
+          external_url: item.resolved_url,
+          download_url: item.resolved_url
         }))
 
         const { error } = await supabase.from('wrestler_audio_files').insert(inserts)
@@ -796,7 +879,10 @@ export default function App() {
             image_path: img.path,
             image_medium_path: img.medium_path || '',
             image_thumb_path: img.thumb_path || '',
-            image_name: img.name
+            image_name: img.name,
+            external_original_url: img.external_original_url || '',
+            external_medium_url: img.external_medium_url || '',
+            external_thumb_url: img.external_thumb_url || ''
           }))
 
           const { error } = await supabase.from('titantron_images').insert(imageRows)
@@ -813,58 +899,42 @@ export default function App() {
     }
   }
 
-  async function handleWrestlerAudioUpload(files, kind) {
-    if (!files?.length || !canContribute) return
+  function addWrestlerAudioLink(kind = 'entrance_music') {
+    if (!canContribute) return
 
-    try {
-      setUploading(true)
-
-      const entityId = wrestlerForm.id || wrestlerForm.temp_upload_id || uid()
-      files.forEach((file) => {
-        if (!file.name.toLowerCase().endsWith('.wem')) {
-          throw new Error('Only .wem files are allowed.')
+    setWrestlerForm((current) => ({
+      ...current,
+      audio_files: [
+        ...(current.audio_files || []),
+        {
+          id: null,
+          temp_id: uid(),
+          persisted: false,
+          wrestler_id: current.id || null,
+          owner_id: session?.user?.id || '',
+          audio_type: kind === 'callname' ? 'callname' : 'entrance_music',
+          file_path: '',
+          file_name: '',
+          file_url: '',
+          download_url: '',
+          external_url: ''
         }
-      })
+      ]
+    }))
+  }
 
-      const uploadedRows = await Promise.all(
-        files.map(async (file) => {
-          const { path, fileName } = await uploadAsset({
-            userId: session.user.id,
-            entityId,
-            file,
-            kind,
-            folder: 'wrestlers'
-          })
-
-          return {
-            id: uid(),
-            wrestler_id: wrestlerForm.id || null,
-            owner_id: session.user.id,
-            audio_type: kind,
-            file_path: path,
-            file_name: fileName,
-            file_url: getAssetUrl(path)
-          }
-        })
+  function updateWrestlerAudioLink(audioKey, changes = {}) {
+    setWrestlerForm((current) => ({
+      ...current,
+      audio_files: (current.audio_files || []).map((item) =>
+        getAudioRecordKey(item) === audioKey
+          ? {
+              ...item,
+              ...changes
+            }
+          : item
       )
-
-      setWrestlerForm((current) => ({
-        ...current,
-        temp_upload_id: current.temp_upload_id || (!current.id ? entityId : ''),
-        audio_files: [...(current.audio_files || []), ...uploadedRows],
-        pendingAudioUploads: [...(current.pendingAudioUploads || []), ...uploadedRows]
-      }))
-
-      openNotice(
-        'success',
-        kind === 'entrance_music' ? 'Entrance music uploaded' : 'Callname uploaded',
-        `${uploadedRows.length} file${uploadedRows.length === 1 ? '' : 's'} uploaded successfully.`
-      )
-    } catch (err) {
-      openNotice('error', 'Audio upload failed', err.message || 'Could not upload wrestler audio.')
-    } finally {
-      setUploading(false)
-    }
+    }))
   }
 
   async function saveAttire() {
@@ -893,6 +963,10 @@ export default function App() {
         mod_type: attireForm.mod_type === 'port' ? 'port' : 'original',
         render_dds_path: attireForm.render_dds_path || '',
         render_dds_name: attireForm.render_dds_name || '',
+        render_dds_external_url:
+          attireForm.render_dds_external_url ||
+          attireForm.render_dds_url ||
+          '',
         notes: attireForm.notes.trim(),
         status: attireForm.status,
         moveset_json: parseJsonOrNull(attireForm.moveset_json_text),
@@ -968,7 +1042,10 @@ export default function App() {
           image_path: item.path,
           image_medium_path: item.medium_path || '',
           image_thumb_path: item.thumb_path || '',
-          image_name: item.name
+          image_name: item.name,
+          external_original_url: item.external_original_url || '',
+          external_medium_url: item.external_medium_url || '',
+          external_thumb_url: item.external_thumb_url || ''
         }))
         const { error } = await supabase.from('attire_images').insert(inserts)
         if (error) throw error
@@ -1008,7 +1085,11 @@ export default function App() {
         description: collectionForm.description.trim(),
         visibility: collectionForm.visibility === 'private' ? 'private' : 'public',
         cover_path: collectionForm.cover_path || '',
-        cover_name: collectionForm.cover_name || ''
+        cover_name: collectionForm.cover_name || '',
+        cover_external_url:
+          collectionForm.cover_external_url ||
+          collectionForm.cover_url ||
+          ''
       }
       if (collectionForm.persisted && collectionForm.id) {
         const { error } = await supabase.from('collections').update(payload).eq('id', collectionForm.id)
@@ -1040,7 +1121,15 @@ export default function App() {
 
       const entityId = wrestlerForm.id || wrestlerForm.temp_upload_id || uid()
 
-      const { originalPath, mediumPath, thumbPath, fileName } = await uploadImageWithVariants({
+      const {
+        originalPath,
+        mediumPath,
+        thumbPath,
+        fileName,
+        externalOriginalUrl,
+        externalMediumUrl,
+        externalThumbUrl
+      } = await uploadImageWithVariants({
         userId: session.user.id,
         entityId,
         file,
@@ -1055,8 +1144,11 @@ export default function App() {
         headshot_medium_path: mediumPath,
         headshot_thumb_path: thumbPath,
         headshot_name: fileName,
-        headshot_url: getAssetUrl(mediumPath),
-        headshot_external_url: '',
+        headshot_url: externalMediumUrl || getAssetUrl(mediumPath),
+        headshot_external_url: externalMediumUrl || externalOriginalUrl || '',
+        headshot_external_original_url: externalOriginalUrl || '',
+        headshot_external_medium_url: externalMediumUrl || '',
+        headshot_external_thumb_url: externalThumbUrl || '',
         auto_match_urls: [],
         auto_match_titles: []
       }))
@@ -1080,7 +1172,7 @@ export default function App() {
 
       const optimizedFile = await compressImage(file)
 
-      const { path, fileName } = await uploadAsset({
+      const { path, fileName, externalUrl } = await uploadAsset({
         userId: session.user.id,
         entityId,
         file: optimizedFile,
@@ -1093,7 +1185,8 @@ export default function App() {
         temp_upload_id: current.temp_upload_id || (!current.persisted ? entityId : ''),
         cover_path: path,
         cover_name: fileName,
-        cover_url: getAssetUrl(path)
+        cover_url: externalUrl || getAssetUrl(path),
+        cover_external_url: externalUrl || ''
       }))
 
       openNotice('success', 'Cover uploaded', `${file.name} was uploaded successfully.`)
@@ -1117,6 +1210,9 @@ export default function App() {
         headshot_name: `Auto-matched image: ${sourceTitle}`,
         headshot_url: imageUrl,
         headshot_external_url: imageUrl,
+        headshot_external_original_url: imageUrl,
+        headshot_external_medium_url: imageUrl,
+        headshot_external_thumb_url: imageUrl,
         auto_match_titles: [...(current.auto_match_titles || []), sourceTitle],
         auto_match_urls: [...(current.auto_match_urls || []), imageUrl]
       }))
@@ -1146,6 +1242,9 @@ export default function App() {
         headshot_name: '',
         headshot_url: '',
         headshot_external_url: '',
+        headshot_external_original_url: '',
+        headshot_external_medium_url: '',
+        headshot_external_thumb_url: '',
         auto_match_titles: [],
         auto_match_urls: []
       }))
@@ -1158,7 +1257,13 @@ export default function App() {
     if (!canDeleteContent) return
     try {
       if (collectionForm.cover_path) await removeAssets([collectionForm.cover_path])
-      setCollectionForm((current) => ({ ...current, cover_path: '', cover_url: '', cover_name: '' }))
+      setCollectionForm((current) => ({
+        ...current,
+        cover_path: '',
+        cover_url: '',
+        cover_name: '',
+        cover_external_url: ''
+      }))
     } catch (err) {
       openNotice('error', 'Could not remove cover', err.message || 'Could not remove cover.')
     }
@@ -1170,10 +1275,6 @@ export default function App() {
     try {
       setUploading(true)
 
-      if (audioFile.file_path) {
-        await removeAssets([audioFile.file_path])
-      }
-
       if (audioFile.id) {
         const { error } = await supabase
           .from('wrestler_audio_files')
@@ -1183,10 +1284,14 @@ export default function App() {
         if (error) throw error
       }
 
+      const audioKey = getAudioRecordKey(audioFile)
+
       setWrestlerForm((current) => ({
         ...current,
-        audio_files: (current.audio_files || []).filter((item) => item.file_path !== audioFile.file_path),
-        pendingAudioUploads: (current.pendingAudioUploads || []).filter((item) => item.file_path !== audioFile.file_path)
+        audio_files: (current.audio_files || []).filter(
+          (item) => getAudioRecordKey(item) !== audioKey
+        ),
+        pendingAudioUploads: []
       }))
 
       setWrestlers((current) =>
@@ -1195,12 +1300,14 @@ export default function App() {
 
           return {
             ...wrestler,
-            audio_files: (wrestler.audio_files || []).filter((item) => item.file_path !== audioFile.file_path)
+            audio_files: (wrestler.audio_files || []).filter(
+              (item) => getAudioRecordKey(item) !== audioKey
+            )
           }
         })
       )
 
-      openNotice('success', 'Audio removed', `${audioFile.file_name || 'Audio file'} was removed.`)
+      openNotice('success', 'Audio removed', `${audioFile.file_name || 'Audio link'} was removed.`)
     } catch (err) {
       openNotice('error', 'Could not remove audio', err.message || 'Could not remove wrestler audio.')
     } finally {
@@ -1216,14 +1323,22 @@ export default function App() {
         const file = filesOrFile
         if (!file.name.toLowerCase().endsWith('.dds')) throw new Error('Render must be a .dds file.')
         const entityId = attireForm.id || uid()
-        const { path, fileName } = await uploadAsset({
+        const { path, fileName, externalUrl } = await uploadAsset({
           userId: session.user.id,
           entityId,
           file,
           kind: 'render',
           folder: 'attires'
         })
-        setAttireForm((current) => ({ ...current, id: current.id || entityId, render_dds_path: path, render_dds_name: fileName, render_dds_url: getAssetUrl(path) }))
+
+        setAttireForm((current) => ({
+          ...current,
+          id: current.id || entityId,
+          render_dds_path: path,
+          render_dds_name: fileName,
+          render_dds_url: externalUrl || getAssetUrl(path),
+          render_dds_external_url: externalUrl || ''
+        }))
         openNotice('success', 'DDS uploaded', `${file.name} was uploaded successfully.`)
       }
       if (kind === 'image') {
@@ -1237,7 +1352,15 @@ export default function App() {
 
         const uploaded = await Promise.all(
           files.map(async (file) => {
-            const { originalPath, mediumPath, thumbPath, fileName } = await uploadImageWithVariants({
+            const {
+              originalPath,
+              mediumPath,
+              thumbPath,
+              fileName,
+              externalOriginalUrl,
+              externalMediumUrl,
+              externalThumbUrl
+            } = await uploadImageWithVariants({
               userId: session.user.id,
               entityId,
               file,
@@ -1250,9 +1373,12 @@ export default function App() {
               medium_path: mediumPath,
               thumb_path: thumbPath,
               name: fileName,
-              url: getAssetUrl(thumbPath),
-              image_url: getAssetUrl(mediumPath),
-              full_image_url: getAssetUrl(originalPath)
+              external_original_url: externalOriginalUrl || '',
+              external_medium_url: externalMediumUrl || '',
+              external_thumb_url: externalThumbUrl || '',
+              url: externalThumbUrl || getAssetUrl(thumbPath),
+              image_url: externalMediumUrl || getAssetUrl(mediumPath),
+              full_image_url: externalOriginalUrl || getAssetUrl(originalPath)
             }
           })
         )
@@ -1292,7 +1418,8 @@ export default function App() {
             .from('attires')
             .update({
               render_dds_path: '',
-              render_dds_name: ''
+              render_dds_name: '',
+              render_dds_external_url: ''
             })
             .eq('id', attireForm.id)
 
@@ -1303,7 +1430,8 @@ export default function App() {
           ...current,
           render_dds_path: '',
           render_dds_name: '',
-          render_dds_url: ''
+          render_dds_url: '',
+          render_dds_external_url: ''
         }))
 
         setWrestlers((current) =>
@@ -1315,7 +1443,8 @@ export default function App() {
                     ...attire,
                     render_dds_path: '',
                     render_dds_name: '',
-                    render_dds_url: ''
+                    render_dds_url: '',
+                    render_dds_external_url: ''
                   }
                 : attire
             )
@@ -2300,9 +2429,6 @@ export default function App() {
           wrestler.headshot_medium_path,
           wrestler.headshot_thumb_path
         ].filter(Boolean)
-        for (const audio of wrestler.audio_files || []) {
-          if (audio.file_path) assetPaths.push(audio.file_path)
-        }
 
         for (const titantron of wrestler.titantrons || []) {
           for (const img of titantron.titantron_images || []) {
@@ -2329,7 +2455,7 @@ export default function App() {
   }
 
   function deleteCollection(collection) {
-    if (!canDeleteContent) return
+    if (!canManageContent(collection.owner_id)) return
 
     openConfirmAction({
       title: 'Delete collection?',
@@ -2535,7 +2661,7 @@ export default function App() {
                 collections={myCollections}
                 onCreate={openCreateCollection}
                 onEdit={openEditCollection}
-                onDelete={canDeleteContent ? deleteCollection : null}
+                onDelete={deleteCollection}
                 onOpen={openCollection}
                 onShare={shareCollection}
               />
@@ -2762,7 +2888,8 @@ export default function App() {
         onUploadHeadshot={handleWrestlerHeadshotUpload}
         onAutoMatchHeadshot={handleAutoMatchHeadshot}
         onRemoveHeadshot={removeWrestlerHeadshot}
-        onUploadAudio={handleWrestlerAudioUpload}
+        onAddAudioLink={addWrestlerAudioLink}
+        onUpdateAudioLink={updateWrestlerAudioLink}
         onRemoveAudio={removeWrestlerAudio}
         onAddTitantron={addTitantron}
         onUpdateTitantron={updateTitantron}

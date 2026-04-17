@@ -1,0 +1,13 @@
+name = "wwe-mod-assets"
+main = "src/index.js"
+compatibility_date = "2025-04-01"
+
+[[r2_buckets]]
+binding = "MOD_ASSETS"
+bucket_name = "wwe-mod-assets"
+
+[vars]
+CORS_ORIGIN = "http://localhost:5173"
+R2_PUBLIC_BASE_URL = "https://cdn.yourdomain.com"
+SUPABASE_URL = "https://YOUR_PROJECT.supabase.co"
+SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"

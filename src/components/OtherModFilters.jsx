@@ -27,7 +27,7 @@ export default function OtherModFilters({
 }) {
   const normalizedSubtypeOptions = Array.from(
     new Set((subtypeOptions || []).filter(Boolean))
-  )
+  ).sort((a, b) => getOtherModSubtypeLabel(a).localeCompare(getOtherModSubtypeLabel(b)))
 
   return (
     <section className="panel soft-panel filters-panel">

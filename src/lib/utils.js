@@ -3,6 +3,34 @@ export const SOURCE_GAMES = ['WWE 2K26', 'WWE 2K25', 'WWE 2K24', 'WWE 2K23', 'WW
 export const ATTIRE_STATUSES = ['complete', 'partial', 'needs_work', 'missing']
 export const COLLECTION_ITEM_TYPES = ['attire', 'arena', 'title', 'other']
 
+const CLOUDFLARE_ASSET_BASE_URL = String(
+  import.meta.env.VITE_CLOUDFLARE_IMAGE_BASE_URL || ''
+)
+  .trim()
+  .replace(/\/+$/, '')
+
+function isAbsoluteUrl(value = '') {
+  return /^https?:\/\//i.test(String(value).trim())
+}
+
+function buildCloudflareUrl(path = '') {
+  const cleanPath = String(path || '').trim()
+
+  if (!cleanPath) return ''
+  if (isAbsoluteUrl(cleanPath)) return cleanPath
+  if (!CLOUDFLARE_ASSET_BASE_URL) return ''
+
+  return `${CLOUDFLARE_ASSET_BASE_URL}/${cleanPath.replace(/^\/+/, '')}`
+}
+
+function pickFirstUrl(...values) {
+  for (const value of values) {
+    const clean = String(value || '').trim()
+    if (clean) return clean
+  }
+  return ''
+}
+
 export const OTHER_MOD_SUBTYPES = [
   'weapons',
   'moves',
@@ -42,6 +70,98 @@ export function titleCase(value = '') {
     .replace(/\b\w/g, (match) => match.toUpperCase())
 }
 
+function preferImageThumb(img = {}) {
+  return pickFirstUrl(
+    img.external_thumb_url,
+    img.external_medium_url,
+    img.external_original_url,
+    buildCloudflareUrl(img.image_thumb_path),
+    buildCloudflareUrl(img.image_medium_path),
+    buildCloudflareUrl(img.image_path)
+  )
+}
+
+function preferImageMedium(img = {}) {
+  return pickFirstUrl(
+    img.external_medium_url,
+    img.external_original_url,
+    img.external_thumb_url,
+    buildCloudflareUrl(img.image_medium_path),
+    buildCloudflareUrl(img.image_path),
+    buildCloudflareUrl(img.image_thumb_path)
+  )
+}
+
+function preferImageFull(img = {}) {
+  return pickFirstUrl(
+    img.external_original_url,
+    img.external_medium_url,
+    img.external_thumb_url,
+    buildCloudflareUrl(img.image_path),
+    buildCloudflareUrl(img.image_medium_path),
+    buildCloudflareUrl(img.image_thumb_path)
+  )
+}
+
+function preferHeadshotThumb(wrestler = {}) {
+  return pickFirstUrl(
+    wrestler.headshot_external_thumb_url,
+    wrestler.headshot_external_medium_url,
+    wrestler.headshot_external_original_url,
+    wrestler.headshot_external_url,
+    buildCloudflareUrl(wrestler.headshot_thumb_path),
+    buildCloudflareUrl(wrestler.headshot_medium_path),
+    buildCloudflareUrl(wrestler.headshot_path)
+  )
+}
+
+function preferHeadshotMedium(wrestler = {}) {
+  return pickFirstUrl(
+    wrestler.headshot_external_medium_url,
+    wrestler.headshot_external_original_url,
+    wrestler.headshot_external_thumb_url,
+    wrestler.headshot_external_url,
+    buildCloudflareUrl(wrestler.headshot_medium_path),
+    buildCloudflareUrl(wrestler.headshot_path),
+    buildCloudflareUrl(wrestler.headshot_thumb_path)
+  )
+}
+
+function preferHeadshotFull(wrestler = {}) {
+  return pickFirstUrl(
+    wrestler.headshot_external_original_url,
+    wrestler.headshot_external_medium_url,
+    wrestler.headshot_external_thumb_url,
+    wrestler.headshot_external_url,
+    buildCloudflareUrl(wrestler.headshot_path),
+    buildCloudflareUrl(wrestler.headshot_medium_path),
+    buildCloudflareUrl(wrestler.headshot_thumb_path)
+  )
+}
+
+function normalizeGalleryImages(images = []) {
+  return (images || [])
+    .map((img) => {
+      const thumb = preferImageThumb(img)
+      const medium = preferImageMedium(img)
+      const full = preferImageFull(img)
+
+      return {
+        id: img.id || null,
+        path: img.image_path || img.path || '',
+        name: img.image_name || img.name || '',
+        thumb,
+        medium,
+        full,
+        thumb_url: thumb,
+        image_url: medium,
+        full_image_url: full,
+        url: medium
+      }
+    })
+    .filter((img) => img.thumb || img.medium || img.full)
+}
+
 export function emptyWrestler() {
   return {
     id: null,
@@ -52,8 +172,14 @@ export function emptyWrestler() {
     tags_text: '',
     headshot_path: '',
     headshot_url: '',
+    headshot_thumb_url: '',
+    headshot_medium_url: '',
+    headshot_full_url: '',
     headshot_name: '',
     headshot_external_url: '',
+    headshot_external_thumb_url: '',
+    headshot_external_medium_url: '',
+    headshot_external_original_url: '',
     auto_match_titles: [],
     auto_match_urls: [],
     audio_files: [],
@@ -110,7 +236,8 @@ export function emptyCollection() {
     visibility: 'public',
     cover_path: '',
     cover_url: '',
-    cover_name: ''
+    cover_name: '',
+    cover_external_url: ''
   }
 }
 
@@ -176,11 +303,17 @@ export function normalizeWrestlerForEditor(wrestler) {
     notes: wrestler.notes || '',
     tags_text: (wrestler.tags || []).join(', '),
     headshot_path: wrestler.headshot_path || '',
-    headshot_url: wrestler.headshot_path ? (wrestler.headshot_url || '') : (wrestler.headshot_external_url || ''),
+    headshot_url: preferHeadshotMedium(wrestler),
+    headshot_thumb_url: preferHeadshotThumb(wrestler),
+    headshot_medium_url: preferHeadshotMedium(wrestler),
+    headshot_full_url: preferHeadshotFull(wrestler),
     headshot_name: wrestler.headshot_name || '',
     headshot_external_url: wrestler.headshot_external_url || '',
+    headshot_external_thumb_url: wrestler.headshot_external_thumb_url || '',
+    headshot_external_medium_url: wrestler.headshot_external_medium_url || '',
+    headshot_external_original_url: wrestler.headshot_external_original_url || '',
     auto_match_titles: [],
-    auto_match_urls: wrestler.headshot_external_url ? [wrestler.headshot_external_url] : [],
+    auto_match_urls: preferHeadshotFull(wrestler) ? [preferHeadshotFull(wrestler)] : [],
     audio_files: (wrestler.audio_files || wrestler.wrestler_audio_files || []).map((file) => ({
       id: file.id || null,
       wrestler_id: file.wrestler_id || wrestler.id,
@@ -188,7 +321,9 @@ export function normalizeWrestlerForEditor(wrestler) {
       audio_type: file.audio_type || '',
       file_path: file.file_path || '',
       file_name: file.file_name || '',
-      file_url: file.file_url || ''
+      file_url: file.file_url || '',
+      download_url: file.download_url || file.external_url || '',
+      external_url: file.external_url || file.download_url || ''
     })),
     pendingAudioUploads: [],
     titantrons: (wrestler.titantrons || wrestler.wrestler_titantrons || []).map((item) => ({
@@ -201,7 +336,10 @@ export function normalizeWrestlerForEditor(wrestler) {
       screenshots: (item.titantron_images || item.screenshots || []).map((img) => ({
         id: img.id || null,
         path: img.image_path || img.path || '',
-        url: img.image_url || img.url || '',
+        thumb_url: preferImageThumb(img),
+        image_url: preferImageMedium(img),
+        full_image_url: preferImageFull(img),
+        url: preferImageMedium(img),
         name: img.image_name || img.name || ''
       })),
       pendingScreenshotUploads: []
@@ -224,14 +362,21 @@ export function normalizeAttireForEditor(attire) {
     notes: attire.notes || '',
     status: attire.status || 'complete',
     render_dds_path: attire.render_dds_path || '',
-    render_dds_url: attire.render_dds_url || '',
+    render_dds_url: pickFirstUrl(
+      attire.render_dds_external_url,
+      attire.render_dds_url,
+      buildCloudflareUrl(attire.render_dds_path)
+    ),
     render_dds_name: attire.render_dds_name || '',
     moveset_json_text: attire.moveset_json ? JSON.stringify(attire.moveset_json, null, 2) : '',
     profile_json_text: attire.profile_json ? JSON.stringify(attire.profile_json, null, 2) : '',
     images: (attire.attire_images || attire.images || []).map((img) => ({
       id: img.id,
       path: img.image_path || img.path || '',
-      url: img.image_url || img.url || '',
+      thumb_url: preferImageThumb(img),
+      image_url: preferImageMedium(img),
+      full_image_url: preferImageFull(img),
+      url: preferImageMedium(img),
       name: img.image_name || img.name || ''
     })),
     pendingImageUploads: []
@@ -248,8 +393,16 @@ export function normalizeCollectionForEditor(collection) {
     description: collection.description || '',
     visibility: collection.visibility || 'public',
     cover_path: collection.cover_path || '',
-    cover_url: collection.cover_url || '',
-    cover_name: collection.cover_name || ''
+    cover_url: pickFirstUrl(
+      collection.cover_external_url,
+      collection.cover_url,
+      buildCloudflareUrl(collection.cover_path)
+    ),
+    cover_name: collection.cover_name || '',
+    cover_external_url: pickFirstUrl(
+      collection.cover_external_url,
+      buildCloudflareUrl(collection.cover_path)
+)
   }
 }
 
@@ -267,7 +420,10 @@ export function normalizeArenaForEditor(arena) {
     images: (arena.arena_images || arena.images || []).map((img) => ({
       id: img.id || null,
       path: img.image_path || img.path || '',
-      url: img.image_url || img.url || '',
+      thumb_url: preferImageThumb(img),
+      image_url: preferImageMedium(img),
+      full_image_url: preferImageFull(img),
+      url: preferImageMedium(img),
       name: img.image_name || img.name || ''
     })),
     pendingImageUploads: []
@@ -285,12 +441,19 @@ export function normalizeTitleBeltForEditor(titleBelt) {
     source_game: titleBelt.source_game || 'WWE 2K25',
     notes: titleBelt.notes || '',
     render_dds_path: titleBelt.render_dds_path || '',
-    render_dds_url: titleBelt.render_dds_url || '',
+    render_dds_url: pickFirstUrl(
+      titleBelt.render_dds_external_url,
+      titleBelt.render_dds_url,
+      buildCloudflareUrl(titleBelt.render_dds_path)
+    ),
     render_dds_name: titleBelt.render_dds_name || '',
     images: (titleBelt.title_belt_images || titleBelt.images || []).map((img) => ({
       id: img.id || null,
       path: img.image_path || img.path || '',
-      url: img.image_url || img.url || '',
+      thumb_url: preferImageThumb(img),
+      image_url: preferImageMedium(img),
+      full_image_url: preferImageFull(img),
+      url: preferImageMedium(img),
       name: img.image_name || img.name || ''
     })),
     pendingImageUploads: [],
@@ -301,7 +464,9 @@ export function normalizeTitleBeltForEditor(titleBelt) {
       audio_type: file.audio_type || 'generic',
       file_path: file.file_path || '',
       file_name: file.file_name || '',
-      file_url: file.file_url || ''
+      file_url: file.file_url || '',
+      download_url: file.download_url || file.external_url || '',
+      external_url: file.external_url || file.download_url || ''
     })),
     pendingAudioUploads: []
   }
@@ -322,7 +487,10 @@ export function normalizeOtherModForEditor(otherMod) {
     images: (otherMod.other_mod_images || otherMod.images || []).map((img) => ({
       id: img.id || null,
       path: img.image_path || img.path || '',
-      url: img.image_url || img.url || '',
+      thumb_url: preferImageThumb(img),
+      image_url: preferImageMedium(img),
+      full_image_url: preferImageFull(img),
+      url: preferImageMedium(img),
       name: img.image_name || img.name || ''
     })),
     pendingImageUploads: []
@@ -665,36 +833,26 @@ export function getUnifiedModTypeOrder(modType = '') {
 
 export function getUnifiedModPreview(item = {}) {
   const firstImage = item.images?.[0] || null
-  const firstImageUrl = firstImage?.image_url || firstImage?.url || ''
+  const medium = firstImage?.medium || firstImage?.image_url || firstImage?.url || ''
+  const full = firstImage?.full || firstImage?.full_image_url || medium || ''
 
   if (item.modType === 'attire') {
-    return (
-      firstImageUrl ||
-      item.images?.[0]?.image_url ||
-      item.images?.[0]?.url ||
-      item.wrestlerHeadshotUrl ||
-      item.render_dds_url ||
-      ''
-    )
+    return medium || item.wrestlerHeadshotUrl || item.render_dds_url || ''
   }
 
   if (item.modType === 'arena') {
-    return firstImageUrl
+    return medium || ''
   }
 
   if (item.modType === 'title') {
-    return (
-      firstImageUrl ||
-      item.render_dds_url ||
-      ''
-    )
+    return medium || item.render_dds_url || ''
   }
 
   if (item.modType === 'other') {
-    return firstImageUrl
+    return medium || ''
   }
 
-  return ''
+  return full || medium || ''
 }
 
 export function buildUnifiedModsFeed({
@@ -706,6 +864,7 @@ export function buildUnifiedModsFeed({
   const attireItems = wrestlers.flatMap((wrestler) =>
     (wrestler.attires || []).map((attire) => {
       const images = attire.attire_images || attire.images || []
+      const normalizedImages = normalizeGalleryImages(images)
       const links = parseDownloadLinks(attire.download_url || '')
       const requests = attire.requests || wrestler.requests || []
       const openDeadLinks = requests.filter(
@@ -721,6 +880,19 @@ export function buildUnifiedModsFeed({
           req.request_type === 'missing_link'
       ).length
       const hasDownload = links.length > 0
+
+      const previewMediumUrl =
+      normalizedImages[0]?.medium ||
+      preferHeadshotMedium(wrestler) ||
+      pickFirstUrl(
+        attire.render_dds_external_url,
+        attire.render_dds_url,
+        buildCloudflareUrl(attire.render_dds_path)
+      )
+
+      const previewFullUrl =
+        normalizedImages[0]?.full ||
+        previewMediumUrl
 
       return {
         id: attire.id,
@@ -742,13 +914,17 @@ export function buildUnifiedModsFeed({
         linkCount: links.length,
         downloadCount: links.length,
         installCount: 0,
-        previewUrl: getUnifiedModPreview({
-          modType: 'attire',
-          render_dds_url: attire.render_dds_url,
-          images,
-          wrestlerHeadshotUrl: wrestler.headshot_url || ''
-        }),
-        images,
+        previewUrl: previewMediumUrl,
+        previewMediumUrl,
+        previewFullUrl,
+        thumbGallery: normalizedImages.map((img) => ({
+          thumb: img.thumb,
+          medium: img.medium,
+          full: img.full
+        })),
+        fullGallery: normalizedImages.map((img) => img.full || img.medium || img.thumb).filter(Boolean),
+        imageCount: normalizedImages.length,
+        images: normalizedImages,
         raw: attire,
         searchText: [
           attire.name,
@@ -768,6 +944,7 @@ export function buildUnifiedModsFeed({
 
   const arenaItems = arenas.map((arena) => {
     const images = arena.arena_images || arena.images || []
+    const normalizedImages = normalizeGalleryImages(images)
     const links = parseDownloadLinks(arena.download_url || '')
     const requests = arena.requests || []
     const openDeadLinks = requests.filter(
@@ -777,6 +954,9 @@ export function buildUnifiedModsFeed({
       (req) => req.status === 'open' && req.request_type === 'missing_link'
     ).length
     const hasDownload = links.length > 0
+
+    const previewMediumUrl = normalizedImages[0]?.medium || ''
+    const previewFullUrl = normalizedImages[0]?.full || previewMediumUrl
 
     return {
       id: arena.id,
@@ -798,11 +978,17 @@ export function buildUnifiedModsFeed({
       linkCount: links.length,
       downloadCount: links.length,
       installCount: 0,
-      previewUrl: getUnifiedModPreview({
-        modType: 'arena',
-        images
-      }),
-      images,
+      previewUrl: previewMediumUrl,
+      previewMediumUrl,
+      previewFullUrl,
+      thumbGallery: normalizedImages.map((img) => ({
+        thumb: img.thumb,
+        medium: img.medium,
+        full: img.full
+      })),
+      fullGallery: normalizedImages.map((img) => img.full || img.medium || img.thumb).filter(Boolean),
+      imageCount: normalizedImages.length,
+      images: normalizedImages,
       raw: arena,
       searchText: [
         arena.name,
@@ -818,6 +1004,7 @@ export function buildUnifiedModsFeed({
 
   const titleItems = titleBelts.map((title) => {
     const images = title.title_belt_images || title.images || []
+    const normalizedImages = normalizeGalleryImages(images)
     const links = parseDownloadLinks(title.download_url || '')
     const requests = title.requests || []
     const openDeadLinks = requests.filter(
@@ -827,6 +1014,18 @@ export function buildUnifiedModsFeed({
       (req) => req.status === 'open' && req.request_type === 'missing_link'
     ).length
     const hasDownload = links.length > 0
+
+   const previewMediumUrl =
+    normalizedImages[0]?.medium ||
+    pickFirstUrl(
+      title.render_dds_external_url,
+      title.render_dds_url,
+      buildCloudflareUrl(title.render_dds_path)
+    )
+
+    const previewFullUrl =
+      normalizedImages[0]?.full ||
+      previewMediumUrl
 
     return {
       id: title.id,
@@ -848,12 +1047,17 @@ export function buildUnifiedModsFeed({
       linkCount: links.length,
       downloadCount: links.length,
       installCount: 0,
-      previewUrl: getUnifiedModPreview({
-        modType: 'title',
-        render_dds_url: title.render_dds_url,
-        images
-      }),
-      images,
+      previewUrl: previewMediumUrl,
+      previewMediumUrl,
+      previewFullUrl,
+      thumbGallery: normalizedImages.map((img) => ({
+        thumb: img.thumb,
+        medium: img.medium,
+        full: img.full
+      })),
+      fullGallery: normalizedImages.map((img) => img.full || img.medium || img.thumb).filter(Boolean),
+      imageCount: normalizedImages.length,
+      images: normalizedImages,
       raw: title,
       searchText: [
         title.name,
@@ -868,6 +1072,7 @@ export function buildUnifiedModsFeed({
 
   const otherItems = otherMods.map((otherMod) => {
     const images = otherMod.other_mod_images || otherMod.images || []
+    const normalizedImages = normalizeGalleryImages(images)
     const links = parseDownloadLinks(otherMod.download_url || '')
     const requests = otherMod.requests || []
     const openDeadLinks = requests.filter(
@@ -877,6 +1082,9 @@ export function buildUnifiedModsFeed({
       (req) => req.status === 'open' && req.request_type === 'missing_link'
     ).length
     const hasDownload = links.length > 0
+
+    const previewMediumUrl = normalizedImages[0]?.medium || ''
+    const previewFullUrl = normalizedImages[0]?.full || previewMediumUrl
 
     return {
       id: otherMod.id,
@@ -898,11 +1106,17 @@ export function buildUnifiedModsFeed({
       linkCount: links.length,
       downloadCount: links.length,
       installCount: 0,
-      previewUrl: getUnifiedModPreview({
-        modType: 'other',
-        images
-      }),
-      images,
+      previewUrl: previewMediumUrl,
+      previewMediumUrl,
+      previewFullUrl,
+      thumbGallery: normalizedImages.map((img) => ({
+        thumb: img.thumb,
+        medium: img.medium,
+        full: img.full
+      })),
+      fullGallery: normalizedImages.map((img) => img.full || img.medium || img.thumb).filter(Boolean),
+      imageCount: normalizedImages.length,
+      images: normalizedImages,
       raw: otherMod,
       searchText: [
         otherMod.name,

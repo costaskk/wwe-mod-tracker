@@ -118,7 +118,15 @@ export default function ArenaList({
                   const imageCount = arena.images?.length || arena.arena_images?.length || 0
                   const isSelected = arena.id === selectedId
                   const previewImage = (arena.images || arena.arena_images || [])[0]
-                  const previewUrl = previewImage?.url || previewImage?.image_url || ''
+                  const previewUrl =
+                    previewImage?.thumb_url ||
+                    previewImage?.image_thumb_url ||
+                    previewImage?.url ||
+                    previewImage?.image_url ||
+                    previewImage?.medium_url ||
+                    previewImage?.image_medium_url ||
+                    previewImage?.full_image_url ||
+                    ''
 
                   return (
                     <tr
@@ -203,7 +211,15 @@ export default function ArenaList({
               const openRequests = (arena.requests || []).filter((item) => item.status === 'open').length
               const imageCount = arena.images?.length || arena.arena_images?.length || 0
               const previewImage = (arena.images || arena.arena_images || [])[0]
-              const previewUrl = previewImage?.url || previewImage?.image_url || ''
+              const previewUrl =
+                previewImage?.thumb_url ||
+                previewImage?.image_thumb_url ||
+                previewImage?.url ||
+                previewImage?.image_url ||
+                previewImage?.medium_url ||
+                previewImage?.image_medium_url ||
+                previewImage?.full_image_url ||
+                ''
               const hasPreview = Boolean(previewUrl)
 
               return (

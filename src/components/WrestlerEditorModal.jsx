@@ -1,48 +1,86 @@
 import { useMemo, useState } from 'react'
 import { SOURCE_GAMES } from '../lib/utils'
 
-function WemAudioList({ title, items = [], type, onUploadAudio, onRemoveAudio, uploading }) {
-  const [failedIds, setFailedIds] = useState({})
+function normalizeExternalUrl(value = '') {
+  const clean = String(value || '').trim()
+  if (!clean) return ''
+  return /^https?:\/\//i.test(clean) ? clean : `https://${clean}`
+}
+
+function getAudioItemKey(item = {}, fallback = '') {
+  return item.id || item.temp_id || fallback
+}
+
+function WemAudioList({
+  title,
+  items = [],
+  type,
+  onAddAudioLink,
+  onUpdateAudioLink,
+  onRemoveAudio,
+  uploading
+}) {
+  const [newName, setNewName] = useState('')
+  const [newUrl, setNewUrl] = useState('')
 
   return (
     <div className="upload-card premium-upload-card">
       <div className="upload-card-header">
         <h5>{title}</h5>
-        <p>Upload one or more .wem files. The app will try to play them in-browser when possible.</p>
+        <p>Paste external .wem download links. No file uploads are used anymore.</p>
       </div>
 
       {items.length ? (
         <div className="wrestler-audio-list">
           {items.map((item, index) => {
-            const key = item.id || item.file_path || `${type}-${index}`
-            const failed = failedIds[key]
+            const key = getAudioItemKey(item, `${type}-${index}`)
+            const currentUrl = item.download_url || item.external_url || ''
 
             return (
               <div className="wrestler-audio-row" key={key}>
-                <div className="wrestler-audio-main">
-                  <div className="wrestler-audio-name">{item.file_name || 'Unnamed .wem file'}</div>
+                <div className="wrestler-audio-main" style={{ width: '100%' }}>
+                  <div className="form-grid compact-grid">
+                    <label>
+                      File name
+                      <input
+                        value={item.file_name || ''}
+                        onChange={(e) =>
+                          onUpdateAudioLink(key, {
+                            file_name: e.target.value
+                          })
+                        }
+                        placeholder="Stone Cold Theme"
+                        disabled={uploading}
+                      />
+                    </label>
 
-                  {!failed && item.file_url ? (
-                    <audio
-                      className="wrestler-audio-player"
-                      controls
-                      preload="none"
-                      onError={() => setFailedIds((current) => ({ ...current, [key]: true }))}
-                    >
-                      <source src={item.file_url} />
-                    </audio>
-                  ) : (
-                    <div className="muted-text small-text">
-                      Browser playback is not available for this WEM file.
-                    </div>
-                  )}
+                    <label className="span-2">
+                      WEM download URL
+                      <input
+                        value={currentUrl}
+                        onChange={(e) =>
+                          onUpdateAudioLink(key, {
+                            download_url: e.target.value,
+                            external_url: e.target.value,
+                            file_url: e.target.value
+                          })
+                        }
+                        placeholder="https://example.com/file.wem"
+                        disabled={uploading}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="muted-text small-text">
+                    External WEM file link
+                  </div>
                 </div>
 
                 <div className="wrestler-audio-actions">
-                  {item.file_url ? (
+                  {currentUrl ? (
                     <a
                       className="ghost-button small-btn"
-                      href={item.file_url}
+                      href={normalizeExternalUrl(currentUrl)}
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -64,27 +102,51 @@ function WemAudioList({ title, items = [], type, onUploadAudio, onRemoveAudio, u
           })}
         </div>
       ) : (
-        <div className="upload-placeholder">No files uploaded yet</div>
+        <div className="upload-placeholder">No audio links added</div>
       )}
 
-      <div className="upload-actions wrap-actions">
-        <label className="secondary-button inline-file file-button">
-          Upload .wem file(s)
+      <div className="form-grid compact-grid" style={{ marginTop: 12 }}>
+        <label>
+          File name
           <input
-            type="file"
-            accept=".wem"
-            multiple
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Stone Cold Theme"
             disabled={uploading}
-            onChange={(e) => {
-              const files = Array.from(e.target.files || [])
-              if (files.length) {
-                onUploadAudio(files, type)
-              }
-              e.target.value = ''
-            }}
           />
         </label>
-        {uploading ? <span className="muted-text small-text">Uploading…</span> : null}
+
+        <label className="span-2">
+          WEM download URL
+          <input
+            value={newUrl}
+            onChange={(e) => setNewUrl(e.target.value)}
+            placeholder="https://example.com/file.wem"
+            disabled={uploading}
+          />
+        </label>
+      </div>
+
+      <div className="upload-actions wrap-actions">
+        <button
+          type="button"
+          className="secondary-button small-btn"
+          disabled={!newUrl.trim() || uploading}
+          onClick={() => {
+            onAddAudioLink({
+              audio_type: type,
+              file_name: newName.trim(),
+              download_url: normalizeExternalUrl(newUrl),
+              external_url: normalizeExternalUrl(newUrl),
+              file_url: normalizeExternalUrl(newUrl)
+            })
+
+            setNewName('')
+            setNewUrl('')
+          }}
+        >
+          Add link
+        </button>
       </div>
     </div>
   )
@@ -237,7 +299,8 @@ export default function WrestlerEditorModal({
   onUploadHeadshot,
   onAutoMatchHeadshot,
   onRemoveHeadshot,
-  onUploadAudio,
+  onAddAudioLink,
+  onUpdateAudioLink,
   onRemoveAudio,
   onAddTitantron,
   onUpdateTitantron,
@@ -262,6 +325,18 @@ export default function WrestlerEditorModal({
   }, [wrestlers, normalizedName, form.id])
 
   const suggestions = useMemo(() => {
+      const entranceMusicFiles = useMemo(() => {
+        return (form.audio_files || []).filter(
+          (item) => item.audio_type === 'entrance_music'
+        )
+      }, [form.audio_files])
+
+      const callnameFiles = useMemo(() => {
+        return (form.audio_files || []).filter(
+          (item) => item.audio_type === 'callname'
+        )
+      }, [form.audio_files])
+
     if (!normalizedName || duplicateWrestler) return []
     return wrestlers
       .filter((item) => {
@@ -271,8 +346,6 @@ export default function WrestlerEditorModal({
       .slice(0, 6)
   }, [wrestlers, normalizedName, form.id, duplicateWrestler])
 
-  const entranceMusicFiles = (form.audio_files || []).filter((item) => item.audio_type === 'entrance_music')
-  const callnameFiles = (form.audio_files || []).filter((item) => item.audio_type === 'callname')
 
   if (!open) return null
 
@@ -282,7 +355,7 @@ export default function WrestlerEditorModal({
         <div className="modal-header">
           <h2>{form.persisted ? 'Edit wrestler' : 'Add wrestler'}</h2>
           <p className="subtle-copy">
-            Create a wrestler page, add notes and tags, upload or auto-match a headshot, attach wrestler-level audio files, and manage titantrons with multiple links and screenshots.
+            Create a wrestler page, add notes and tags, upload or auto-match a headshot, attach wrestler-level external WEM links, and manage titantrons with multiple links and screenshots.
           </p>
         </div>
 
@@ -418,7 +491,8 @@ export default function WrestlerEditorModal({
                   title="Entrance music (.wem)"
                   items={entranceMusicFiles}
                   type="entrance_music"
-                  onUploadAudio={onUploadAudio}
+                  onAddAudioLink={onAddAudioLink}
+                  onUpdateAudioLink={onUpdateAudioLink}
                   onRemoveAudio={onRemoveAudio}
                   uploading={uploading}
                 />
@@ -427,7 +501,8 @@ export default function WrestlerEditorModal({
                   title="Announce callnames (.wem)"
                   items={callnameFiles}
                   type="callname"
-                  onUploadAudio={onUploadAudio}
+                  onAddAudioLink={onAddAudioLink}
+                  onUpdateAudioLink={onUpdateAudioLink}
                   onRemoveAudio={onRemoveAudio}
                   uploading={uploading}
                 />

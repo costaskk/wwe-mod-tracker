@@ -194,7 +194,10 @@ export default function OtherModEditorModal({
                     onChange={(e) => updateField('creator_name', e.target.value)}
                   >
                     <option value="">No creator / unknown</option>
-                    {creatorOptions.map((item) => (
+                    {[...(creatorOptions || [])]
+                      .filter((item) => item && item.name)
+                      .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+                      .map((item) => (
                       <option key={item.id} value={item.name}>
                         {item.name}
                       </option>

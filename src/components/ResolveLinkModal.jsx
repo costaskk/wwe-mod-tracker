@@ -48,8 +48,11 @@ export default function ResolveLinkModal({
   if (!open || !context) return null
 
   return (
-    <div className="modal-backdrop modal-backdrop-front">
-      <div className="panel modal-card request-modal">
+    <div className="modal-backdrop modal-backdrop-front" onClick={onClose}>
+      <div
+        className="panel modal-card request-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="modal-header">
           <h2>Fix link</h2>
           <p className="subtle-copy">{contextLabel}</p>

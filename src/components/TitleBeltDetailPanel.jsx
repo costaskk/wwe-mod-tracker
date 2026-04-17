@@ -91,39 +91,59 @@ function TitleGallery({ images = [], onOpenImageViewer }) {
   )
 }
 
-function AudioSection({ files = [] }) {
+function AudioSection({ files = [], canViewLinks }) {
+  if (!canViewLinks) {
+    return (
+      <div className="note-box compact-note">
+        Audio links are visible only to approved users, moderators, and admins.
+      </div>
+    )
+  }
+
   if (!files.length) {
-    return <div className="upload-placeholder">No audio uploaded yet</div>
+    return <div className="upload-placeholder">No audio links added yet</div>
   }
 
   return (
     <div className="wrestler-audio-list">
-      {files.map((file) => (
-        <div
-          key={file.id || file.file_path || file.file_url}
-          className="wrestler-audio-row"
-        >
-          <div className="wrestler-audio-main">
-            <div className="wrestler-audio-name">
-              {file.file_name || 'Audio file'}
-            </div>
-            <div className="muted-text small-text">
-              {file.audio_type || 'generic'}
-            </div>
-            {!file.file_url ? (
-              <div className="muted-text small-text">
-                Audio file uploaded, but preview is unavailable.
-              </div>
-            ) : null}
-          </div>
+      {files.map((file, index) => {
+        const url = file.download_url || file.external_url || file.file_url || ''
+        const key = file.id || file.temp_id || url || `title-audio-${index}`
 
-          <div className="wrestler-audio-actions">
-            {file.file_url ? (
-              <audio className="wrestler-audio-player" controls src={file.file_url} />
-            ) : null}
+        return (
+          <div
+            key={key}
+            className="wrestler-audio-row"
+          >
+            <div className="wrestler-audio-main">
+              <div className="wrestler-audio-name">
+                {file.file_name || 'Audio link'}
+              </div>
+              <div className="muted-text small-text">
+                {file.audio_type || 'generic'}
+              </div>
+              <div className="muted-text small-text">
+                External WEM link
+              </div>
+            </div>
+
+            <div className="wrestler-audio-actions">
+              {url ? (
+                <a
+                  className="ghost-button small-btn"
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open / download
+                </a>
+              ) : (
+                <span className="muted-text small-text">Missing link</span>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -218,7 +238,7 @@ export default function TitleBeltDetailPanel({
 
   const audioFiles = (title.audio_files || title.title_belt_audio_files || []).map((file) => ({
     ...file,
-    file_url: file.file_url || ''
+    file_url: file.file_url || file.download_url || file.external_url || ''
   }))
 
   const requests = title.requests || []
@@ -253,7 +273,7 @@ export default function TitleBeltDetailPanel({
               <strong>{images.length}</strong>
             </div>
             <div>
-              <span>Audio files</span>
+              <span>Audio links</span>
               <strong>{audioFiles.length}</strong>
             </div>
             <div>
@@ -348,36 +368,36 @@ export default function TitleBeltDetailPanel({
             {canContribute ? (
                 <>
                 {hasMissingDownload ? (
-                    <button
+                  <button
                     type="button"
                     className="ghost-button small-btn"
                     onClick={() =>
-                        onCreateRequest?.(
-                          title.id,
-                          'missing_link',
-                          title.name,
-                          'Please add a download link for this title belt.'
-                        )
+                      onCreateRequest?.(
+                        title.id,
+                        'missing_link',
+                        title.name,
+                        'Please add a download link for this title belt.'
+                      )
                     }
-                    >
+                  >
                     Request download link
-                    </button>
-                ) : null}
-
-                <button
+                  </button>
+                ) : (
+                  <button
                     type="button"
                     className="ghost-button small-btn"
                     onClick={() =>
-                    onCreateRequest?.(
-                      title.id,
-                      'dead_link',
-                      title.name,
-                      'Please check this title belt download link.'
-                    )
+                      onCreateRequest?.(
+                        title.id,
+                        'dead_link',
+                        title.name,
+                        'Please check this title belt download link.'
+                      )
                     }
-                >
+                  >
                     Report dead link
-                </button>
+                  </button>
+                )}
 
                 <button
                     type="button"
@@ -465,11 +485,11 @@ export default function TitleBeltDetailPanel({
         <div className="panel-header">
           <div>
             <h2>Audio files</h2>
-            <p className="subtle-copy">Uploaded WEM audio files for this title belt.</p>
+            <p className="subtle-copy">External WEM audio links for this title belt.</p>
           </div>
         </div>
 
-        <AudioSection files={audioFiles} />
+        <AudioSection files={audioFiles} canViewLinks={isApprovedViewer} />
       </div>
 
       <div className="panel soft-panel improved-attire-card">

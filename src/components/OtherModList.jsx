@@ -125,8 +125,13 @@ export default function OtherModList({
 
                   const previewImage = (mod.images || mod.other_mod_images || [])[0]
                   const previewUrl =
+                    previewImage?.thumb_url ||
+                    previewImage?.image_thumb_url ||
                     previewImage?.url ||
                     previewImage?.image_url ||
+                    previewImage?.medium_url ||
+                    previewImage?.image_medium_url ||
+                    previewImage?.full_image_url ||
                     ''
 
                   return (
@@ -224,8 +229,13 @@ export default function OtherModList({
 
               const previewImage = (mod.images || mod.other_mod_images || [])[0]
               const previewUrl =
+                previewImage?.thumb_url ||
+                previewImage?.image_thumb_url ||
                 previewImage?.url ||
                 previewImage?.image_url ||
+                previewImage?.medium_url ||
+                previewImage?.image_medium_url ||
+                previewImage?.full_image_url ||
                 ''
 
               return (

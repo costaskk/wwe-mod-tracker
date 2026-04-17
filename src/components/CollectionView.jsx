@@ -97,6 +97,8 @@ export default function CollectionView({
 
   const items = collection?.items || []
 
+  const resolvedCoverUrl = collection?.cover_url || collection?.cover_external_url || ''
+
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds])
 
   useEffect(() => {
@@ -160,8 +162,8 @@ export default function CollectionView({
       </div>
 
       <div className="collection-hero-grid">
-        {collection.cover_url ? (
-          <img className="collection-hero-cover" src={collection.cover_url} alt={collection.name} />
+        {resolvedCoverUrl ? (
+          <img className="collection-hero-cover" src={resolvedCoverUrl} alt={collection.name} />
         ) : (
           <div className="collection-hero-cover collection-cover-placeholder">
             {(collection.name || '?').slice(0, 2).toUpperCase()}
@@ -389,18 +391,19 @@ export default function CollectionView({
         <div className="collection-items-grid">
           {items.map((item) => {
             const {
-            target,
-            entity,
-            isAttire,
-            isArena,
-            isTitle,
-            isOther,
-            subtitle,
-            creatorName,
-            thumbUrl,
-            displayName,
-            linkCount
-          } = getCollectionItemData(item)
+              target,
+              entity,
+              isAttire,
+              isArena,
+              isTitle,
+              isOther,
+              subtitle,
+              creatorName,
+              thumbUrl,
+              previewUrl,
+              displayName,
+              linkCount
+            } = getCollectionItemData(item)
 
             return (
               <article className="collection-item-card enhanced-collection-item-card" key={item.id}>

@@ -208,124 +208,133 @@ export default function OtherModPage({
   }
 
   async function save() {
-    if (!canContribute) return
+  if (!canContribute) return
 
-    setSaving(true)
-    try {
-      if (!form.name.trim()) {
-        throw new Error('Other mod name is required.')
-      }
-
-      if (!form.subtype.trim()) {
-        throw new Error('A subcategory is required.')
-      }
-
-      const duplicate = findDuplicateOtherMod(otherMods, form.name)
-      if (duplicate && duplicate.id !== form.id) {
-        throw new Error(`Other mod already exists: ${duplicate.name}`)
-      }
-
-      let profileJson = null
-
-      if (String(form.profile_json_text || '').trim()) {
-        try {
-            profileJson = JSON.parse(form.profile_json_text)
-        } catch {
-            throw new Error('JSON profile must be valid JSON.')
-        }
-      }
-
-      const parsedLinks = parseDownloadLinks(form.download_url || '')
-
-      if (parsedLinks.length) {
-        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
-        const deadResults = results.filter((item) => item?.status === 'dead' || item?.ok === false)
-
-        if (deadResults.length === parsedLinks.length) {
-          throw new Error('All entered download links appear to be dead. Please correct them before saving.')
-        }
-      }
-
-      const payload = {
-        name: form.name.trim(),
-        creator_name: (form.creator_name || '').trim(),
-        subtype: form.subtype.trim(),
-        download_url: form.download_url.trim(),
-        source_game: form.source_game || 'WWE 2K25',
-        notes: form.notes.trim(),
-        profile_json: profileJson
+  setSaving(true)
+  try {
+    if (!form.name.trim()) {
+      throw new Error('Other mod name is required.')
     }
 
-      let otherModId = form.id
+    if (!form.subtype.trim()) {
+      throw new Error('A subcategory is required.')
+    }
 
-      if (parsedLinks.length) {
-        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
-        const hasDeadLink = results.some((item) => item?.status === 'dead')
+    const duplicate = findDuplicateOtherMod(otherMods, form.name)
+    if (duplicate && duplicate.id !== form.id) {
+      throw new Error(`Other mod already exists: ${duplicate.name}`)
+    }
 
-        if (hasDeadLink) {
-          const { data: existingDeadRequests } = await supabase
+    let profileJson = null
+
+    if (String(form.profile_json_text || '').trim()) {
+      try {
+        profileJson = JSON.parse(form.profile_json_text)
+      } catch {
+        throw new Error('JSON profile must be valid JSON.')
+      }
+    }
+
+    const parsedLinks = parseDownloadLinks(form.download_url || '')
+
+    if (parsedLinks.length) {
+      const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
+      const deadResults = results.filter((item) => item?.status === 'dead' || item?.ok === false)
+
+      if (deadResults.length === parsedLinks.length) {
+        throw new Error('All entered download links appear to be dead. Please correct them before saving.')
+      }
+    }
+
+    const payload = {
+      name: form.name.trim(),
+      creator_name: (form.creator_name || '').trim(),
+      subtype: form.subtype.trim(),
+      download_url: form.download_url.trim(),
+      source_game: form.source_game || 'WWE 2K25',
+      notes: form.notes.trim(),
+      profile_json: profileJson
+    }
+
+    let otherModId = form.id
+
+    if (form.persisted) {
+      const { error } = await supabase
+        .from('other_mods')
+        .update(payload)
+        .eq('id', form.id)
+
+      if (error) throw error
+
+      openNotice('success', 'Other mod updated', `${form.name} was updated successfully.`)
+    } else {
+      const { data, error } = await supabase
+        .from('other_mods')
+        .insert(payload)
+        .select('id')
+        .single()
+
+      if (error) throw error
+
+      otherModId = data.id
+      setSelectedOtherModId(data.id)
+      openNotice('success', 'Other mod added', `${form.name} was added successfully.`)
+    }
+
+    if (parsedLinks.length && otherModId) {
+      const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
+      const hasDeadLink = results.some((item) => item?.status === 'dead')
+
+      if (hasDeadLink) {
+        const { data: existingDeadRequests, error: existingDeadRequestsError } = await supabase
+          .from('other_mod_requests')
+          .select('id')
+          .eq('other_mod_id', otherModId)
+          .eq('status', 'open')
+          .eq('request_type', 'dead_link')
+          .limit(1)
+
+        if (existingDeadRequestsError) throw existingDeadRequestsError
+
+        if (!existingDeadRequests?.length) {
+          const { error: insertDeadRequestError } = await supabase
             .from('other_mod_requests')
-            .select('id')
-            .eq('other_mod_id', otherModId)
-            .eq('status', 'open')
-            .eq('request_type', 'dead_link')
-            .limit(1)
-
-          if (!existingDeadRequests?.length) {
-            await supabase.from('other_mod_requests').insert({
+            .insert({
               other_mod_id: otherModId,
               request_type: 'dead_link',
               notes: 'Automatically detected dead link during save.'
             })
-          }
+
+          if (insertDeadRequestError) throw insertDeadRequestError
         }
       }
-
-      if (form.persisted) {
-        const { error } = await supabase
-          .from('other_mods')
-          .update(payload)
-          .eq('id', form.id)
-
-        if (error) throw error
-
-        openNotice('success', 'Other mod updated', `${form.name} was updated successfully.`)
-      } else {
-        const { data, error } = await supabase
-          .from('other_mods')
-          .insert(payload)
-          .select('id')
-          .single()
-
-        if (error) throw error
-
-        otherModId = data.id
-        setSelectedOtherModId(data.id)
-        openNotice('success', 'Other mod added', `${form.name} was added successfully.`)
-      }
-
-      if (Array.isArray(form.pendingImageUploads) && form.pendingImageUploads.length) {
-        const imageInserts = form.pendingImageUploads.map((item) => ({
-          other_mod_id: otherModId,
-          owner_id: session.user.id,
-          image_path: item.path,
-          image_medium_path: item.medium_path || '',
-          image_thumb_path: item.thumb_path || '',
-          image_name: item.name
-        }))
-
-        const { error } = await supabase.from('other_mod_images').insert(imageInserts)
-        if (error) throw error
-      }
-
-      setModalOpen(false)
-      await fetchAll()
-    } catch (err) {
-      openNotice('error', 'Could not save other mod', err.message || 'Failed to save other mod.')
-    } finally {
-      setSaving(false)
     }
+
+    if (Array.isArray(form.pendingImageUploads) && form.pendingImageUploads.length) {
+      const imageInserts = form.pendingImageUploads.map((item) => ({
+        other_mod_id: otherModId,
+        owner_id: session.user.id,
+        image_path: item.path,
+        image_medium_path: item.medium_path || '',
+        image_thumb_path: item.thumb_path || '',
+        image_name: item.name,
+        external_original_url: item.external_original_url || '',
+        external_medium_url: item.external_medium_url || '',
+        external_thumb_url: item.external_thumb_url || ''
+      }))
+
+      const { error } = await supabase.from('other_mod_images').insert(imageInserts)
+      if (error) throw error
+    }
+
+    setModalOpen(false)
+    await fetchAll()
+  } catch (err) {
+    openNotice('error', 'Could not save other mod', err.message || 'Failed to save other mod.')
+  } finally {
+    setSaving(false)
   }
+}
 
   async function handleUpload(files, kind) {
     if (!files || !canContribute) return
@@ -343,7 +352,15 @@ export default function OtherModPage({
             throw new Error('All screenshots must be image files.')
           }
 
-          const { originalPath, mediumPath, thumbPath, fileName } = await uploadImageWithVariants({
+          const {
+            originalPath,
+            mediumPath,
+            thumbPath,
+            fileName,
+            externalOriginalUrl,
+            externalMediumUrl,
+            externalThumbUrl
+          } = await uploadImageWithVariants({
             userId: session.user.id,
             entityId,
             file,
@@ -356,11 +373,14 @@ export default function OtherModPage({
             medium_path: mediumPath,
             thumb_path: thumbPath,
             name: fileName,
-            url: getAssetUrl(thumbPath),
-            image_url: getAssetUrl(mediumPath),
-            full_image_url: getAssetUrl(originalPath),
-            thumb_url: getAssetUrl(thumbPath),
-            medium_url: getAssetUrl(mediumPath)
+            external_original_url: externalOriginalUrl || '',
+            external_medium_url: externalMediumUrl || '',
+            external_thumb_url: externalThumbUrl || '',
+            url: externalThumbUrl || getAssetUrl(thumbPath),
+            image_url: externalMediumUrl || getAssetUrl(mediumPath),
+            full_image_url: externalOriginalUrl || getAssetUrl(originalPath),
+            thumb_url: externalThumbUrl || getAssetUrl(thumbPath),
+            medium_url: externalMediumUrl || getAssetUrl(mediumPath)
           })
         }
 
@@ -545,8 +565,8 @@ export default function OtherModPage({
             const imagePaths = (otherMod.other_mod_images || otherMod.images || [])
               .flatMap((img) => [
                 img.image_path || img.path,
-                img.medium_path,
-                img.thumb_path
+                img.image_medium_path || img.medium_path,
+                img.image_thumb_path || img.thumb_path
               ])
               .filter(Boolean)
 

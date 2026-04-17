@@ -215,14 +215,21 @@ export default function WrestlerList({
               const hasHeadshot = Boolean(wrestler.headshot_url)
 
               return (
-                <button
-                  type="button"
+                <div
                   key={wrestler.id}
                   ref={isSelected ? selectedRef : null}
                   className={`list-card wrestler-list-card ${isSelected ? 'selected' : ''}`}
                   onClick={() => {
                     onSelect(wrestler.id)
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      onSelect(wrestler.id)
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                 >
                   <div className="list-card-top with-thumb">
                     <div className="list-thumb-wrap">
@@ -250,15 +257,29 @@ export default function WrestlerList({
 
                   {session && canManageContent(wrestler.owner_id) ? (
                     <div className="list-card-actions" onClick={(e) => e.stopPropagation()}>
-                      <button className="ghost-button inline-btn small-btn" onClick={() => onEdit(wrestler)} type="button">
+                      <button
+                        className="ghost-button inline-btn small-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onEdit(wrestler)
+                        }}
+                        type="button"
+                      >
                         Edit
                       </button>
-                      <button className="ghost-button inline-btn small-btn" onClick={() => onDelete(wrestler)} type="button">
+                      <button
+                        className="ghost-button inline-btn small-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDelete(wrestler)
+                        }}
+                        type="button"
+                      >
                         Delete
                       </button>
                     </div>
                   ) : null}
-                </button>
+                </div>
               )
             })
           )}

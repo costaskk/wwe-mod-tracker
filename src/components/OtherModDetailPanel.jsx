@@ -347,21 +347,21 @@ export default function OtherModDetailPanel({
                 >
                   Request download link
                 </button>
-              ) : null}
-
-              <button
-                type="button"
-                className="ghost-button small-btn"
-                onClick={() =>
-                  onCreateRequest?.(
-                    mod,
-                    'dead_link',
-                    'Please check this other mod download link.'
-                  )
-                }
-              >
-                Report dead link
-              </button>
+              ) : (
+                <button
+                  type="button"
+                  className="ghost-button small-btn"
+                  onClick={() =>
+                    onCreateRequest?.(
+                      mod,
+                      'dead_link',
+                      'Please check this other mod download link.'
+                    )
+                  }
+                >
+                  Report dead link
+                </button>
+              )}
 
               <button
                 type="button"

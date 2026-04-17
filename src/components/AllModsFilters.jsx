@@ -121,10 +121,10 @@ export default function AllModsFilters({
                 onChange={(event) => setCreatorFilter(event.target.value)}
                 >
                 <option value="all">All creators</option>
-                {(creators || []).map((item) => (
-                    <option key={item.id} value={item.name}>
+                {creatorOptions.map((item) => (
+                  <option key={item.id} value={item.name}>
                     {item.name}
-                    </option>
+                  </option>
                 ))}
                 </select>
             </label>
@@ -176,10 +176,10 @@ export default function AllModsFilters({
                 disabled={categoryFilter !== 'other'}
                 >
                 <option value="all">All subtypes</option>
-                {(subtypeOptions || []).map((subtype) => (
-                    <option key={subtype} value={subtype}>
+                {sortedSubtypeOptions.map((subtype) => (
+                  <option key={subtype} value={subtype}>
                     {getOtherModSubtypeLabel(subtype)}
-                    </option>
+                  </option>
                 ))}
                 </select>
             </label>

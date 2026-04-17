@@ -35,29 +35,6 @@ function buildPageNumbers(page, totalPages) {
   return pages
 }
 
-function openUnifiedItem(item, onOpenAttire, onOpenArena, onOpenTitle, onOpenOtherMod) {
-  if (!item) return
-
-  if (item.modType === 'attire') {
-    onOpenAttire?.(item)
-    return
-  }
-
-  if (item.modType === 'arena') {
-    onOpenArena?.(item)
-    return
-  }
-
-  if (item.modType === 'title') {
-    onOpenTitle?.(item)
-    return
-  }
-
-  if (item.modType === 'other') {
-    onOpenOtherMod?.(item)
-  }
-}
-
 function CategoryPills({ item }) {
   return (
     <div className="mod-badges-inline">
@@ -146,29 +123,39 @@ function ImageViewerModal({
 }) {
   if (!open || !images.length) return null
 
+  const currentImage = images[index] || images[0]
+
   return (
     <div className="image-modal-backdrop" onClick={onClose}>
       <div
         className="image-modal-content image-modal-content-open"
         onClick={(event) => event.stopPropagation()}
       >
-        <button
-          type="button"
-          className="ghost-button small-btn image-nav-btn image-nav-left"
-          onClick={onPrev}
-        >
-          ←
-        </button>
+        {images.length > 1 ? (
+          <button
+            type="button"
+            className="ghost-button small-btn image-nav-btn image-nav-left"
+            onClick={onPrev}
+          >
+            ←
+          </button>
+        ) : null}
 
-        <img loading="lazy" src={images[index]} alt={`${title} screenshot ${index + 1}`} />
+        <img
+          loading="eager"
+          src={currentImage}
+          alt={`${title} screenshot ${index + 1}`}
+        />
 
-        <button
-          type="button"
-          className="ghost-button small-btn image-nav-btn image-nav-right"
-          onClick={onNext}
-        >
-          →
-        </button>
+        {images.length > 1 ? (
+          <button
+            type="button"
+            className="ghost-button small-btn image-nav-btn image-nav-right"
+            onClick={onNext}
+          >
+            →
+          </button>
+        ) : null}
 
         <button
           type="button"
@@ -183,60 +170,65 @@ function ImageViewerModal({
 }
 
 function ItemThumb({ item, onOpenViewer, isHovered = false }) {
-
-  const [isThumbHovered, setIsThumbHovered] = useState(false)  
-
-  const galleryImages = (item?.images || [])
-    .map((img) => img?.image_url || img?.url || '')
-    .filter(Boolean)
-
-  const previewImages = galleryImages.length
-    ? galleryImages
-    : item?.previewUrl
-      ? [item.previewUrl]
-      : []
-
-  const titleText = item?.title || 'Unknown mod'
+  const [isThumbHovered, setIsThumbHovered] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const hoverIntervalRef = useRef(null)
+
+  const thumbGallery = (item?.thumbGallery || [])
+    .map((img) => ({
+      thumb: img?.thumb || '',
+      medium: img?.medium || '',
+      full: img?.full || ''
+    }))
+    .filter((img) => img.thumb || img.medium || img.full)
+
+  const previewImages = thumbGallery.length
+    ? thumbGallery.map((img) => img.thumb || img.medium || img.full).filter(Boolean)
+    : [item?.previewMediumUrl || item?.previewUrl || ''].filter(Boolean)
+
+  const viewerImages = thumbGallery.length
+    ? thumbGallery.map((img) => img.full || img.medium || img.thumb).filter(Boolean)
+    : [item?.previewFullUrl || item?.previewMediumUrl || item?.previewUrl || ''].filter(Boolean)
+
+  const titleText = item?.title || 'Unknown mod'
 
   useEffect(() => {
     setActiveIndex(0)
     setIsThumbHovered(false)
 
     if (hoverIntervalRef.current) {
-        clearInterval(hoverIntervalRef.current)
-        hoverIntervalRef.current = null
+      clearInterval(hoverIntervalRef.current)
+      hoverIntervalRef.current = null
     }
   }, [item?.key])
 
   useEffect(() => {
     if (!isHovered || isThumbHovered || previewImages.length <= 1) {
-        if (hoverIntervalRef.current) {
+      if (hoverIntervalRef.current) {
         clearInterval(hoverIntervalRef.current)
         hoverIntervalRef.current = null
-        }
-        return
+      }
+      return
     }
 
     if (hoverIntervalRef.current) {
-        clearInterval(hoverIntervalRef.current)
-        hoverIntervalRef.current = null
+      clearInterval(hoverIntervalRef.current)
+      hoverIntervalRef.current = null
     }
 
     hoverIntervalRef.current = setInterval(() => {
-        setActiveIndex((current) => (current + 1) % previewImages.length)
-    }, 2000)
+      setActiveIndex((current) => (current + 1) % previewImages.length)
+    }, 2500)
 
     return () => {
-        if (hoverIntervalRef.current) {
+      if (hoverIntervalRef.current) {
         clearInterval(hoverIntervalRef.current)
         hoverIntervalRef.current = null
-        }
+      }
     }
   }, [isHovered, isThumbHovered, previewImages.length])
 
-  const currentImage = previewImages[activeIndex] || ''
+  const currentImage = previewImages[activeIndex] || previewImages[0] || ''
 
   return (
     <div className="allmods-thumb-stack">
@@ -244,8 +236,9 @@ function ItemThumb({ item, onOpenViewer, isHovered = false }) {
         type="button"
         className="collection-thumb-button"
         onClick={() => {
-          if (previewImages.length) {
-            onOpenViewer?.(previewImages, activeIndex, titleText)
+          if (viewerImages.length) {
+            const safeIndex = Math.min(activeIndex, viewerImages.length - 1)
+            onOpenViewer?.(viewerImages, safeIndex, titleText)
           }
         }}
       >
@@ -284,7 +277,10 @@ function ItemThumb({ item, onOpenViewer, isHovered = false }) {
               onBlur={() => {
                 setIsThumbHovered(false)
               }}
-              onClick={() => onOpenViewer?.(previewImages, index, titleText)}
+              onClick={() => {
+                const safeIndex = Math.min(index, viewerImages.length - 1)
+                onOpenViewer?.(viewerImages, safeIndex, titleText)
+              }}
             >
               <img loading="lazy" src={image} alt={`${titleText} screenshot ${index + 1}`} />
             </button>
@@ -306,7 +302,9 @@ function ActionButtons({
   onOpenTitle,
   onOpenOtherMod,
   onToggleInstalled,
-  onAddToCollection
+  onAddToCollection,
+  canContribute = false,
+  hasSession = false
 }) {
   return (
     <div className="wrap-actions">
@@ -350,7 +348,7 @@ function ActionButtons({
         </button>
       ) : null}
 
-      {onToggleInstalled ? (
+      {canContribute && hasSession && onToggleInstalled ? (
         <button
           type="button"
           className={`ghost-button small-btn ${item.isInstalled ? 'installed-btn-active' : ''}`}
@@ -360,7 +358,7 @@ function ActionButtons({
         </button>
       ) : null}
 
-      {onAddToCollection ? (
+      {canContribute && hasSession && onAddToCollection ? (
         <button
           type="button"
           className={`ghost-button small-btn ${item.inCollection ? 'collection-btn-active' : ''}`}
@@ -387,7 +385,9 @@ function CompactActionButtons({
   onOpenTitle,
   onOpenOtherMod,
   onToggleInstalled,
-  onAddToCollection
+  onAddToCollection,
+  canContribute = false,
+  hasSession = false
 }) {
   return (
     <div className="compact-actions-row wrap-actions">
@@ -399,6 +399,8 @@ function CompactActionButtons({
         onOpenOtherMod={onOpenOtherMod}
         onToggleInstalled={onToggleInstalled}
         onAddToCollection={onAddToCollection}
+        canContribute={canContribute}
+        hasSession={hasSession}
       />
     </div>
   )
@@ -413,6 +415,8 @@ function ModCard({
   onOpenOtherMod,
   onToggleInstalled,
   onAddToCollection,
+  canContribute = false,
+  hasSession = false,
   cardClassName = 'collection-item-card enhanced-collection-item-card'
 }) {
   const [isHovered, setIsHovered] = useState(false)
@@ -576,6 +580,8 @@ function CarouselSection({
             onOpenOtherMod={onOpenOtherMod}
             onToggleInstalled={onToggleInstalled}
             onAddToCollection={onAddToCollection}
+            canContribute={canContribute}
+            hasSession={hasSession}
           />
         ))}
       </div>
@@ -598,7 +604,9 @@ export default function AllModsList({
   onOpenTitle,
   onOpenOtherMod,
   onToggleInstalled,
-  onAddToCollection
+  onAddToCollection,
+  canContribute = false,
+  hasSession = false
 }) {
   const [featuredMode, setFeaturedMode] = useState('latest')
   const [viewer, setViewer] = useState({
@@ -609,10 +617,15 @@ export default function AllModsList({
   })
 
   function openViewer(images, index = 0, title = '') {
+    const cleanImages = (images || []).filter(Boolean)
+    if (!cleanImages.length) return
+
+    const safeIndex = Math.min(Math.max(index, 0), cleanImages.length - 1)
+
     setViewer({
       open: true,
-      images,
-      index,
+      images: cleanImages,
+      index: safeIndex,
       title
     })
   }
@@ -659,12 +672,12 @@ export default function AllModsList({
         return
       }
 
-      if (event.key === 'ArrowLeft') {
+      if (event.key === 'ArrowLeft' && viewer.images.length > 1) {
         showPrevViewerImage()
         return
       }
 
-      if (event.key === 'ArrowRight') {
+      if (event.key === 'ArrowRight' && viewer.images.length > 1) {
         showNextViewerImage()
       }
     }
@@ -674,7 +687,7 @@ export default function AllModsList({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [viewer.open, viewer.images.length, viewer.index])
+  }, [viewer.open, viewer.images.length])
 
   const pageStart = pagination ? (pagination.page - 1) * pagination.perPage + 1 : 0
   const pageEnd = pagination
@@ -770,6 +783,8 @@ export default function AllModsList({
                     onOpenOtherMod={onOpenOtherMod}
                     onToggleInstalled={onToggleInstalled}
                     onAddToCollection={onAddToCollection}
+                    canContribute={canContribute}
+                    hasSession={hasSession}
                   />
                 </div>
               </article>

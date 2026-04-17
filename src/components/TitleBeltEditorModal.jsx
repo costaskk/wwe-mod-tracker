@@ -20,50 +20,156 @@ function normalizeLinkForCheck(link) {
   return `https://${value}`
 }
 
-function AudioFilesSection({ files = [], onRemoveAudio, uploading }) {
+function normalizeExternalUrl(value = '') {
+  const clean = String(value || '').trim()
+  if (!clean) return ''
+  return /^https?:\/\//i.test(clean) ? clean : `https://${clean}`
+}
+
+function getAudioItemKey(item = {}, fallback = '') {
+  return item.id || item.temp_id || fallback
+}
+
+function AudioFilesSection({
+  files = [],
+  onAddAudioLink,
+  onUpdateAudioLink,
+  onRemoveAudio,
+  uploading
+}) {
+  const [newName, setNewName] = useState('')
+  const [newUrl, setNewUrl] = useState('')
+
   return (
     <div className="upload-card premium-upload-card">
       <div className="upload-card-header">
         <h5>Title audio (.wem)</h5>
-        <p>Upload championship audio files in WEM format.</p>
+        <p>Paste external WEM download links. No title audio files are uploaded anymore.</p>
       </div>
 
       {files.length ? (
         <div className="wrestler-audio-list">
-          {files.map((file) => (
-            <div
-              key={file.id || file.file_path || file.file_url}
-              className="wrestler-audio-row"
-            >
-              <div className="wrestler-audio-main">
-                <div className="wrestler-audio-name">
-                  {file.file_name || 'Audio file'}
+          {files.map((file, index) => {
+            const key = getAudioItemKey(file, `title-audio-${index}`)
+            const currentUrl = file.download_url || file.external_url || ''
+
+            return (
+              <div
+                key={key}
+                className="wrestler-audio-row"
+              >
+                <div className="wrestler-audio-main" style={{ width: '100%' }}>
+                  <div className="form-grid compact-grid">
+                    <label>
+                      File name
+                      <input
+                        value={file.file_name || ''}
+                        onChange={(e) =>
+                          onUpdateAudioLink(key, {
+                            file_name: e.target.value
+                          })
+                        }
+                        placeholder="Undisputed Title Audio"
+                        disabled={uploading}
+                      />
+                    </label>
+
+                    <label className="span-2">
+                      WEM download URL
+                      <input
+                        value={currentUrl}
+                        onChange={(e) =>
+                          onUpdateAudioLink(key, {
+                            download_url: e.target.value,
+                            external_url: e.target.value,
+                            file_url: e.target.value
+                          })
+                        }
+                        placeholder="https://example.com/title-audio.wem"
+                        disabled={uploading}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="muted-text small-text">
+                    {file.audio_type || 'generic'}
+                  </div>
                 </div>
-                <div className="muted-text small-text">
-                  {file.audio_type || 'generic'}
+
+                <div className="wrestler-audio-actions">
+                  {currentUrl ? (
+                    <a
+                      className="ghost-button small-btn"
+                      href={normalizeExternalUrl(currentUrl)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open / download
+                    </a>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    className="ghost-button small-btn"
+                    disabled={uploading}
+                    onClick={() => onRemoveAudio?.(file)}
+                  >
+                    Remove
+                  </button>
                 </div>
               </div>
-
-              <div className="wrestler-audio-actions">
-                {file.file_url ? (
-                  <audio className="wrestler-audio-player" controls src={file.file_url} />
-                ) : null}
-
-                <button
-                  type="button"
-                  className="ghost-button small-btn"
-                  disabled={uploading}
-                  onClick={() => onRemoveAudio?.(file)}
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
-        <div className="upload-placeholder">No audio uploaded</div>
+        <div className="upload-placeholder">No audio links added</div>
       )}
+
+      <div className="form-grid compact-grid" style={{ marginTop: 12 }}>
+        <label>
+          File name
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Undisputed Title Audio"
+            disabled={uploading}
+          />
+        </label>
+
+        <label className="span-2">
+          WEM download URL
+          <input
+            value={newUrl}
+            onChange={(e) => setNewUrl(e.target.value)}
+            placeholder="https://example.com/title-audio.wem"
+            disabled={uploading}
+          />
+        </label>
+      </div>
+
+      <div className="upload-actions wrap-actions">
+        <button
+          type="button"
+          className="secondary-button small-btn"
+          disabled={!newUrl.trim() || uploading}
+          onClick={() => {
+            const normalizedUrl = normalizeExternalUrl(newUrl)
+
+            onAddAudioLink({
+              audio_type: 'generic',
+              file_name: newName.trim(),
+              download_url: normalizedUrl,
+              external_url: normalizedUrl,
+              file_url: normalizedUrl
+            })
+
+            setNewName('')
+            setNewUrl('')
+          }}
+        >
+          Add link
+        </button>
+      </div>
     </div>
   )
 }
@@ -76,7 +182,8 @@ export default function TitleBeltEditorModal({
   onSave,
   onUpload,
   onRemoveAsset,
-  onUploadAudio,
+  onAddAudioLink,
+  onUpdateAudioLink,
   onRemoveAudio,
   creatorOptions = [],
   newCreatorName,
@@ -166,7 +273,7 @@ export default function TitleBeltEditorModal({
           <h2>{form.persisted ? 'Edit title belt mod' : 'Add title belt mod'}</h2>
           <p className="subtle-copy">
             Title belt mods can include a DDS render, screenshots, download links, notes,
-            creator, source game, and WEM audio files.
+            creator, source game, and external WEM audio links.
           </p>
         </div>
 
@@ -426,28 +533,11 @@ export default function TitleBeltEditorModal({
 
                 <AudioFilesSection
                   files={form.audio_files || []}
+                  onAddAudioLink={onAddAudioLink}
+                  onUpdateAudioLink={onUpdateAudioLink}
                   onRemoveAudio={onRemoveAudio}
                   uploading={uploading}
                 />
-
-                <div className="upload-actions">
-                  <label className="secondary-button inline-file file-button">
-                    Upload WEM audio
-                    <input
-                      type="file"
-                      accept=".wem"
-                      multiple
-                      disabled={uploading}
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files || [])
-                        if (files.length) {
-                          onUploadAudio(files)
-                        }
-                        e.target.value = ''
-                      }}
-                    />
-                  </label>
-                </div>
               </div>
             </section>
           </div>

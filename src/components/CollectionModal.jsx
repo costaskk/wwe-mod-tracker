@@ -18,6 +18,8 @@ export default function CollectionModal({
       : `${window.location.origin}${window.location.pathname}?page=collections&collection=${encodeURIComponent(form.slug)}`
     : 'A unique public share link will be generated automatically when you save.'
 
+  const resolvedCoverUrl = form.cover_url || form.cover_external_url || ''
+
   function updateField(field, value) {
     setForm((current) => ({
       ...current,
@@ -89,10 +91,10 @@ export default function CollectionModal({
                   <p>Optional banner image for your profile and public collection page.</p>
                 </div>
 
-                {form.cover_url ? (
+                {resolvedCoverUrl ? (
                   <img
                     className="upload-preview cover-preview spotlight-image"
-                    src={form.cover_url}
+                    src={resolvedCoverUrl}
                     alt={form.name || 'Collection cover'}
                   />
                 ) : (
@@ -118,7 +120,7 @@ export default function CollectionModal({
                     />
                   </label>
 
-                  {(form.cover_path || form.cover_url) ? (
+                  {(form.cover_path || resolvedCoverUrl) ? (
                     <button
                       className="ghost-button"
                       onClick={() => onRemoveCover()}

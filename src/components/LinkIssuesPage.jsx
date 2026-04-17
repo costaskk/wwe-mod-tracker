@@ -56,6 +56,24 @@ function ProviderList({ links = [] }) {
   )
 }
 
+function getPreviewUrls(image = {}) {
+  return {
+    thumbUrl:
+      image.image_thumb_url ||
+      image.thumb_url ||
+      image.url ||
+      image.image_url ||
+      '',
+    previewUrl:
+      image.full_image_url ||
+      image.image_medium_url ||
+      image.medium_url ||
+      image.image_url ||
+      image.url ||
+      ''
+  }
+}
+
 function IssueCard({ issue, canManageContent, canContribute }) {
   const canEdit = canManageContent?.(issue.ownerId) && issue.onEdit
 
@@ -70,14 +88,31 @@ function IssueCard({ issue, canManageContent, canContribute }) {
         </div>
       </div>
 
+      {issue.thumbUrl ? (
+        <div className="collection-thumb-button">
+          <img
+            className="collection-item-thumb"
+            src={issue.thumbUrl}
+            alt={issue.itemName}
+          />
+        </div>
+      ) : (
+        <div className="collection-item-thumb collection-cover-placeholder">
+          {(issue.itemName || '?').slice(0, 2).toUpperCase()}
+        </div>
+      )}
+
       <div className="collection-item-body">
         <div className="muted-text small-text">{issue.parentLabel}</div>
 
         <h3 title={issue.itemName}>{issue.itemName}</h3>
 
-        {issue.sourceGame ? (
-          <div className="muted-text small-text">{issue.sourceGame}</div>
-        ) : null}
+        <div className="muted-text small-text wrap-actions">
+          {issue.sourceGame ? <span>{issue.sourceGame}</span> : null}
+          {issue.creatorName ? (
+            <span className="creator-badge small-creator-badge">{issue.creatorName}</span>
+          ) : null}
+        </div>
 
         <div className="collection-item-meta-row">
           <span className="muted-text small-text">
@@ -106,7 +141,7 @@ function IssueCard({ issue, canManageContent, canContribute }) {
               className="ghost-button small-btn"
               onClick={issue.onRequestNote}
             >
-              Add note
+              Submit request
             </button>
           ) : null}
 
@@ -159,6 +194,14 @@ export default function LinkIssuesPage({
 
         const issueType = dead ? 'dead_link' : 'missing_link'
 
+        const attirePreviewImage = (attire.attire_images || [])[0]
+        const attirePreview = attirePreviewImage
+          ? getPreviewUrls(attirePreviewImage)
+          : {
+              thumbUrl: wrestler.headshot_thumb_url || wrestler.headshot_url || '',
+              previewUrl: wrestler.headshot_full_url || wrestler.headshot_url || ''
+            }
+
         return [{
           key: `attire-${attire.id}`,
           modType: 'attire',
@@ -166,7 +209,10 @@ export default function LinkIssuesPage({
           parentLabel: wrestler.wrestler_name || 'Unknown wrestler',
           itemName: attire.name || 'Unknown attire',
           ownerId: attire.owner_id,
+          creatorName: attire.creator_name || '',
           sourceGame: attire.source_game || '',
+          thumbUrl: attirePreview.thumbUrl,
+          previewUrl: attirePreview.previewUrl,
           issueType,
           requestInfo,
           links,
@@ -199,6 +245,8 @@ export default function LinkIssuesPage({
 
       const issueType = dead ? 'dead_link' : 'missing_link'
 
+      const arenaPreview = getPreviewUrls((arena.arena_images || [])[0] || {})
+
       return [{
         key: `arena-${arena.id}`,
         modType: 'arena',
@@ -206,7 +254,10 @@ export default function LinkIssuesPage({
         parentLabel: arena.creator_name || 'Arena mod',
         itemName: arena.name || 'Unknown arena',
         ownerId: arena.owner_id,
+        creatorName: arena.creator_name || '',
         sourceGame: arena.source_game || '',
+        thumbUrl: arenaPreview.thumbUrl,
+        previewUrl: arenaPreview.previewUrl,
         issueType,
         requestInfo,
         links,
@@ -235,6 +286,8 @@ export default function LinkIssuesPage({
 
       const issueType = dead ? 'dead_link' : 'missing_link'
 
+      const titlePreview = getPreviewUrls((titleBelt.title_belt_images || [])[0] || {})
+
       return [{
         key: `title-${titleBelt.id}`,
         modType: 'title',
@@ -242,7 +295,10 @@ export default function LinkIssuesPage({
         parentLabel: titleBelt.creator_name || 'Title belt mod',
         itemName: titleBelt.name || 'Unknown title belt',
         ownerId: titleBelt.owner_id,
+        creatorName: titleBelt.creator_name || '',
         sourceGame: titleBelt.source_game || '',
+        thumbUrl: titlePreview.thumbUrl,
+        previewUrl: titlePreview.previewUrl,
         issueType,
         requestInfo,
         links,
@@ -271,6 +327,8 @@ export default function LinkIssuesPage({
 
       const issueType = dead ? 'dead_link' : 'missing_link'
 
+      const otherPreview = getPreviewUrls((otherMod.other_mod_images || [])[0] || {})
+
       return [{
         key: `other-${otherMod.id}`,
         modType: 'other',
@@ -278,7 +336,10 @@ export default function LinkIssuesPage({
         parentLabel: otherMod.creator_name || 'Other mod',
         itemName: otherMod.name || 'Unknown mod',
         ownerId: otherMod.owner_id,
+        creatorName: otherMod.creator_name || '',
         sourceGame: otherMod.source_game || '',
+        thumbUrl: otherPreview.thumbUrl,
+        previewUrl: otherPreview.previewUrl,
         issueType,
         requestInfo,
         links,

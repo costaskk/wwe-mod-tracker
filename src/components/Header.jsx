@@ -70,6 +70,10 @@ export default function Header({
     action?.()
   }
 
+  useEffect(() => {
+    setAddMenuOpen(false)
+  }, [currentPage])
+
   return (
     <header className="hero-card hero-card-improved">
       <div>
@@ -124,7 +128,7 @@ export default function Header({
               Other Mods
             </button>
 
-            {session ? (
+            {canContribute ? (
               <button
                 type="button"
                 className={`nav-chip ${currentPage === 'collections' ? 'active' : ''}`}

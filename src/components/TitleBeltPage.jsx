@@ -16,6 +16,20 @@ import {
 } from '../lib/utils'
 import { getAssetUrl, removeAssets, uploadAsset, uploadImageWithVariants } from '../lib/storage'
 
+function normalizeExternalUrl(value = '') {
+  const clean = String(value || '').trim()
+  if (!clean) return ''
+  return /^https?:\/\//i.test(clean) ? clean : `https://${clean}`
+}
+
+function getAudioRecordKey(item = {}) {
+  return (
+    item.id ||
+    item.temp_id ||
+    `${item.audio_type || 'generic'}:${item.download_url || item.external_url || item.file_name || ''}`
+  )
+}
+
 export default function TitleBeltPage({
   titleBelts = [],
   creators = [],
@@ -200,13 +214,22 @@ export default function TitleBeltPage({
         throw new Error(`Title belt already exists: ${duplicate.name}`)
       }
       
-      const parsedLinks = parseDownloadLinks(form.download_url || '')
+      const normalizedParsedLinks = parseDownloadLinks(form.download_url || '')
+        .map((link) => normalizeExternalUrl(link))
+        .filter(Boolean)
 
-      if (parsedLinks.length) {
-        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
-        const deadResults = results.filter((item) => item?.status === 'dead' || item?.ok === false)
+      const normalizedDownloadUrl = normalizedParsedLinks.join('\n')
 
-        if (deadResults.length === parsedLinks.length) {
+      if (normalizedParsedLinks.length) {
+        const results = await Promise.all(
+          normalizedParsedLinks.map((link) => testDownloadLink(link))
+        )
+
+        const deadResults = results.filter(
+          (item) => item?.status === 'dead' || item?.ok === false
+        )
+
+        if (deadResults.length === normalizedParsedLinks.length) {
           throw new Error('All entered download links appear to be dead. Please correct them before saving.')
         }
       }
@@ -214,11 +237,15 @@ export default function TitleBeltPage({
       const payload = {
         name: form.name.trim(),
         creator_name: form.creator_name.trim(),
-        download_url: form.download_url.trim(),
+        download_url: normalizedDownloadUrl,
         source_game: form.source_game || 'WWE 2K25',
         notes: form.notes.trim(),
         render_dds_path: form.render_dds_path || '',
-        render_dds_name: form.render_dds_name || ''
+        render_dds_name: form.render_dds_name || '',
+        render_dds_external_url:
+          form.render_dds_external_url ||
+          form.render_dds_url ||
+          ''
       }
 
       let titleId = form.id
@@ -246,8 +273,10 @@ export default function TitleBeltPage({
         openNotice('success', 'Title belt added', `${form.name} was added successfully.`)
       }
 
-      if (parsedLinks.length && titleId) {
-        const results = await Promise.all(parsedLinks.map((link) => testDownloadLink(link)))
+      if (normalizedParsedLinks.length && titleId) {
+        const results = await Promise.all(
+          normalizedParsedLinks.map((link) => testDownloadLink(link))
+        )
         const hasDeadLink = results.some((item) => item?.status === 'dead')
 
         if (hasDeadLink) {
@@ -282,20 +311,65 @@ export default function TitleBeltPage({
           image_path: item.path,
           image_medium_path: item.medium_path || '',
           image_thumb_path: item.thumb_path || '',
-          image_name: item.name
+          image_name: item.name,
+          external_original_url: item.external_original_url || '',
+          external_medium_url: item.external_medium_url || '',
+          external_thumb_url: item.external_thumb_url || ''
         }))
 
         const { error } = await supabase.from('title_belt_images').insert(imageInserts)
         if (error) throw error
       }
 
-      if (Array.isArray(form.pendingAudioUploads) && form.pendingAudioUploads.length) {
-        const audioInserts = form.pendingAudioUploads.map((item) => ({
+      const audioRecords = (form.audio_files || [])
+        .map((item) => {
+          const resolvedUrl = normalizeExternalUrl(
+            item.download_url || item.external_url || item.file_url || ''
+          )
+
+          return {
+            ...item,
+            title_belt_id: titleId,
+            owner_id: session.user.id,
+            audio_type: item.audio_type || 'generic',
+            file_name: String(item.file_name || '').trim(),
+            resolved_url: resolvedUrl
+          }
+        })
+        .filter((item) => item.resolved_url)
+
+      const existingAudioRecords = audioRecords.filter(
+        (item) => item.id && item.persisted !== false
+      )
+
+      const newAudioRecords = audioRecords.filter(
+        (item) => !item.id || item.persisted === false
+      )
+
+      for (const item of existingAudioRecords) {
+        const { error } = await supabase
+          .from('title_belt_audio_files')
+          .update({
+            audio_type: item.audio_type || 'generic',
+            file_path: null,
+            file_name: item.file_name || '',
+            external_url: item.resolved_url,
+            download_url: item.resolved_url
+          })
+          .eq('id', item.id)
+
+        if (error) throw error
+      }
+
+      if (newAudioRecords.length) {
+        const audioInserts = newAudioRecords.map((item) => ({
           title_belt_id: titleId,
           owner_id: session.user.id,
           audio_type: item.audio_type || 'generic',
-          file_path: item.file_path,
-          file_name: item.file_name
+          file_path: null,
+          file_name: item.file_name || '',
+          external_url: item.resolved_url,
+          download_url: item.resolved_url
         }))
 
         const { error } = await supabase.from('title_belt_audio_files').insert(audioInserts)
@@ -326,7 +400,7 @@ export default function TitleBeltPage({
           throw new Error('Render must be a .dds file.')
         }
 
-        const { path, fileName } = await uploadAsset({
+        const { path, fileName, externalUrl } = await uploadAsset({
           userId: session.user.id,
           entityId,
           file,
@@ -339,7 +413,8 @@ export default function TitleBeltPage({
           temp_upload_id: current.temp_upload_id || (!current.persisted ? entityId : ''),
           render_dds_path: path,
           render_dds_name: fileName,
-          render_dds_url: getAssetUrl(path)
+          render_dds_url: externalUrl || getAssetUrl(path),
+          render_dds_external_url: externalUrl || ''
         }))
 
         openNotice('success', 'DDS uploaded', `${file.name} was uploaded successfully.`)
@@ -354,7 +429,15 @@ export default function TitleBeltPage({
             throw new Error('All screenshots must be image files.')
           }
 
-          const { originalPath, mediumPath, thumbPath, fileName } = await uploadImageWithVariants({
+          const {
+            originalPath,
+            mediumPath,
+            thumbPath,
+            fileName,
+            externalOriginalUrl,
+            externalMediumUrl,
+            externalThumbUrl
+          } = await uploadImageWithVariants({
             userId: session.user.id,
             entityId,
             file,
@@ -367,11 +450,14 @@ export default function TitleBeltPage({
             medium_path: mediumPath,
             thumb_path: thumbPath,
             name: fileName,
-            url: getAssetUrl(thumbPath),
-            thumb_url: getAssetUrl(thumbPath),
-            image_url: getAssetUrl(mediumPath),
-            medium_url: getAssetUrl(mediumPath),
-            full_image_url: getAssetUrl(originalPath)
+            external_original_url: externalOriginalUrl || '',
+            external_medium_url: externalMediumUrl || '',
+            external_thumb_url: externalThumbUrl || '',
+            url: externalThumbUrl || getAssetUrl(thumbPath),
+            thumb_url: externalThumbUrl || getAssetUrl(thumbPath),
+            image_url: externalMediumUrl || getAssetUrl(mediumPath),
+            medium_url: externalMediumUrl || getAssetUrl(mediumPath),
+            full_image_url: externalOriginalUrl || getAssetUrl(originalPath)
           })
         }
 
@@ -395,56 +481,48 @@ export default function TitleBeltPage({
     }
   }
 
-  async function handleAudioUpload(files) {
-    if (!files?.length || !canContribute) return
+  function addAudioLink(data = {}) {
+    if (!canContribute) return
 
-    try {
-      setUploading(true)
+    const normalizedUrl = normalizeExternalUrl(
+      data.download_url || data.external_url || data.file_url || ''
+    )
 
-      const entityId = form.id || form.temp_upload_id || uid()
-      const uploadedRows = []
+    if (!normalizedUrl) return
 
-      for (const file of files) {
-        if (!file.name.toLowerCase().endsWith('.wem')) {
-          throw new Error('Only .wem files are allowed.')
+    setForm((current) => ({
+      ...current,
+      audio_files: [
+        ...(current.audio_files || []),
+        {
+          id: null,
+          temp_id: uid(),
+          persisted: false,
+          title_belt_id: current.id || null,
+          owner_id: session?.user?.id || '',
+          audio_type: data.audio_type || 'generic',
+          file_path: '',
+          file_name: String(data.file_name || '').trim(),
+          file_url: normalizedUrl,
+          download_url: normalizedUrl,
+          external_url: normalizedUrl
         }
+      ]
+    }))
+  }
 
-        const { path, fileName } = await uploadAsset({
-          userId: session.user.id,
-          entityId,
-          file,
-          kind: 'title_audio',
-          folder: 'titles'
-        })
-
-        uploadedRows.push({
-          id: uid(),
-          title_belt_id: form.id || null,
-          owner_id: session.user.id,
-          audio_type: 'generic',
-          file_path: path,
-          file_name: fileName,
-          file_url: getAssetUrl(path)
-        })
-      }
-
-      setForm((current) => ({
-        ...current,
-        temp_upload_id: current.temp_upload_id || (!current.persisted ? entityId : ''),
-        audio_files: [...(current.audio_files || []), ...uploadedRows],
-        pendingAudioUploads: [...(current.pendingAudioUploads || []), ...uploadedRows]
-      }))
-
-      openNotice(
-        'success',
-        'Audio uploaded',
-        `${uploadedRows.length} file${uploadedRows.length === 1 ? '' : 's'} uploaded successfully.`
+  function updateAudioLink(audioKey, changes = {}) {
+    setForm((current) => ({
+      ...current,
+      audio_files: (current.audio_files || []).map((item) =>
+        getAudioRecordKey(item) === audioKey
+          ? {
+              ...item,
+              ...changes
+            }
+          : item
       )
-    } catch (err) {
-      openNotice('error', 'Audio upload failed', err.message || 'Could not upload title audio.')
-    } finally {
-      setUploading(false)
-    }
+    }))
   }
 
   async function handleAddTitleCreator() {
@@ -478,11 +556,26 @@ export default function TitleBeltPage({
         if (path) {
           await removeAssets([path])
         }
+
+        if (form.persisted) {
+          const { error } = await supabase
+            .from('title_belts')
+            .update({
+              render_dds_path: '',
+              render_dds_name: '',
+              render_dds_external_url: ''
+            })
+            .eq('id', form.id)
+
+          if (error) throw error
+        }
+
         setForm((current) => ({
           ...current,
           render_dds_path: '',
           render_dds_name: '',
-          render_dds_url: ''
+          render_dds_url: '',
+          render_dds_external_url: ''
         }))
       }
 
@@ -516,11 +609,7 @@ export default function TitleBeltPage({
     try {
       setUploading(true)
 
-      if (audioFile.file_path) {
-        await removeAssets([audioFile.file_path])
-      }
-
-      if (audioFile.id && form.persisted) {
+      if (audioFile.id) {
         const { error } = await supabase
           .from('title_belt_audio_files')
           .delete()
@@ -529,15 +618,17 @@ export default function TitleBeltPage({
         if (error) throw error
       }
 
+      const audioKey = getAudioRecordKey(audioFile)
+
       setForm((current) => ({
         ...current,
-        audio_files: (current.audio_files || []).filter((item) => item.file_path !== audioFile.file_path),
-        pendingAudioUploads: (current.pendingAudioUploads || []).filter(
-          (item) => item.file_path !== audioFile.file_path
-        )
+        audio_files: (current.audio_files || []).filter(
+          (item) => getAudioRecordKey(item) !== audioKey
+        ),
+        pendingAudioUploads: []
       }))
 
-      openNotice('success', 'Audio removed', `${audioFile.file_name || 'Audio file'} was removed.`)
+      openNotice('success', 'Audio removed', `${audioFile.file_name || 'Audio link'} was removed.`)
     } catch (err) {
       openNotice('error', 'Could not remove audio', err.message || 'Could not remove title audio.')
     } finally {
@@ -610,7 +701,7 @@ export default function TitleBeltPage({
     if (!canManageContent(title.owner_id)) return
 
     try {
-      const cleanUrl = String(correctedUrl || '').trim()
+      const cleanUrl = normalizeExternalUrl(correctedUrl)
       if (!cleanUrl) {
         throw new Error('A corrected download URL is required.')
       }
@@ -661,14 +752,9 @@ export default function TitleBeltPage({
               ])
               .filter(Boolean)
 
-            const audioPaths = (title.audio_files || title.title_belt_audio_files || [])
-            .map((file) => file.file_path)
-            .filter(Boolean)
-
             const paths = [
-            title.render_dds_path,
-            ...imagePaths,
-            ...audioPaths
+              title.render_dds_path,
+              ...imagePaths
             ].filter(Boolean)
 
             if (paths.length) {
@@ -761,7 +847,8 @@ export default function TitleBeltPage({
         onSave={save}
         onUpload={handleUpload}
         onRemoveAsset={removeAsset}
-        onUploadAudio={handleAudioUpload}
+        onAddAudioLink={addAudioLink}
+        onUpdateAudioLink={updateAudioLink}
         onRemoveAudio={removeAudio}
         creatorOptions={creators}
         newCreatorName={newCreatorName}

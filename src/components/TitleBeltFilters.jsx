@@ -49,11 +49,14 @@ export default function TitleBeltFilters({
               onChange={(e) => setCreatorFilter(e.target.value)}
             >
               <option value="all">All creators</option>
-              {(creators || []).map((item) => (
-                <option key={item.id} value={item.name}>
-                  {item.name}
-                </option>
-              ))}
+              {[...(creators || [])]
+                .filter((item) => item && item.name)
+                .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+                .map((item) => (
+                  <option key={item.id} value={item.name}>
+                    {item.name}
+                  </option>
+                ))}
             </select>
           </label>
 

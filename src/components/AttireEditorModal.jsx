@@ -68,6 +68,10 @@ function JsonEditor({ title, value, onChange, onUpload, filenameHint, uploading 
 function DdsPreview({ url, name }) {
   const [failed, setFailed] = useState(false)
 
+  useEffect(() => {
+    setFailed(false)
+  }, [url])
+
   if (!url) return <div className="upload-placeholder">No DDS render uploaded</div>
 
   return (
@@ -470,7 +474,10 @@ export default function AttireEditorModal({
                         multiple
                         disabled={uploading}
                         onChange={(e) => {
-                          onUpload(Array.from(e.target.files || []), 'image')
+                          const files = Array.from(e.target.files || [])
+                          if (files.length) {
+                            onUpload(files, 'image')
+                          }
                           e.target.value = ''
                         }}
                       />
@@ -502,7 +509,7 @@ export default function AttireEditorModal({
                         }}
                       />
                     </label>
-                    {form.render_dds_path ? (
+                    {(form.render_dds_path || form.render_dds_url) ? (
                       <button
                         className="ghost-button"
                         type="button"

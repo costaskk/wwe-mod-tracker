@@ -282,7 +282,10 @@ export default function ArenaPage({
           image_path: item.path,
           image_medium_path: item.medium_path || '',
           image_thumb_path: item.thumb_path || '',
-          image_name: item.name
+          image_name: item.name,
+          external_original_url: item.external_original_url || '',
+          external_medium_url: item.external_medium_url || '',
+          external_thumb_url: item.external_thumb_url || ''
         }))
 
         const { error } = await supabase.from('arena_images').insert(inserts)
@@ -314,7 +317,15 @@ export default function ArenaPage({
             throw new Error('All screenshots must be image files.')
           }
 
-          const { originalPath, mediumPath, thumbPath, fileName } = await uploadImageWithVariants({
+          const {
+            originalPath,
+            mediumPath,
+            thumbPath,
+            fileName,
+            externalOriginalUrl,
+            externalMediumUrl,
+            externalThumbUrl
+          } = await uploadImageWithVariants({
             userId: session.user.id,
             entityId,
             file,
@@ -327,11 +338,14 @@ export default function ArenaPage({
             medium_path: mediumPath,
             thumb_path: thumbPath,
             name: fileName,
-            url: getAssetUrl(thumbPath),
-            thumb_url: getAssetUrl(thumbPath),
-            image_url: getAssetUrl(mediumPath),
-            medium_url: getAssetUrl(mediumPath),
-            full_image_url: getAssetUrl(originalPath)
+            external_original_url: externalOriginalUrl || '',
+            external_medium_url: externalMediumUrl || '',
+            external_thumb_url: externalThumbUrl || '',
+            url: externalThumbUrl || getAssetUrl(thumbPath),
+            thumb_url: externalThumbUrl || getAssetUrl(thumbPath),
+            image_url: externalMediumUrl || getAssetUrl(mediumPath),
+            medium_url: externalMediumUrl || getAssetUrl(mediumPath),
+            full_image_url: externalOriginalUrl || getAssetUrl(originalPath)
           })
         }
 

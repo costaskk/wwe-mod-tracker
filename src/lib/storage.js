@@ -1,6 +1,9 @@
 import { supabase } from './supabase'
 
 const BUCKET = 'mod-assets'
+const R2_PUBLIC_BASE_URL = String(import.meta.env.VITE_CLOUDFLARE_IMAGE_BASE_URL || '')
+  .trim()
+  .replace(/\/+$/, '')
 
 function sanitizeName(name = '') {
   return name.replace(/[^a-zA-Z0-9._-]/g, '_')
@@ -29,6 +32,14 @@ function isImageFile(file) {
   return Boolean(file?.type?.startsWith('image/'))
 }
 
+function isR2ManagedAsset(file, ext = '') {
+  return isImageFile(file) || ext === '.dds'
+}
+
+function isExternalLinkOnlyAsset(ext = '') {
+  return ext === '.wem'
+}
+
 function shouldPreservePng(file) {
   return file?.type === 'image/png'
 }
@@ -48,6 +59,15 @@ function extensionFromMime(mimeType) {
 
 function fileNameWithExtension(name, mimeType) {
   return `${stripExtension(name)}${extensionFromMime(mimeType)}`
+}
+
+function joinUrl(base, path) {
+  return `${String(base).replace(/\/+$/, '')}/${String(path).replace(/^\/+/, '')}`
+}
+
+function getR2PublicUrl(path) {
+  if (!path || !R2_PUBLIC_BASE_URL) return ''
+  return joinUrl(R2_PUBLIC_BASE_URL, path)
 }
 
 async function fileToImageBitmap(file) {
@@ -133,7 +153,7 @@ function contentTypeForFile(file, fallbackName = '') {
   return 'application/octet-stream'
 }
 
-async function uploadFileToPath(path, file) {
+async function uploadFileToSupabase(path, file) {
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
     cacheControl: '31536000',
     upsert: true,
@@ -143,34 +163,136 @@ async function uploadFileToPath(path, file) {
   if (error) throw error
 }
 
-/**
- * Upload asset (DDS, audio, JSON-adjacent files, anything non-image or single-file uploads)
- */
-export async function uploadAsset({ userId, entityId, file, kind, folder = 'attires' }) {
-  const safeName = sanitizeName(file.name)
-  const path = `${userId}/${folder}/${entityId}/${kind}-${makeUniqueToken()}-${safeName}`
+async function getSignedR2Uploads(files) {
+  const response = await fetch('/api/r2-sign-upload', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ files })
+  })
 
-  await uploadFileToPath(path, file)
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(text || 'Could not get R2 upload URLs.')
+  }
 
-  return { path, fileName: file.name }
+  return await response.json()
+}
+
+async function uploadBlobToSignedUrl(url, file) {
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': contentTypeForFile(file, file?.name || '')
+    },
+    body: file
+  })
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    throw new Error(text || `R2 upload failed with status ${response.status}`)
+  }
+}
+
+async function uploadFilesToR2(fileSpecs) {
+  const signed = await getSignedR2Uploads(
+    fileSpecs.map((item) => ({
+      key: item.path,
+      contentType: contentTypeForFile(item.file, item.file?.name || item.path)
+    }))
+  )
+
+  const uploads = signed?.uploads || []
+
+  if (uploads.length !== fileSpecs.length) {
+    throw new Error('R2 signing response was incomplete.')
+  }
+
+  await Promise.all(
+    uploads.map((upload, index) => uploadBlobToSignedUrl(upload.signedUrl, fileSpecs[index].file))
+  )
+
+  return uploads.map((upload) => ({
+    key: upload.key,
+    publicUrl: upload.publicUrl || getR2PublicUrl(upload.key)
+  }))
 }
 
 /**
- * Remove assets from storage
+ * Upload asset (DDS, audio, JSON-adjacent files, anything non-image or single-file uploads)
+ * Non-image assets stay on Supabase.
+ */
+export async function uploadAsset({ userId, entityId, file, kind, folder = 'attires' }) {
+  const safeName = sanitizeName(file.name)
+  const ext = getFileExtension(file.name)
+  const path = `${userId}/${folder}/${entityId}/${kind}-${makeUniqueToken()}-${safeName}`
+
+  // WEM files should not be uploaded through storage anymore.
+  // They should be saved as external links in the database/UI.
+  if (isExternalLinkOnlyAsset(ext)) {
+    throw new Error('WEM uploads are disabled. Save an external download link instead.')
+  }
+
+  // Images + DDS should live on Cloudflare R2
+  if (isR2ManagedAsset(file, ext)) {
+    const uploaded = await uploadFilesToR2([
+      { path, file }
+    ])
+
+    return {
+      path,
+      fileName: file.name,
+      externalUrl: uploaded[0]?.publicUrl || getR2PublicUrl(path),
+      isExternal: true
+    }
+  }
+
+  // Everything else can stay on Supabase
+  await uploadFileToSupabase(path, file)
+
+  return {
+    path,
+    fileName: file.name,
+    externalUrl: '',
+    isExternal: false
+  }
+}
+
+/**
+ * Remove assets from both R2 and Supabase.
+ * Safe to call for mixed paths.
  */
 export async function removeAssets(paths = []) {
   const clean = [...new Set(paths.filter(Boolean))]
   if (!clean.length) return
 
-  const { error } = await supabase.storage.from(BUCKET).remove(clean)
-  if (error) throw error
+  try {
+    await fetch('/api/r2-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keys: clean })
+    })
+  } catch (err) {
+    console.warn('R2 delete warning', err)
+  }
+
+  try {
+    const { error } = await supabase.storage.from(BUCKET).remove(clean)
+    if (error) {
+      console.warn('Supabase delete warning', error)
+    }
+  } catch (err) {
+    console.warn('Supabase delete warning', err)
+  }
 }
 
 /**
- * Get public asset URL
- * Do not rely on Supabase transforms on free plan.
+ * Get asset URL
+ * Prefers external CDN URL when provided.
  */
-export function getAssetUrl(path) {
+export function getAssetUrl(path, externalUrl = '') {
+  if (externalUrl) return externalUrl
   if (!path) return ''
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
@@ -179,8 +301,6 @@ export function getAssetUrl(path) {
 
 /**
  * Compress image before upload
- * - preserves PNG when applicable
- * - uses WebP for non-PNG images when supported
  */
 export async function compressImage(file, { maxWidth = 2200, quality = 0.82 } = {}) {
   return await transformImageFile(file, {
@@ -201,8 +321,7 @@ async function resizeVariant(file, maxWidth, quality = 0.8) {
 }
 
 /**
- * Upload image with original + medium + thumb variants
- * Falls back to uploading only the original if variant generation fails.
+ * Upload image with original + medium + thumb variants directly to R2
  */
 export async function uploadImageWithVariants({
   userId,
@@ -227,16 +346,19 @@ export async function uploadImageWithVariants({
     const mediumPath = `${basePath}/${baseName}-medium${mediumExt}`
     const thumbPath = `${basePath}/${baseName}-thumb${thumbExt}`
 
-    await Promise.all([
-      uploadFileToPath(originalPath, original),
-      uploadFileToPath(mediumPath, medium),
-      uploadFileToPath(thumbPath, thumb)
+    const uploaded = await uploadFilesToR2([
+      { path: originalPath, file: original },
+      { path: mediumPath, file: medium },
+      { path: thumbPath, file: thumb }
     ])
 
     return {
       originalPath,
       mediumPath,
       thumbPath,
+      externalOriginalUrl: uploaded[0]?.publicUrl || getR2PublicUrl(originalPath),
+      externalMediumUrl: uploaded[1]?.publicUrl || getR2PublicUrl(mediumPath),
+      externalThumbUrl: uploaded[2]?.publicUrl || getR2PublicUrl(thumbPath),
       fileName: file.name
     }
   } catch (err) {
@@ -246,12 +368,19 @@ export async function uploadImageWithVariants({
     const fallbackExt = getFileExtension(fallbackFile.name) || '.jpg'
     const fallbackPath = `${basePath}/${baseName}-original${fallbackExt}`
 
-    await uploadFileToPath(fallbackPath, fallbackFile)
+    const uploaded = await uploadFilesToR2([
+      { path: fallbackPath, file: fallbackFile }
+    ])
+
+    const fallbackUrl = uploaded[0]?.publicUrl || getR2PublicUrl(fallbackPath)
 
     return {
       originalPath: fallbackPath,
       mediumPath: '',
       thumbPath: '',
+      externalOriginalUrl: fallbackUrl,
+      externalMediumUrl: fallbackUrl,
+      externalThumbUrl: fallbackUrl,
       fileName: file.name
     }
   }

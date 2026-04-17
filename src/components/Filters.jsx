@@ -46,7 +46,7 @@ export default function Filters({
             Creator
             <select value={creatorFilter} onChange={(e) => setCreatorFilter(e.target.value)}>
               <option value="all">All creators</option>
-              {creators.map((item) => (
+              {(creators || []).map((item) => (
                 <option key={item.id} value={item.name}>
                   {item.name}
                 </option>
