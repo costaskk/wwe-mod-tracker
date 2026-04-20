@@ -8,7 +8,9 @@ import {
   getDownloadProviderLabel,
   getDownloadProviderMark,
   requestSummary,
-  getOtherModSubtypeLabel
+  getOtherModSubtypeLabel,
+  buildVersionEntries,
+  isPortRequestBlocked
 } from '../lib/utils'
 
 function DownloadLinks({ value, canViewLinks }) {
@@ -41,6 +43,55 @@ function DownloadLinks({ value, canViewLinks }) {
             <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
             <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
           </a>
+        )
+      })}
+    </div>
+  )
+}
+
+function VersionLinksSection({ item, canViewLinks }) {
+  const entries = useMemo(() => buildVersionEntries(item), [item])
+
+  if (!canViewLinks) {
+    return (
+      <div className="note-box compact-note">
+        Download links are visible only to approved users, moderators, and admins.
+      </div>
+    )
+  }
+
+  if (!entries.length) {
+    return <div className="note-box compact-note">No download links added yet.</div>
+  }
+
+  return (
+    <div className="version-links-stack">
+      {entries.map((entry) => {
+        const links = parseDownloadLinks(entry.download_url || '')
+
+        return (
+          <div className="version-links-row" key={entry.id}>
+            <span className="pill subtle-pill">{entry.source_game || 'Unknown game'}</span>
+
+            <div className="download-links-list">
+              {links.map((link, index) => {
+                const provider = getDownloadProvider(link)
+
+                return (
+                  <a
+                    key={`${entry.id}-${link}-${index}`}
+                    className={`download-link-chip provider-${provider}`}
+                    href={link}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
+                    <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
+                  </a>
+                )
+              })}
+            </div>
+          </div>
         )
       })}
     </div>
@@ -155,7 +206,9 @@ export default function OtherModDetailPanel({
   onCreateRequest,
   onResolveLink,
   onOpenCollectionPicker,
-  onOpenImageViewer
+  onOpenImageViewer,
+  onRequestPort,
+  onAddVersionLink
 }) {
 
   const isApprovedViewer = Boolean(
@@ -231,7 +284,7 @@ export default function OtherModDetailPanel({
             </div>
           ) : null}
 
-          <div className="mini-stats mini-stats-three">
+          <div className="mini-stats mini-stats-four">
             <div>
               <span>Screenshots</span>
               <strong>{images.length}</strong>
@@ -321,6 +374,17 @@ export default function OtherModDetailPanel({
       <div className="panel soft-panel improved-attire-card">
         <div className="panel-header">
           <div>
+            <h2>Screenshots</h2>
+            <p className="subtle-copy">Preview images for this other mod.</p>
+          </div>
+        </div>
+
+        <OtherModGallery images={images} onOpenImageViewer={onOpenImageViewer} />
+      </div>
+
+      <div className="panel soft-panel improved-attire-card">
+        <div className="panel-header">
+          <div>
             <h2>Download links</h2>
             <p className="subtle-copy">
               Other mod downloads are shown only to approved users, moderators, and admins.
@@ -328,7 +392,7 @@ export default function OtherModDetailPanel({
           </div>
         </div>
 
-        <DownloadLinks value={mod.download_url} canViewLinks={isApprovedViewer} />
+        <VersionLinksSection item={mod} canViewLinks={isApprovedViewer} />
 
         <div className="wrap-actions">
           {canContribute ? (
@@ -408,20 +472,29 @@ export default function OtherModDetailPanel({
               {canManageContent(mod.owner_id) && hasDeadLink ? (
                 <div className="pill warning-pill">Dead link needs review</div>
               ) : null}
+
+              {canContribute && onRequestPort && !isPortRequestBlocked('other', mod.subtype) ? (
+                <button
+                  type="button"
+                  className="ghost-button small-btn"
+                  onClick={() => onRequestPort(mod)}
+                >
+                  Request a port
+                </button>
+              ) : null}
+
+              {canManageContent(mod.owner_id) && onAddVersionLink ? (
+                <button
+                  type="button"
+                  className="ghost-button small-btn"
+                  onClick={() => onAddVersionLink(mod)}
+                >
+                  Add port link
+                </button>
+              ) : null}
             </>
           ) : null}
         </div>
-      </div>
-
-      <div className="panel soft-panel improved-attire-card">
-        <div className="panel-header">
-          <div>
-            <h2>Screenshots</h2>
-            <p className="subtle-copy">Preview images for this other mod.</p>
-          </div>
-        </div>
-
-        <OtherModGallery images={images} onOpenImageViewer={onOpenImageViewer} />
       </div>
 
       <div className="panel soft-panel improved-attire-card">
@@ -444,6 +517,10 @@ export default function OtherModDetailPanel({
         </div>
 
         <div className="mini-stats mini-stats-three">
+          <div>
+            <span>Open port requests</span>
+            <strong>{(mod.mod_port_requests || mod.port_requests || []).filter((item) => item.status === 'open').length}</strong>
+          </div>
           <div>
             <span>Total open</span>
             <strong>{requestInfo.total}</strong>

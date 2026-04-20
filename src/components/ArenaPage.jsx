@@ -39,7 +39,9 @@ export default function ArenaPage({
   arenaSelectSignal,
   onConsumeArenaCreateSignal,
   openConfirmAction,
-  onOpenImageViewer
+  onOpenImageViewer,
+  onRequestPort,
+  onAddVersionLink
 }) {
   const [query, setQuery] = useState('')
   const [creatorFilter, setCreatorFilter] = useState('all')
@@ -627,6 +629,8 @@ export default function ArenaPage({
           onResolveLink={resolveArenaLink}
           onOpenCollectionPicker={onOpenCollectionPicker}
           onOpenImageViewer={onOpenImageViewer}
+          onRequestPort={onRequestPort}
+          onAddVersionLink={onAddVersionLink}
         />
       </div>
 

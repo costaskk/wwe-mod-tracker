@@ -42,7 +42,8 @@ export const OTHER_MOD_SUBTYPES = [
   'lighting',
   'gameplay',
   'match_type',
-  'misc'
+  'misc',
+  'tools'
 ]
 
 export function uid() {
@@ -815,6 +816,44 @@ export function getOtherModSubtypeLabel(subtype = '') {
   if (!subtype) return 'Other'
   return titleCase(subtype)
 }
+
+export function isPortRequestBlocked(modType = '', subtype = '') {
+  return modType === 'other' && String(subtype || '').trim().toLowerCase() === 'tools'
+}
+
+export function buildVersionEntries(item = {}) {
+  const entries = []
+  const baseLinks = parseDownloadLinks(item.download_url || '')
+
+  if (baseLinks.length) {
+    entries.push({
+      id: `base-${item.id || item.name || item.source_game || 'mod'}`,
+      source_game: item.source_game || 'Unknown game',
+      download_url: baseLinks.join('\n'),
+      notes: item.notes || ''
+    })
+  }
+
+  ;(item.mod_version_links || item.version_links || []).forEach((entry, index) => {
+    if (!String(entry?.download_url || '').trim()) return
+
+    entries.push({
+      id: entry.id || `version-${index}`,
+      source_game: entry.source_game || 'Unknown game',
+      download_url: entry.download_url || '',
+      notes: entry.notes || ''
+    })
+  })
+
+  const seen = new Set()
+  return entries.filter((entry) => {
+    const key = `${entry.source_game}::${entry.download_url}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 
 export function getUnifiedModTypeOrder(modType = '') {
   switch (modType) {

@@ -45,6 +45,84 @@ function DownloadLinks({ value, canViewLinks }) {
   )
 }
 
+function buildVersionEntries(item = {}) {
+  const entries = []
+  const baseLinks = parseDownloadLinks(item.download_url || '')
+
+  if (baseLinks.length) {
+    entries.push({
+      id: `base-${item.id || item.name || item.source_game || 'mod'}`,
+      source_game: item.source_game || 'Unknown game',
+      download_url: baseLinks.join('\n')
+    })
+  }
+
+  ;(item.mod_version_links || item.version_links || []).forEach((entry, index) => {
+    if (!String(entry?.download_url || '').trim()) return
+
+    entries.push({
+      id: entry.id || `version-${index}`,
+      source_game: entry.source_game || 'Unknown game',
+      download_url: entry.download_url || ''
+    })
+  })
+
+  const seen = new Set()
+  return entries.filter((entry) => {
+    const key = `${entry.source_game}::${entry.download_url}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function VersionLinksSection({ item, canViewLinks }) {
+  const entries = useMemo(() => buildVersionEntries(item), [item])
+
+  if (!canViewLinks) {
+    return (
+      <div className="note-box compact-note">
+        Download links are visible only to approved users, moderators, and admins.
+      </div>
+    )
+  }
+
+  if (!entries.length) {
+    return <div className="note-box compact-note">No download links added yet.</div>
+  }
+
+  return (
+    <div className="version-links-stack">
+      {entries.map((entry) => {
+        const links = parseDownloadLinks(entry.download_url || '')
+
+        return (
+          <div className="version-links-row" key={entry.id}>
+            <span className="pill subtle-pill">{entry.source_game || 'Unknown game'}</span>
+            <div className="download-links-list">
+              {links.map((link, index) => {
+                const provider = getDownloadProvider(link)
+                return (
+                  <a
+                    key={`${entry.id}-${link}-${index}`}
+                    className={`download-link-chip provider-${provider}`}
+                    href={link}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
+                    <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
+                  </a>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function ArenaGallery({ images = [], onOpenImageViewer }) {
   if (!images.length) {
     return <div className="upload-placeholder">No arena screenshots uploaded</div>
@@ -101,16 +179,17 @@ function NotesMarkdown({ value }) {
     : normalizedValue
 
   return (
-    <ReactMarkdown
-      className="notes-markdown"
-      components={{
-        a: ({ ...props }) => (
-          <a {...props} target="_blank" rel="noreferrer" />
-        )
-      }}
-    >
-      {markdownValue}
-    </ReactMarkdown>
+    <div className="notes-markdown">
+      <ReactMarkdown
+        components={{
+          a: ({ ...props }) => (
+            <a {...props} target="_blank" rel="noreferrer" />
+          )
+        }}
+      >
+        {markdownValue}
+      </ReactMarkdown>
+    </div>
   )
 }
 
@@ -128,7 +207,9 @@ export default function ArenaDetailPanel({
   onCreateRequest,
   onOpenCollectionPicker,
   onOpenImageViewer,
-  onResolveLink
+  onResolveLink,
+  onRequestPort,
+  onAddVersionLink
 }) {
 
   const isApprovedViewer = Boolean(
@@ -195,7 +276,7 @@ export default function ArenaDetailPanel({
             </div>
           ) : null}
 
-          <div className="mini-stats mini-stats-three">
+          <div className="mini-stats mini-stats-four">
             <div>
               <span>Screenshots</span>
               <strong>{images.length}</strong>
@@ -285,6 +366,17 @@ export default function ArenaDetailPanel({
       <div className="panel soft-panel improved-attire-card">
         <div className="panel-header">
           <div>
+            <h2>Screenshots</h2>
+            <p className="subtle-copy">Preview images for this arena mod.</p>
+          </div>
+        </div>
+
+        <ArenaGallery images={images} onOpenImageViewer={onOpenImageViewer} />
+      </div>
+
+      <div className="panel soft-panel improved-attire-card">
+        <div className="panel-header">
+          <div>
             <h2>Download links</h2>
             <p className="subtle-copy">
               Arena downloads are shown only to approved users, moderators, and admins.
@@ -292,7 +384,7 @@ export default function ArenaDetailPanel({
           </div>
         </div>
 
-        <DownloadLinks value={arena.download_url} canViewLinks={isApprovedViewer} />
+        <VersionLinksSection item={arena} canViewLinks={isApprovedViewer} />
 
         <div className="wrap-actions">
             {canContribute ? (
@@ -303,7 +395,7 @@ export default function ArenaDetailPanel({
                     className="ghost-button small-btn"
                     onClick={() =>
                       onCreateRequest(
-                        arena.id,
+                        arena,
                         'missing_link',
                         arena.name,
                         'Please add a download link for this arena.'
@@ -318,7 +410,7 @@ export default function ArenaDetailPanel({
                     className="ghost-button small-btn"
                     onClick={() =>
                       onCreateRequest(
-                        arena.id,
+                        arena,
                         'dead_link',
                         arena.name,
                         'Please check this arena download link.'
@@ -334,15 +426,34 @@ export default function ArenaDetailPanel({
                     className="ghost-button small-btn"
                     onClick={() =>
                     onCreateRequest(
-                        arena.id,
+                        arena,
                         'general_request',
-                        arena.name,
                         ''
                     )
                     }
                 >
                     Request update
                 </button>
+
+                {canContribute && onRequestPort ? (
+                  <button
+                    type="button"
+                    className="ghost-button small-btn"
+                    onClick={() => onRequestPort(arena)}
+                  >
+                    Request a port
+                  </button>
+                ) : null}
+
+                {canContribute && onAddVersionLink ? (
+                  <button
+                    type="button"
+                    className="ghost-button small-btn"
+                    onClick={() => onAddVersionLink(arena)}
+                  >
+                    Add port link
+                  </button>
+                ) : null}
 
                 {canManageContent(arena.owner_id) && (hasMissingDownload || hasDeadLink) ? (
                   <button
@@ -353,13 +464,7 @@ export default function ArenaDetailPanel({
 
                       if (!newUrl || !newUrl.trim()) return
 
-                      onResolveLink?.(
-                        arena,
-                        newUrl.trim(),
-                        hasDeadLink
-                          ? 'Fixed dead link via detail panel'
-                          : 'Added missing download link via detail panel'
-                      )
+                      onResolveLink?.(arena, hasDeadLink ? 'dead_link' : 'missing_link')
                     }}
                   >
                     Fix link
@@ -368,17 +473,6 @@ export default function ArenaDetailPanel({
                 </>
             ) : null}
         </div>
-      </div>
-
-      <div className="panel soft-panel improved-attire-card">
-        <div className="panel-header">
-          <div>
-            <h2>Screenshots</h2>
-            <p className="subtle-copy">Preview images for this arena mod.</p>
-          </div>
-        </div>
-
-        <ArenaGallery images={images} onOpenImageViewer={onOpenImageViewer} />
       </div>
 
       <div className="panel soft-panel improved-attire-card">
@@ -407,6 +501,10 @@ export default function ArenaDetailPanel({
         </div>
 
         <div className="mini-stats mini-stats-three">
+          <div>
+            <span>Open port requests</span>
+            <strong>{(arena.mod_port_requests || arena.port_requests || []).filter((item) => item.status === 'open').length}</strong>
+          </div>
           <div>
             <span>Total open</span>
             <strong>{requestInfo.total}</strong>

@@ -3,7 +3,8 @@ import {
   formatDate,
   getModTypeLabel,
   getOtherModSubtypeLabel,
-  getSubtypeIcon
+  getSubtypeIcon,
+  isPortRequestBlocked
 } from '../lib/utils'
 
 function Toggle({ value, onChange, options }) {
@@ -303,6 +304,7 @@ function ActionButtons({
   onOpenOtherMod,
   onToggleInstalled,
   onAddToCollection,
+  onRequestPort,
   canContribute = false,
   hasSession = false
 }) {
@@ -358,6 +360,16 @@ function ActionButtons({
         </button>
       ) : null}
 
+      {canContribute && hasSession && onRequestPort && !isPortRequestBlocked(item.modType, item.modSubtype) ? (
+        <button
+          type="button"
+          className="ghost-button small-btn"
+          onClick={() => onRequestPort(item)}
+        >
+          Request a port
+        </button>
+      ) : null}
+
       {canContribute && hasSession && onAddToCollection ? (
         <button
           type="button"
@@ -386,6 +398,7 @@ function CompactActionButtons({
   onOpenOtherMod,
   onToggleInstalled,
   onAddToCollection,
+  onRequestPort,
   canContribute = false,
   hasSession = false
 }) {
@@ -399,6 +412,7 @@ function CompactActionButtons({
         onOpenOtherMod={onOpenOtherMod}
         onToggleInstalled={onToggleInstalled}
         onAddToCollection={onAddToCollection}
+        onRequestPort={onRequestPort}
         canContribute={canContribute}
         hasSession={hasSession}
       />
@@ -415,6 +429,7 @@ function ModCard({
   onOpenOtherMod,
   onToggleInstalled,
   onAddToCollection,
+  onRequestPort,
   canContribute = false,
   hasSession = false,
   cardClassName = 'collection-item-card enhanced-collection-item-card'
@@ -471,6 +486,7 @@ function ModCard({
             onOpenOtherMod={onOpenOtherMod}
             onToggleInstalled={onToggleInstalled}
             onAddToCollection={onAddToCollection}
+            onRequestPort={onRequestPort}
             canContribute={canContribute}
             hasSession={hasSession}
           />
@@ -493,6 +509,7 @@ function CarouselSection({
   onToggleInstalled,
   onAddToCollection,
   onOpenViewer,
+  onRequestPort,
   canContribute = false,
   hasSession = false
 }) {
@@ -584,6 +601,7 @@ function CarouselSection({
             onOpenOtherMod={onOpenOtherMod}
             onToggleInstalled={onToggleInstalled}
             onAddToCollection={onAddToCollection}
+            onRequestPort={onRequestPort}
             canContribute={canContribute}
             hasSession={hasSession}
           />
@@ -609,6 +627,7 @@ export default function AllModsList({
   onOpenOtherMod,
   onToggleInstalled,
   onAddToCollection,
+  onRequestPort,
   canContribute = false,
   hasSession = false
 }) {

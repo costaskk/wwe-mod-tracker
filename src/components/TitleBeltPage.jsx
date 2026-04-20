@@ -53,7 +53,9 @@ export default function TitleBeltPage({
   titleSelectSignal,
   onConsumeTitleCreateSignal,
   openConfirmAction,
-  onOpenImageViewer
+  onOpenImageViewer,
+  onRequestPort,
+  onAddVersionLink
 }) {
   const [query, setQuery] = useState('')
   const [creatorFilter, setCreatorFilter] = useState('all')
@@ -836,6 +838,8 @@ export default function TitleBeltPage({
           onResolveLink={resolveTitleLink}
           onOpenCollectionPicker={onOpenCollectionPicker}
           onOpenImageViewer={onOpenImageViewer}
+          onRequestPort={onRequestPort}
+          onAddVersionLink={onAddVersionLink}
         />
       </div>
 

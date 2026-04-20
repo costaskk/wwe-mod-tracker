@@ -17,6 +17,10 @@ import ConfirmActionModal from './components/ConfirmActionModal'
 import DetailPanel from './components/DetailPanel'
 import Filters from './components/Filters'
 import Header from './components/Header'
+import RequestsPage from './components/RequestsPage'
+import PortRequestModal from './components/PortRequestModal'
+import VersionLinkModal from './components/VersionLinkModal'
+import AddModRequestModal from './components/AddModRequestModal'
 import ModalNotice from './components/ModalNotice'
 import ProfileCollections from './components/ProfileCollections'
 import RequestModal from './components/RequestModal'
@@ -73,6 +77,9 @@ export default function App() {
     otherMods,
     creators,
     collections,
+    modAddRequests,
+    modPortRequests,
+    modVersionLinks,
     installedIds,
     installedArenaIds,
     installedTitleIds,
@@ -85,6 +92,9 @@ export default function App() {
     setOtherMods,
     setCreators,
     setCollections,
+    setModAddRequests,
+    setModPortRequests,
+    setModVersionLinks,
     setInstalledIds,
     setInstalledArenaIds,
     setInstalledTitleIds,
@@ -125,6 +135,12 @@ export default function App() {
   const [requestSubmitting, setRequestSubmitting] = useState(false)
   const [resolveModal, setResolveModal] = useState({ open: false, context: null })
   const [resolvingLink, setResolvingLink] = useState(false)
+  const [portRequestModal, setPortRequestModal] = useState({ open: false, context: null })
+  const [portRequestSubmitting, setPortRequestSubmitting] = useState(false)
+  const [versionLinkModal, setVersionLinkModal] = useState({ open: false, context: null })
+  const [versionLinkSubmitting, setVersionLinkSubmitting] = useState(false)
+  const [addModRequestModal, setAddModRequestModal] = useState(false)
+  const [addModRequestSubmitting, setAddModRequestSubmitting] = useState(false)
   const [confirmAction, setConfirmAction] = useState({ open: false, title: '', message: '', confirmLabel: 'Confirm', tone: 'danger', busy: false, onConfirm: null })
 
   const isModerator = currentProfile?.role === 'moderator'
@@ -174,6 +190,283 @@ export default function App() {
     const clean = String(value || '').trim()
     if (!clean) return ''
     return /^https?:\/\//i.test(clean) ? clean : `https://${clean}`
+  }
+
+  function buildPortRequestContext(modType, item, parentName = '') {
+    if (!item) return null
+
+    if (modType === 'attire') {
+      return {
+        modType: 'attire',
+        attireId: item.id,
+        itemName: item.name || 'Unknown attire',
+        parentName: parentName || '',
+        currentGame: item.source_game || 'WWE 2K25'
+      }
+    }
+
+    if (modType === 'arena') {
+      return {
+        modType: 'arena',
+        arenaId: item.id,
+        itemName: item.name || 'Unknown arena',
+        currentGame: item.source_game || 'WWE 2K25'
+      }
+    }
+
+    if (modType === 'title') {
+      return {
+        modType: 'title',
+        titleBeltId: item.id,
+        itemName: item.name || 'Unknown title belt',
+        currentGame: item.source_game || 'WWE 2K25'
+      }
+    }
+
+    return {
+      modType: 'other',
+      otherModId: item.id,
+      itemName: item.name || 'Unknown other mod',
+      currentGame: item.source_game || 'WWE 2K25',
+      subtype: item.subtype || ''
+    }
+  }
+
+  function openPortRequestModalForAttire(attire, wrestlerName = '') {
+    const context = buildPortRequestContext('attire', attire, wrestlerName)
+    if (!context) return
+    setPortRequestModal({ open: true, context })
+  }
+
+  function openPortRequestModalForArena(arena) {
+    const context = buildPortRequestContext('arena', arena)
+    if (!context) return
+    setPortRequestModal({ open: true, context })
+  }
+
+  function openPortRequestModalForTitle(title) {
+    const context = buildPortRequestContext('title', title)
+    if (!context) return
+    setPortRequestModal({ open: true, context })
+  }
+
+  function openPortRequestModalForOtherMod(otherMod) {
+    const context = buildPortRequestContext('other', otherMod)
+    if (!context) return
+    setPortRequestModal({ open: true, context })
+  }
+
+  function openPortRequestModalFromFeed(item) {
+    if (!item) return
+    if (item.modType === 'attire') return openPortRequestModalForAttire(item.raw || item, item.parentTitle || '')
+    if (item.modType === 'arena') return openPortRequestModalForArena(item.raw || item)
+    if (item.modType === 'title') return openPortRequestModalForTitle(item.raw || item)
+    if (item.modType === 'other') return openPortRequestModalForOtherMod(item.raw || item)
+  }
+
+  function openVersionLinkModalForAttire(attire, wrestlerName = '', requestContext = null) {
+    const context = buildPortRequestContext('attire', attire, wrestlerName)
+    if (!context) return
+    setVersionLinkModal({ open: true, context: { ...context, ...(requestContext || {}) } })
+  }
+
+  function openVersionLinkModalForArena(arena, requestContext = null) {
+    const context = buildPortRequestContext('arena', arena)
+    if (!context) return
+    setVersionLinkModal({ open: true, context: { ...context, ...(requestContext || {}) } })
+  }
+
+  function openVersionLinkModalForTitle(title, requestContext = null) {
+    const context = buildPortRequestContext('title', title)
+    if (!context) return
+    setVersionLinkModal({ open: true, context: { ...context, ...(requestContext || {}) } })
+  }
+
+  function openVersionLinkModalForOtherMod(otherMod, requestContext = null) {
+    const context = buildPortRequestContext('other', otherMod)
+    if (!context) return
+    setVersionLinkModal({ open: true, context: { ...context, ...(requestContext || {}) } })
+  }
+
+  function openVersionLinkModalFromPortRequest(request) {
+    if (!request) return
+    const requestContext = {
+      requestId: request.id,
+      requestedGame: request.requested_game || '',
+      prefillNotes: request.notes || ''
+    }
+
+    if (request.mod_type === 'attire') {
+      const parent = wrestlers.find((wrestler) => (wrestler.attires || []).some((attire) => attire.id === request.attire_id))
+      const attire = parent?.attires?.find((item) => item.id === request.attire_id)
+      if (attire) openVersionLinkModalForAttire(attire, parent?.wrestler_name || '', requestContext)
+      return
+    }
+
+    if (request.mod_type === 'arena') {
+      const arena = arenas.find((item) => item.id === request.arena_id)
+      if (arena) openVersionLinkModalForArena(arena, requestContext)
+      return
+    }
+
+    if (request.mod_type === 'title') {
+      const title = titleBelts.find((item) => item.id === request.title_belt_id)
+      if (title) openVersionLinkModalForTitle(title, requestContext)
+      return
+    }
+
+    if (request.mod_type === 'other') {
+      const otherMod = otherMods.find((item) => item.id === request.other_mod_id)
+      if (otherMod) openVersionLinkModalForOtherMod(otherMod, requestContext)
+    }
+  }
+
+  async function submitPortRequest({ requestedGame, notes }) {
+    if (!canContribute || !session || !portRequestModal.context) return
+    setPortRequestSubmitting(true)
+
+    try {
+      const context = portRequestModal.context
+      const payload = {
+        user_id: session.user.id,
+        mod_type: context.modType,
+        requested_game: requestedGame,
+        notes: notes || '',
+        status: 'open'
+      }
+
+      if (context.modType === 'attire') payload.attire_id = context.attireId
+      if (context.modType === 'arena') payload.arena_id = context.arenaId
+      if (context.modType === 'title') payload.title_belt_id = context.titleBeltId
+      if (context.modType === 'other') payload.other_mod_id = context.otherModId
+
+      const { error } = await supabase.from('mod_port_requests').insert(payload)
+      if (error) throw error
+
+      setPortRequestModal({ open: false, context: null })
+      openNotice('success', 'Port request submitted', `${context.itemName} now has an open ${requestedGame} port request.`)
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not submit port request', err.message || 'Could not submit this port request.')
+    } finally {
+      setPortRequestSubmitting(false)
+    }
+  }
+
+  async function submitVersionLink({ sourceGame, downloadUrl, notes, requestId = null }) {
+    if (!canContribute || !session || !versionLinkModal.context) return
+    setVersionLinkSubmitting(true)
+
+    try {
+      const context = versionLinkModal.context
+      const payload = {
+        owner_id: session.user.id,
+        mod_type: context.modType,
+        source_game: sourceGame,
+        download_url: downloadUrl,
+        notes: notes || ''
+      }
+
+      if (context.modType === 'attire') payload.attire_id = context.attireId
+      if (context.modType === 'arena') payload.arena_id = context.arenaId
+      if (context.modType === 'title') payload.title_belt_id = context.titleBeltId
+      if (context.modType === 'other') payload.other_mod_id = context.otherModId
+
+      const { error } = await supabase.from('mod_version_links').insert(payload)
+      if (error) throw error
+
+      if (requestId || context.requestId) {
+        const { error: requestError } = await supabase
+          .from('mod_port_requests')
+          .update({
+            status: 'fulfilled',
+            fulfilled_by: session.user.id,
+            fulfilled_at: new Date().toISOString(),
+            notes: notes ? `Fulfilled: ${notes}` : 'Fulfilled with a version-specific download link.'
+          })
+          .eq('id', requestId || context.requestId)
+
+        if (requestError) throw requestError
+      }
+
+      setVersionLinkModal({ open: false, context: null })
+      openNotice('success', 'Version link added', `${context.itemName} now includes a ${sourceGame} download link.`)
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not save version link', err.message || 'Could not save this version link.')
+    } finally {
+      setVersionLinkSubmitting(false)
+    }
+  }
+
+  async function submitAddModRequest({ modType, subtype, wrestlerName, itemName, creatorName, sourceGame, notes }) {
+    if (!canContribute || !session) return
+    setAddModRequestSubmitting(true)
+
+    try {
+      const payload = {
+        user_id: session.user.id,
+        mod_type: modType,
+        subtype: subtype || '',
+        wrestler_name: wrestlerName || '',
+        item_name: itemName,
+        creator_name: creatorName || '',
+        source_game: sourceGame,
+        notes: notes || '',
+        status: 'open'
+      }
+
+      const { error } = await supabase.from('mod_add_requests').insert(payload)
+      if (error) throw error
+
+      setAddModRequestModal(false)
+      openNotice('success', 'Request submitted', `${itemName} was added to the requests section.`)
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not submit mod request', err.message || 'Could not submit this mod request.')
+    } finally {
+      setAddModRequestSubmitting(false)
+    }
+  }
+
+  async function updateAddRequestStatus(request, status) {
+    if (!session || !request?.id) return
+
+    try {
+      const payload = { status }
+      if (status === 'fulfilled') {
+        payload.fulfilled_by = session.user.id
+        payload.fulfilled_at = new Date().toISOString()
+      }
+
+      const { error } = await supabase.from('mod_add_requests').update(payload).eq('id', request.id)
+      if (error) throw error
+
+      openNotice('success', 'Request updated', `The request was marked as ${status}.`)
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not update request', err.message || 'Could not update this request.')
+    }
+  }
+
+  async function updatePortRequestStatus(request, status) {
+    if (!session || !request?.id) return
+
+    try {
+      const payload = { status }
+      if (status === 'fulfilled') {
+        payload.fulfilled_by = session.user.id
+        payload.fulfilled_at = new Date().toISOString()
+      }
+
+      const { error } = await supabase.from('mod_port_requests').update(payload).eq('id', request.id)
+      if (error) throw error
+
+      openNotice('success', 'Request updated', `The request was marked as ${status}.`)
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not update request', err.message || 'Could not update this request.')
+    }
   }
 
   function getAudioRecordKey(item = {}) {
@@ -2098,6 +2391,12 @@ export default function App() {
     window.history.replaceState({}, '', `${window.location.pathname}?page=issues`)
   }
 
+  function goRequestsPage() {
+    setSelectedCollection(null)
+    setCurrentPage('requests')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=requests`)
+  }
+
   function goAdminPage() {
     setSelectedCollection(null)
     setCurrentPage('admin')
@@ -2220,6 +2519,11 @@ export default function App() {
 
       if (page === 'issues') {
         setCurrentPage('issues')
+        return
+      }
+
+      if (page === 'requests') {
+        setCurrentPage('requests')
         return
       }
 
@@ -2514,6 +2818,7 @@ export default function App() {
           onBrowseOtherMods={() => {}}
           onBrowseWrestlers={() => {}}
           onBrowseIssues={goIssuesPage}
+          onBrowseRequests={goRequestsPage}
           onGoHome={() => {}}
           currentPage="mods"
           currentProfile={null}
@@ -2542,6 +2847,7 @@ export default function App() {
         onBrowseTitles={goTitlesPage}
         onBrowseOtherMods={goOtherModsPage}
         onBrowseIssues={goIssuesPage}
+        onBrowseRequests={goRequestsPage}
         currentPage={currentPage}
         currentProfile={currentProfile}
         canContribute={canContribute}
@@ -2696,6 +3002,8 @@ export default function App() {
             arenaSelectSignal={arenaSelectSignal}
             onConsumeArenaCreateSignal={() => setArenaCreateSignal(0)}
             onOpenImageViewer={openImageViewer}
+            onRequestPort={openPortRequestModalForArena}
+            onAddVersionLink={openVersionLinkModalForArena}
           />
         ) : currentPage === 'all_mods' ? (
           <AllModsPage
@@ -2722,6 +3030,7 @@ export default function App() {
             onOpenTitle={openTitleFromAllMods}
             onOpenOtherMod={openOtherModFromAllMods}
             onOpenCollectionPicker={openCollectionPicker}
+            onRequestPort={openPortRequestModalFromFeed}
           />
         ) : currentPage === 'titles' ? (
           <TitleBeltPage
@@ -2748,6 +3057,8 @@ export default function App() {
             titleSelectSignal={titleSelectSignal}
             onConsumeTitleCreateSignal={() => setTitleCreateSignal(0)}
             onOpenImageViewer={openImageViewer}
+            onRequestPort={openPortRequestModalForTitle}
+            onAddVersionLink={openVersionLinkModalForTitle}
           />
         ) : currentPage === 'other_mods' ? (
           <OtherModPage
@@ -2774,6 +3085,8 @@ export default function App() {
             otherModsSelectSignal={otherModsSelectSignal}
             onConsumeOtherModsCreateSignal={() => setOtherModsCreateSignal(0)}
             onOpenImageViewer={openImageViewer}
+            onRequestPort={openPortRequestModalForOtherMod}
+            onAddVersionLink={openVersionLinkModalForOtherMod}
           />
         ) : currentPage === 'admin' ? (
           <AdminPanel
@@ -2782,6 +3095,23 @@ export default function App() {
             profiles={profiles}
             onUpdateProfile={updateProfile}
             updating={updatingProfile}
+          />
+        ) : currentPage === 'requests' ? (
+          <RequestsPage
+            session={session}
+            canContribute={canContribute}
+            modAddRequests={modAddRequests}
+            modPortRequests={modPortRequests}
+            wrestlers={wrestlers}
+            arenas={arenas}
+            titleBelts={titleBelts}
+            otherMods={otherMods}
+            onOpenImageViewer={openImageViewer}
+            onOpenAddRequestModal={() => setAddModRequestModal(true)}
+            onFulfillPortRequest={openVersionLinkModalFromPortRequest}
+            onMarkAddRequestFulfilled={(request) => updateAddRequestStatus(request, 'fulfilled')}
+            onUpdateAddRequestStatus={updateAddRequestStatus}
+            onUpdatePortRequestStatus={updatePortRequestStatus}
           />
         ) : currentPage === 'issues' ? (
           <LinkIssuesPage
@@ -2875,6 +3205,8 @@ export default function App() {
               highlightedAttireId={highlightedAttireId}
               onHighlightAttire={setHighlightedAttireId}
               onClearHighlightedAttire={() => setHighlightedAttireId(null)}
+              onRequestPort={(attire) => openPortRequestModalForAttire(attire, decoratedSelectedWrestler?.wrestler_name || '')}
+              onAddVersionLink={(attire) => openVersionLinkModalForAttire(attire, decoratedSelectedWrestler?.wrestler_name || '')}
             />
           </div>
         </>
@@ -2957,6 +3289,29 @@ export default function App() {
         onClose={() => setResolveModal({ open: false, context: null })}
         onSubmit={submitResolveLink}
         submitting={resolvingLink}
+      />
+
+      <PortRequestModal
+        open={portRequestModal.open}
+        context={portRequestModal.context}
+        onClose={() => setPortRequestModal({ open: false, context: null })}
+        onSubmit={submitPortRequest}
+        submitting={portRequestSubmitting}
+      />
+
+      <VersionLinkModal
+        open={versionLinkModal.open}
+        context={versionLinkModal.context}
+        onClose={() => setVersionLinkModal({ open: false, context: null })}
+        onSubmit={submitVersionLink}
+        submitting={versionLinkSubmitting}
+      />
+
+      <AddModRequestModal
+        open={addModRequestModal}
+        onClose={() => setAddModRequestModal(false)}
+        onSubmit={submitAddModRequest}
+        submitting={addModRequestSubmitting}
       />
 
       <ConfirmActionModal

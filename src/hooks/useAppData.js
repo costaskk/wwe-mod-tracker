@@ -79,6 +79,9 @@ export default function useAppData(session) {
   const [otherMods, setOtherMods] = useState([])
   const [creators, setCreators] = useState([])
   const [collections, setCollections] = useState([])
+  const [modAddRequests, setModAddRequests] = useState([])
+  const [modPortRequests, setModPortRequests] = useState([])
+  const [modVersionLinks, setModVersionLinks] = useState([])
 
   const [installedIds, setInstalledIds] = useState(new Set())
   const [installedArenaIds, setInstalledArenaIds] = useState(new Set())
@@ -173,6 +176,9 @@ export default function useAppData(session) {
         creatorResult,
         titleResult,
         otherModsResult,
+        modAddRequestsResult,
+        modPortRequestsResult,
+        modVersionLinksResult,
         installedOtherModsResult,
         installsResult,
         installedArenasResult,
@@ -227,6 +233,21 @@ export default function useAppData(session) {
           `)
           .order('name', { ascending: true }),
 
+        supabase
+          .from('mod_add_requests')
+          .select('*')
+          .order('created_at', { ascending: false }),
+
+        supabase
+          .from('mod_port_requests')
+          .select('*')
+          .order('created_at', { ascending: false }),
+
+        supabase
+          .from('mod_version_links')
+          .select('*')
+          .order('created_at', { ascending: false }),
+
         session?.user?.id
           ? supabase.from('user_installed_other_mods').select('other_mod_id').eq('user_id', session.user.id)
           : Promise.resolve({ data: [], error: null }),
@@ -253,6 +274,9 @@ export default function useAppData(session) {
         creatorResult.error,
         titleResult.error,
         otherModsResult.error,
+        modAddRequestsResult.error,
+        modPortRequestsResult.error,
+        modVersionLinksResult.error,
         installedOtherModsResult.error,
         installsResult.error,
         installedArenasResult.error,
@@ -266,6 +290,27 @@ export default function useAppData(session) {
         setError(errors[0].message || 'Failed to load data.')
         return
       }
+
+      const versionLinks = modVersionLinksResult.data || []
+      const portRequests = modPortRequestsResult.data || []
+
+      const byForeignKey = (rows, key) => rows.reduce((acc, row) => {
+        const id = row?.[key]
+        if (!id) return acc
+        if (!acc[id]) acc[id] = []
+        acc[id].push(row)
+        return acc
+      }, {})
+
+      const attireVersionLinksById = byForeignKey(versionLinks.filter((row) => row.mod_type === 'attire'), 'attire_id')
+      const arenaVersionLinksById = byForeignKey(versionLinks.filter((row) => row.mod_type === 'arena'), 'arena_id')
+      const titleVersionLinksById = byForeignKey(versionLinks.filter((row) => row.mod_type === 'title'), 'title_belt_id')
+      const otherVersionLinksById = byForeignKey(versionLinks.filter((row) => row.mod_type === 'other'), 'other_mod_id')
+
+      const attirePortRequestsById = byForeignKey(portRequests.filter((row) => row.mod_type === 'attire'), 'attire_id')
+      const arenaPortRequestsById = byForeignKey(portRequests.filter((row) => row.mod_type === 'arena'), 'arena_id')
+      const titlePortRequestsById = byForeignKey(portRequests.filter((row) => row.mod_type === 'title'), 'title_belt_id')
+      const otherPortRequestsById = byForeignKey(portRequests.filter((row) => row.mod_type === 'other'), 'other_mod_id')
 
       const normalizedWrestlers = (wrestlerResult.data || []).map((wrestler) => ({
         ...wrestler,
@@ -288,7 +333,11 @@ export default function useAppData(session) {
           attire_images: (attire.attire_images || []).map((img) => ({
             ...img,
             ...resolveImageUrls(img)
-          }))
+          })),
+          version_links: (attireVersionLinksById[attire.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+          mod_version_links: (attireVersionLinksById[attire.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+          port_requests: (attirePortRequestsById[attire.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+          mod_port_requests: (attirePortRequestsById[attire.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         }))),
         requests: [...(wrestler.mod_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
@@ -301,6 +350,10 @@ export default function useAppData(session) {
           ...img,
           ...resolveImageUrls(img)
         })),
+        version_links: (arenaVersionLinksById[arena.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        mod_version_links: (arenaVersionLinksById[arena.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        port_requests: (arenaPortRequestsById[arena.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        mod_port_requests: (arenaPortRequestsById[arena.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
         requests: [...(arena.arena_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
         )
@@ -317,6 +370,10 @@ export default function useAppData(session) {
           ...file,
           file_url: file.download_url || file.external_url || (file.file_path ? getAssetUrl(file.file_path) : '')
         })),
+        version_links: (titleVersionLinksById[title.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        mod_version_links: (titleVersionLinksById[title.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        port_requests: (titlePortRequestsById[title.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        mod_port_requests: (titlePortRequestsById[title.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
         requests: [...(title.title_belt_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
         )
@@ -328,6 +385,10 @@ export default function useAppData(session) {
           ...img,
           ...resolveImageUrls(img)
         })),
+        version_links: (otherVersionLinksById[otherMod.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        mod_version_links: (otherVersionLinksById[otherMod.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        port_requests: (otherPortRequestsById[otherMod.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        mod_port_requests: (otherPortRequestsById[otherMod.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
         requests: [...(otherMod.other_mod_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
         )
@@ -436,6 +497,9 @@ export default function useAppData(session) {
       setOtherMods(normalizedOtherMods)
       setCreators(creatorResult.data || [])
       setCollections(repairedCollections)
+      setModAddRequests((modAddRequestsResult.data || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
+      setModPortRequests((modPortRequestsResult.data || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
+      setModVersionLinks((modVersionLinksResult.data || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
 
       setInstalledIds(new Set((installsResult.data || []).map((item) => item.attire_id)))
       setInstalledArenaIds(new Set((installedArenasResult.data || []).map((item) => item.arena_id)))
@@ -459,6 +523,9 @@ export default function useAppData(session) {
     otherMods,
     creators,
     collections,
+    modAddRequests,
+    modPortRequests,
+    modVersionLinks,
     installedIds,
     installedArenaIds,
     installedTitleIds,
@@ -471,6 +538,9 @@ export default function useAppData(session) {
     setOtherMods,
     setCreators,
     setCollections,
+    setModAddRequests,
+    setModPortRequests,
+    setModVersionLinks,
     setInstalledIds,
     setInstalledArenaIds,
     setInstalledTitleIds,

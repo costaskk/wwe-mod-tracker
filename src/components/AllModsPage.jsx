@@ -32,7 +32,8 @@ export default function AllModsPage({
   onOpenArena,
   onOpenTitle,
   onOpenOtherMod,
-  onOpenCollectionPicker
+  onOpenCollectionPicker,
+  onRequestPort
 }) {
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -42,6 +43,8 @@ export default function AllModsPage({
   const [sortBy, setSortBy] = useState('newest')
   const [viewMode, setViewMode] = useState('grid')
   const [page, setPage] = useState(1)
+  const [installFilter, setInstallFilter] = useState('all')
+  const [linkStatusFilter, setLinkStatusFilter] = useState('all')
 
   const perPage = 18
 
@@ -54,9 +57,6 @@ export default function AllModsPage({
     })
   }, [wrestlers, arenas, titleBelts, otherMods])
 
-  const [installFilter, setInstallFilter] = useState('all')
-  const [linkStatusFilter, setLinkStatusFilter] = useState('all')
-
   const hasActiveFilters = Boolean(
     query.trim() ||
       categoryFilter !== 'all' ||
@@ -68,68 +68,43 @@ export default function AllModsPage({
       sortBy !== 'newest'
   )
 
-  const featuredItems = useMemo(() => {
-    return sortUnifiedMods(allMods, 'newest').slice(0, 10)
-  }, [allMods])
-
-  const latestItems = useMemo(() => {
-    return sortUnifiedMods(allMods, 'updated').slice(0, 10)
-  }, [allMods])
-
-  const trendingItems = useMemo(() => {
-    return sortUnifiedMods(allMods, 'trending').slice(0, 10)
-  }, [allMods])
+  const featuredItems = useMemo(() => sortUnifiedMods(allMods, 'newest').slice(0, 10), [allMods])
+  const latestItems = useMemo(() => sortUnifiedMods(allMods, 'updated').slice(0, 10), [allMods])
+  const trendingItems = useMemo(() => sortUnifiedMods(allMods, 'trending').slice(0, 10), [allMods])
 
   const filteredItems = useMemo(() => {
     const cleanQuery = query.toLowerCase().trim()
 
     const filtered = allMods.filter((item) => {
-        const itemId = item.entityId || item.id
+      const itemId = item.entityId || item.id
 
-        let isInstalled = false
-        if (item.modType === 'attire') isInstalled = installedIds.has(itemId)
-        if (item.modType === 'arena') isInstalled = installedArenaIds.has(itemId)
-        if (item.modType === 'title') isInstalled = installedTitleIds.has(itemId)
-        if (item.modType === 'other') isInstalled = installedOtherModIds.has(itemId)
+      let isInstalled = false
+      if (item.modType === 'attire') isInstalled = installedIds.has(itemId)
+      if (item.modType === 'arena') isInstalled = installedArenaIds.has(itemId)
+      if (item.modType === 'title') isInstalled = installedTitleIds.has(itemId)
+      if (item.modType === 'other') isInstalled = installedOtherModIds.has(itemId)
 
-        const queryOk =
-          !cleanQuery ||
-          (item.searchText || '').includes(cleanQuery)
-        const categoryOk = categoryFilter === 'all' || item.modType === categoryFilter
-        const subtypeOk =
-          subtypeFilter === 'all' ||
-          item.modSubtype === subtypeFilter
-        const creatorOk = creatorFilter === 'all' || item.creatorName === creatorFilter
-        const sourceGameOk = sourceGameFilter === 'all' || item.sourceGame === sourceGameFilter
-        const installOk =
+      const queryOk = !cleanQuery || (item.searchText || '').includes(cleanQuery)
+      const categoryOk = categoryFilter === 'all' || item.modType === categoryFilter
+      const subtypeOk = subtypeFilter === 'all' || item.modSubtype === subtypeFilter
+      const creatorOk = creatorFilter === 'all' || item.creatorName === creatorFilter
+      const sourceGameOk = sourceGameFilter === 'all' || item.sourceGame === sourceGameFilter
+      const installOk =
         installFilter === 'all' ||
         (installFilter === 'installed' && isInstalled) ||
         (installFilter === 'not_installed' && !isInstalled)
 
-        const hasMissingLink = Boolean(item.hasMissingLink)
-        const hasDeadLink = Boolean(item.openDeadLinks && item.openDeadLinks > 0)
+      const hasMissingLink = Boolean(item.hasMissingLink)
+      const hasDeadLink = Boolean(item.openDeadLinks && item.openDeadLinks > 0)
 
-        const linkStatusOk =
-          linkStatusFilter === 'all' ||
+      const linkStatusOk =
+        linkStatusFilter === 'all' ||
+        (linkStatusFilter === 'active' && !hasMissingLink && !hasDeadLink) ||
+        (linkStatusFilter === 'missing' && hasMissingLink) ||
+        (linkStatusFilter === 'dead' && hasDeadLink) ||
+        (linkStatusFilter === 'issues' && (hasMissingLink || hasDeadLink))
 
-          // Only working links
-          (linkStatusFilter === 'active' &&
-            !hasMissingLink &&
-            !hasDeadLink) ||
-
-          // Missing links only
-          (linkStatusFilter === 'missing' &&
-            hasMissingLink) ||
-
-          // Dead links only
-          (linkStatusFilter === 'dead' &&
-            hasDeadLink) ||
-
-          // ANY issue (missing OR dead)
-          (linkStatusFilter === 'issues' &&
-            (hasMissingLink || hasDeadLink))
-
-        return (
+      return (
         queryOk &&
         categoryOk &&
         subtypeOk &&
@@ -137,37 +112,37 @@ export default function AllModsPage({
         sourceGameOk &&
         installOk &&
         linkStatusOk
-        )
+      )
     })
 
     return sortUnifiedMods(filtered, sortBy)
-    }, [
-      allMods,
-      query,
-      categoryFilter,
-      subtypeFilter,
-      creatorFilter,
-      sourceGameFilter,
-      installFilter,
-      linkStatusFilter,
-      sortBy,
-      installedIds,
-      installedArenaIds,
-      installedTitleIds,
-      installedOtherModIds
-    ])
+  }, [
+    allMods,
+    query,
+    categoryFilter,
+    subtypeFilter,
+    creatorFilter,
+    sourceGameFilter,
+    installFilter,
+    linkStatusFilter,
+    sortBy,
+    installedIds,
+    installedArenaIds,
+    installedTitleIds,
+    installedOtherModIds
+  ])
 
   const decorateFeedItems = useMemo(() => {
     return function decorate(items = []) {
       return items.map((item) => {
         const itemId = item.entityId || item.id
 
-        function isItemInstalled(item, itemId) {
-          switch (item.modType) {
-            case 'attire': return installedIds.has(itemId)
-            case 'arena': return installedArenaIds.has(itemId)
-            case 'title': return installedTitleIds.has(itemId)
-            case 'other': return installedOtherModIds.has(itemId)
+        function isItemInstalled(entry, entryId) {
+          switch (entry.modType) {
+            case 'attire': return installedIds.has(entryId)
+            case 'arena': return installedArenaIds.has(entryId)
+            case 'title': return installedTitleIds.has(entryId)
+            case 'other': return installedOtherModIds.has(entryId)
             default: return false
           }
         }
@@ -193,29 +168,12 @@ export default function AllModsPage({
         }
       })
     }
-  }, [
-    collections,
-    installedIds,
-    installedArenaIds,
-    installedTitleIds,
-    installedOtherModIds
-  ])
+  }, [collections, installedIds, installedArenaIds, installedTitleIds, installedOtherModIds])
 
-  const decoratedFilteredItems = useMemo(() => {
-    return decorateFeedItems(filteredItems)
-  }, [filteredItems, decorateFeedItems])
-
-  const visibleFeaturedItems = useMemo(() => {
-    return !hasActiveFilters ? decorateFeedItems(featuredItems) : []
-  }, [hasActiveFilters, featuredItems, decorateFeedItems])
-
-  const visibleLatestItems = useMemo(() => {
-    return !hasActiveFilters ? decorateFeedItems(latestItems) : []
-  }, [hasActiveFilters, latestItems, decorateFeedItems])
-
-  const visibleTrendingItems = useMemo(() => {
-    return !hasActiveFilters ? decorateFeedItems(trendingItems) : []
-  }, [hasActiveFilters, trendingItems, decorateFeedItems])
+  const decoratedFilteredItems = useMemo(() => decorateFeedItems(filteredItems), [filteredItems, decorateFeedItems])
+  const visibleFeaturedItems = useMemo(() => !hasActiveFilters ? decorateFeedItems(featuredItems) : [], [hasActiveFilters, featuredItems, decorateFeedItems])
+  const visibleLatestItems = useMemo(() => !hasActiveFilters ? decorateFeedItems(latestItems) : [], [hasActiveFilters, latestItems, decorateFeedItems])
+  const visibleTrendingItems = useMemo(() => !hasActiveFilters ? decorateFeedItems(trendingItems) : [], [hasActiveFilters, trendingItems, decorateFeedItems])
 
   function addToCollection(item) {
     if (!canContribute || !session || !item) return
@@ -223,32 +181,17 @@ export default function AllModsPage({
     const itemId = item.entityId || item.id
 
     if (item.modType === 'attire') {
-      onOpenCollectionPicker?.({
-        ...item,
-        id: itemId,
-        name: item.title || item.name,
-        modType: 'attire'
-      })
+      onOpenCollectionPicker?.({ ...item, id: itemId, name: item.title || item.name, modType: 'attire' })
       return
     }
 
     if (item.modType === 'arena') {
-      onOpenCollectionPicker?.({
-        ...item,
-        id: itemId,
-        name: item.title || item.name,
-        modType: 'arena'
-      })
+      onOpenCollectionPicker?.({ ...item, id: itemId, name: item.title || item.name, modType: 'arena' })
       return
     }
 
     if (item.modType === 'title') {
-      onOpenCollectionPicker?.({
-        ...item,
-        id: itemId,
-        name: item.title || item.name,
-        modType: 'title'
-      })
+      onOpenCollectionPicker?.({ ...item, id: itemId, name: item.title || item.name, modType: 'title' })
       return
     }
 
@@ -271,185 +214,91 @@ export default function AllModsPage({
     try {
       if (item.modType === 'attire') {
         const installed = installedIds.has(itemId)
-
         if (installed) {
-          const { error } = await supabase
-            .from('user_installed_attires')
-            .delete()
-            .eq('user_id', session.user.id)
-            .eq('attire_id', itemId)
-
+          const { error } = await supabase.from('user_installed_attires').delete().eq('user_id', session.user.id).eq('attire_id', itemId)
           if (error) throw error
-
           const next = new Set(installedIds)
           next.delete(itemId)
           setInstalledIds(next)
-
-          openNotice(
-            'success',
-            'Removed from installed',
-            `${item.title || item.name} is no longer marked as installed.`
-          )
+          openNotice('success', 'Removed from installed', `${item.title || item.name} is no longer marked as installed.`)
         } else {
-          const { error } = await supabase
-            .from('user_installed_attires')
-            .insert({ user_id: session.user.id, attire_id: itemId })
-
+          const { error } = await supabase.from('user_installed_attires').insert({ user_id: session.user.id, attire_id: itemId })
           if (error) throw error
-
           const next = new Set(installedIds)
           next.add(itemId)
           setInstalledIds(next)
-
-          openNotice(
-            'success',
-            'Marked as installed',
-            `${item.title || item.name} is now marked as installed in your game.`
-          )
+          openNotice('success', 'Marked as installed', `${item.title || item.name} is now marked as installed in your game.`)
         }
-
         return
       }
 
       if (item.modType === 'arena') {
         const installed = installedArenaIds.has(itemId)
-
         if (installed) {
-          const { error } = await supabase
-            .from('user_installed_arenas')
-            .delete()
-            .eq('user_id', session.user.id)
-            .eq('arena_id', itemId)
-
+          const { error } = await supabase.from('user_installed_arenas').delete().eq('user_id', session.user.id).eq('arena_id', itemId)
           if (error) throw error
-
           const next = new Set(installedArenaIds)
           next.delete(itemId)
           setInstalledArenaIds(next)
-
-          openNotice(
-            'success',
-            'Removed from installed',
-            `${item.title || item.name} is no longer marked as installed.`
-          )
+          openNotice('success', 'Removed from installed', `${item.title || item.name} is no longer marked as installed.`)
         } else {
-          const { error } = await supabase
-            .from('user_installed_arenas')
-            .insert({ user_id: session.user.id, arena_id: itemId })
-
+          const { error } = await supabase.from('user_installed_arenas').insert({ user_id: session.user.id, arena_id: itemId })
           if (error) throw error
-
           const next = new Set(installedArenaIds)
           next.add(itemId)
           setInstalledArenaIds(next)
-
-          openNotice(
-            'success',
-            'Marked as installed',
-            `${item.title || item.name} is now marked as installed in your game.`
-          )
+          openNotice('success', 'Marked as installed', `${item.title || item.name} is now marked as installed in your game.`)
         }
-
         return
       }
 
       if (item.modType === 'title') {
         const installed = installedTitleIds.has(itemId)
-
         if (installed) {
-          const { error } = await supabase
-            .from('user_installed_title_belts')
-            .delete()
-            .eq('user_id', session.user.id)
-            .eq('title_belt_id', itemId)
-
+          const { error } = await supabase.from('user_installed_title_belts').delete().eq('user_id', session.user.id).eq('title_belt_id', itemId)
           if (error) throw error
-
           const next = new Set(installedTitleIds)
           next.delete(itemId)
           setInstalledTitleIds(next)
-
-          openNotice(
-            'success',
-            'Removed from installed',
-            `${item.title || item.name} is no longer marked as installed.`
-          )
+          openNotice('success', 'Removed from installed', `${item.title || item.name} is no longer marked as installed.`)
         } else {
-          const { error } = await supabase
-            .from('user_installed_title_belts')
-            .insert({ user_id: session.user.id, title_belt_id: itemId })
-
+          const { error } = await supabase.from('user_installed_title_belts').insert({ user_id: session.user.id, title_belt_id: itemId })
           if (error) throw error
-
           const next = new Set(installedTitleIds)
           next.add(itemId)
           setInstalledTitleIds(next)
-
-          openNotice(
-            'success',
-            'Marked as installed',
-            `${item.title || item.name} is now marked as installed in your game.`
-          )
+          openNotice('success', 'Marked as installed', `${item.title || item.name} is now marked as installed in your game.`)
         }
-
         return
       }
 
       if (item.modType === 'other') {
         const installed = installedOtherModIds.has(itemId)
-
         if (installed) {
-          const { error } = await supabase
-            .from('user_installed_other_mods')
-            .delete()
-            .eq('user_id', session.user.id)
-            .eq('other_mod_id', itemId)
-
+          const { error } = await supabase.from('user_installed_other_mods').delete().eq('user_id', session.user.id).eq('other_mod_id', itemId)
           if (error) throw error
-
           const next = new Set(installedOtherModIds)
           next.delete(itemId)
           setInstalledOtherModIds(next)
-
-          openNotice(
-            'success',
-            'Removed from installed',
-            `${item.title || item.name} is no longer marked as installed.`
-          )
+          openNotice('success', 'Removed from installed', `${item.title || item.name} is no longer marked as installed.`)
         } else {
-          const { error } = await supabase
-            .from('user_installed_other_mods')
-            .insert({ user_id: session.user.id, other_mod_id: itemId })
-
+          const { error } = await supabase.from('user_installed_other_mods').insert({ user_id: session.user.id, other_mod_id: itemId })
           if (error) throw error
-
           const next = new Set(installedOtherModIds)
           next.add(itemId)
           setInstalledOtherModIds(next)
-
-          openNotice(
-            'success',
-            'Marked as installed',
-            `${item.title || item.name} is now marked as installed in your game.`
-          )
+          openNotice('success', 'Marked as installed', `${item.title || item.name} is now marked as installed in your game.`)
         }
-
         return
       }
 
       throw new Error(`Unsupported mod type: ${item.modType}`)
     } catch (err) {
-      openNotice(
-        'error',
-        'Could not update install status',
-        err.message || 'Could not update install status.'
-      )
+      openNotice('error', 'Could not update install status', err.message || 'Could not update install status.')
     }
   }
 
-  const pagination = useMemo(() => {
-    return paginateItems(decoratedFilteredItems, page, perPage)
-  }, [decoratedFilteredItems, page, perPage])
+  const pagination = useMemo(() => paginateItems(decoratedFilteredItems, page, perPage), [decoratedFilteredItems, page, perPage])
 
   useEffect(() => {
     setPage(1)
@@ -465,25 +314,25 @@ export default function AllModsPage({
     <div className="allmods-layout">
       <div className="left-column">
         <AllModsFilters
-            query={query}
-            setQuery={setQuery}
-            categoryFilter={categoryFilter}
-            setCategoryFilter={setCategoryFilter}
-            subtypeFilter={subtypeFilter}
-            setSubtypeFilter={setSubtypeFilter}
-            creatorFilter={creatorFilter}
-            setCreatorFilter={setCreatorFilter}
-            sourceGameFilter={sourceGameFilter}
-            setSourceGameFilter={setSourceGameFilter}
-            installFilter={installFilter}
-            setInstallFilter={setInstallFilter}
-            linkStatusFilter={linkStatusFilter}
-            setLinkStatusFilter={setLinkStatusFilter}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
-            creators={creators}
-            sourceGames={SOURCE_GAMES}
-            subtypeOptions={OTHER_MOD_SUBTYPES}
+          query={query}
+          setQuery={setQuery}
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          subtypeFilter={subtypeFilter}
+          setSubtypeFilter={setSubtypeFilter}
+          creatorFilter={creatorFilter}
+          setCreatorFilter={setCreatorFilter}
+          sourceGameFilter={sourceGameFilter}
+          setSourceGameFilter={setSourceGameFilter}
+          installFilter={installFilter}
+          setInstallFilter={setInstallFilter}
+          linkStatusFilter={linkStatusFilter}
+          setLinkStatusFilter={setLinkStatusFilter}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          creators={creators}
+          sourceGames={SOURCE_GAMES}
+          subtypeOptions={OTHER_MOD_SUBTYPES}
         />
       </div>
 
@@ -504,6 +353,7 @@ export default function AllModsPage({
           onOpenOtherMod={onOpenOtherMod}
           onToggleInstalled={toggleInstalled}
           onAddToCollection={addToCollection}
+          onRequestPort={onRequestPort}
           canContribute={canContribute}
           hasSession={Boolean(session)}
         />

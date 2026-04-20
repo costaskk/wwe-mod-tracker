@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import {
   formatDate,
@@ -36,16 +36,17 @@ function NotesMarkdown({ value }) {
     : normalizedValue
 
   return (
-    <ReactMarkdown
-      className="notes-markdown"
-      components={{
-        a: ({ ...props }) => (
-          <a {...props} target="_blank" rel="noreferrer" />
-        )
-      }}
-    >
-      {markdownValue}
-    </ReactMarkdown>
+    <div className="notes-markdown">
+      <ReactMarkdown
+        components={{
+          a: ({ ...props }) => (
+            <a {...props} target="_blank" rel="noreferrer" />
+          )
+        }}
+      >
+        {markdownValue}
+      </ReactMarkdown>
+    </div>
   )
 }
 
@@ -78,6 +79,77 @@ function Toggle({ value, onChange, options }) {
           {opt.label}
         </button>
       ))}
+    </div>
+  )
+}
+
+
+function buildVersionEntries(item = {}) {
+  const entries = []
+  const baseLinks = parseDownloadLinks(item.download_url || '')
+
+  if (baseLinks.length) {
+    entries.push({
+      id: `base-${item.id || item.name || item.source_game || 'mod'}`,
+      source_game: item.source_game || 'Unknown game',
+      download_url: baseLinks.join('\n')
+    })
+  }
+
+  ;(item.mod_version_links || item.version_links || []).forEach((entry, index) => {
+    if (!String(entry?.download_url || '').trim()) return
+
+    entries.push({
+      id: entry.id || `version-${index}`,
+      source_game: entry.source_game || 'Unknown game',
+      download_url: entry.download_url || ''
+    })
+  })
+
+  const seen = new Set()
+  return entries.filter((entry) => {
+    const key = `${entry.source_game}::${entry.download_url}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function VersionLinksSection({ item, canViewLinks = true }) {
+  const entries = useMemo(() => buildVersionEntries(item), [item])
+
+  if (!canViewLinks) {
+    return <span className="muted-text">Restricted</span>
+  }
+
+  if (!entries.length) {
+    return <span className="muted-text">Missing link</span>
+  }
+
+  return (
+    <div className="version-links-stack">
+      {entries.map((entry) => {
+        const links = parseDownloadLinks(entry.download_url || '')
+
+        return (
+          <div className="version-links-row" key={entry.id}>
+            <span className="pill subtle-pill">{entry.source_game || 'Unknown game'}</span>
+            <div className="download-links-list">
+              {links.map((link, index) => {
+                const provider = getDownloadProvider(link)
+                return (
+                  <div className={`download-link-chip provider-${provider}`} key={`${entry.id}-${link}-${index}`}>
+                    <a className="download-link-main" href={link} target="_blank" rel="noreferrer">
+                      <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
+                      <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
+                    </a>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -320,7 +392,9 @@ function CompactRow({
   onDeleteAttire,
   onCreateRequest,
   onResolveLink,
-  onOpenCollectionPicker
+  onOpenCollectionPicker,
+  onRequestPort,
+  onAddVersionLink
 }) {
   const downloadLinks = parseDownloadLinks(attire.download_url || '')
   const canEdit = session && canManageContent(attire.owner_id)
@@ -348,7 +422,7 @@ function CompactRow({
 
       <div className="compact-side">
         <div className="compact-link-wrap">
-          {canContribute ? <DownloadLinks value={attire.download_url} /> : null}
+          {canContribute ? <VersionLinksSection item={attire} canViewLinks={canContribute} /> : null}
         </div>
 
         <div className="compact-actions-row">
@@ -445,6 +519,27 @@ function CompactRow({
             )
           ) : null}
 
+          {canContribute && onRequestPort ? (
+            <button
+              className="ghost-button small-btn"
+              disabled={!session}
+              onClick={() => onRequestPort(attire)}
+              type="button"
+            >
+              Request a port
+            </button>
+          ) : null}
+
+          {canContribute && onAddVersionLink ? (
+            <button
+              className="ghost-button small-btn"
+              onClick={() => onAddVersionLink(attire)}
+              type="button"
+            >
+              Add port link
+            </button>
+          ) : null}
+
           {canContribute && (requestInfo.deadLinks > 0 || !attire.download_url?.trim()) ? (
             <button
               className="secondary-button small-btn"
@@ -480,6 +575,8 @@ export default function DetailPanel({
   onToggleInstalled,
   onCreateRequest,
   onResolveLink,
+  onRequestPort,
+  onAddVersionLink,
   attireViewMode,
   setAttireViewMode,
   onOpenCollectionPicker,
@@ -754,6 +851,8 @@ export default function DetailPanel({
                       onCreateRequest={onCreateRequest}
                       onResolveLink={onResolveLink}
                       onOpenCollectionPicker={onOpenCollectionPicker}
+                      onRequestPort={onRequestPort}
+                      onAddVersionLink={onAddVersionLink}
                     />
                   </div>
                 )
@@ -873,7 +972,7 @@ export default function DetailPanel({
                         <div>
                           <span className="muted-text">Download links</span>
                           <div className="meta-value break-line">
-                            <DownloadLinks value={attire.download_url} />
+                            <VersionLinksSection item={attire} canViewLinks={canContribute} />
                           </div>
                           <span className={`link-status ${attire.link_status || 'unknown'}`}>
                             {attire.link_status === 'working' && '🟢 Working'}
@@ -911,6 +1010,11 @@ export default function DetailPanel({
                       <span className="pill">{requestInfo.total} open requests</span>
                       {requestInfo.missingLinks ? <span className="pill">{requestInfo.missingLinks} missing link</span> : null}
                       {requestInfo.deadLinks ? <span className="pill danger-pill">{requestInfo.deadLinks} dead link</span> : null}
+                      {((attire.mod_port_requests || attire.port_requests || []).filter((item) => item.status === 'open').length) ? (
+                        <span className="pill warning-pill">
+                          {(attire.mod_port_requests || attire.port_requests || []).filter((item) => item.status === 'open').length} port request{(attire.mod_port_requests || attire.port_requests || []).filter((item) => item.status === 'open').length === 1 ? '' : 's'}
+                        </span>
+                      ) : null}
                     </div>
 
                     <div className="attire-actions wrap-actions">
@@ -1013,6 +1117,27 @@ export default function DetailPanel({
                             Request link
                           </button>
                         )
+                      ) : null}
+
+                      {canContribute && onRequestPort ? (
+                        <button
+                          className="ghost-button small-btn"
+                          disabled={!session}
+                          onClick={() => onRequestPort(attire)}
+                          type="button"
+                        >
+                          Request a port
+                        </button>
+                      ) : null}
+
+                      {canContribute && onAddVersionLink ? (
+                        <button
+                          className="ghost-button small-btn"
+                          onClick={() => onAddVersionLink(attire)}
+                          type="button"
+                        >
+                          Add port link
+                        </button>
                       ) : null}
 
                       {canContribute && (requestInfo.deadLinks > 0 || !attire.download_url?.trim()) ? (

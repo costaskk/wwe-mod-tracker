@@ -12,6 +12,7 @@ export default function Header({
   onBrowseOtherMods = () => {},
   onBrowseAdmin = () => {},
   onBrowseIssues = () => {},
+  onBrowseRequests = () => {},
   onBrowseWrestlers = () => {},
   onGoHome = () => {},
   currentPage = 'all_mods',
@@ -137,6 +138,14 @@ export default function Header({
                 Collections
               </button>
             ) : null}
+
+            <button
+              type="button"
+              className={`nav-chip ${currentPage === 'requests' ? 'active' : ''}`}
+              onClick={onBrowseRequests}
+            >
+              Requests
+            </button>
 
             <button
               type="button"

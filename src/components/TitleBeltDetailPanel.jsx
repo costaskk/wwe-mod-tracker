@@ -7,7 +7,8 @@ import {
   getDownloadProvider,
   getDownloadProviderLabel,
   getDownloadProviderMark,
-  requestSummary
+  requestSummary,
+  buildVersionEntries
 } from '../lib/utils'
 
 function DownloadLinks({ value, canViewLinks }) {
@@ -40,6 +41,55 @@ function DownloadLinks({ value, canViewLinks }) {
             <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
             <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
           </a>
+        )
+      })}
+    </div>
+  )
+}
+
+function VersionLinksSection({ item, canViewLinks }) {
+  const entries = useMemo(() => buildVersionEntries(item), [item])
+
+  if (!canViewLinks) {
+    return (
+      <div className="note-box compact-note">
+        Download links are visible only to approved users, moderators, and admins.
+      </div>
+    )
+  }
+
+  if (!entries.length) {
+    return <div className="note-box compact-note">No download links added yet.</div>
+  }
+
+  return (
+    <div className="version-links-stack">
+      {entries.map((entry) => {
+        const links = parseDownloadLinks(entry.download_url || '')
+
+        return (
+          <div className="version-links-row" key={entry.id}>
+            <span className="pill subtle-pill">{entry.source_game || 'Unknown game'}</span>
+
+            <div className="download-links-list">
+              {links.map((link, index) => {
+                const provider = getDownloadProvider(link)
+
+                return (
+                  <a
+                    key={`${entry.id}-${link}-${index}`}
+                    className={`download-link-chip provider-${provider}`}
+                    href={link}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
+                    <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
+                  </a>
+                )
+              })}
+            </div>
+          </div>
         )
       })}
     </div>
@@ -197,7 +247,9 @@ export default function TitleBeltDetailPanel({
   onCreateRequest,
   onResolveLink,
   onOpenCollectionPicker,
-  onOpenImageViewer
+  onOpenImageViewer,
+  onRequestPort,
+  onAddVersionLink
 }) {
 
   const isApprovedViewer = Boolean(
@@ -267,7 +319,7 @@ export default function TitleBeltDetailPanel({
             </div>
           ) : null}
 
-          <div className="mini-stats mini-stats-three">
+          <div className="mini-stats mini-stats-four">
             <div>
               <span>Screenshots</span>
               <strong>{images.length}</strong>
@@ -355,6 +407,39 @@ export default function TitleBeltDetailPanel({
       <div className="panel soft-panel improved-attire-card">
         <div className="panel-header">
           <div>
+            <h2>DDS render</h2>
+            <p className="subtle-copy">Download the render file.</p>
+          </div>
+        </div>
+
+        {title.render_dds_url ? (
+          <a
+            className="ghost-button small-btn"
+            href={title.render_dds_url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Download DDS ({title.render_dds_name || 'render.dds'})
+          </a>
+        ) : (
+          <div className="upload-placeholder">No DDS render uploaded</div>
+        )}
+      </div>
+
+      <div className="panel soft-panel improved-attire-card">
+        <div className="panel-header">
+          <div>
+            <h2>Screenshots</h2>
+            <p className="subtle-copy">Preview images for this title belt mod.</p>
+          </div>
+        </div>
+
+        <TitleGallery images={images} onOpenImageViewer={onOpenImageViewer} />
+      </div>
+
+      <div className="panel soft-panel improved-attire-card">
+        <div className="panel-header">
+          <div>
             <h2>Download links</h2>
             <p className="subtle-copy">
               Title belt downloads are shown only to approved users, moderators, and admins.
@@ -362,7 +447,7 @@ export default function TitleBeltDetailPanel({
           </div>
         </div>
 
-        <DownloadLinks value={title.download_url} canViewLinks={isApprovedViewer} />
+        <VersionLinksSection item={title} canViewLinks={isApprovedViewer} />
 
         <div className="wrap-actions">
             {canContribute ? (
@@ -443,42 +528,29 @@ export default function TitleBeltDetailPanel({
                 {canManageContent(title.owner_id) && hasDeadLink ? (
                     <div className="pill warning-pill">Dead link needs review</div>
                 ) : null}
+
+                {canContribute && onRequestPort ? (
+                  <button
+                    type="button"
+                    className="ghost-button small-btn"
+                    onClick={() => onRequestPort(title)}
+                  >
+                    Request a port
+                  </button>
+                ) : null}
+
+                {canManageContent(title.owner_id) && onAddVersionLink ? (
+                  <button
+                    type="button"
+                    className="ghost-button small-btn"
+                    onClick={() => onAddVersionLink(title)}
+                  >
+                    Add port link
+                  </button>
+                ) : null}
                 </>
             ) : null}
             </div>
-      </div>
-
-      <div className="panel soft-panel improved-attire-card">
-        <div className="panel-header">
-          <div>
-            <h2>DDS render</h2>
-            <p className="subtle-copy">Download the render file.</p>
-          </div>
-        </div>
-
-        {title.render_dds_url ? (
-          <a
-            className="ghost-button small-btn"
-            href={title.render_dds_url}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Download DDS ({title.render_dds_name || 'render.dds'})
-          </a>
-        ) : (
-          <div className="upload-placeholder">No DDS render uploaded</div>
-        )}
-      </div>
-
-      <div className="panel soft-panel improved-attire-card">
-        <div className="panel-header">
-          <div>
-            <h2>Screenshots</h2>
-            <p className="subtle-copy">Preview images for this title belt mod.</p>
-          </div>
-        </div>
-
-        <TitleGallery images={images} onOpenImageViewer={onOpenImageViewer} />
       </div>
 
       <div className="panel soft-panel improved-attire-card">
@@ -501,6 +573,10 @@ export default function TitleBeltDetailPanel({
         </div>
 
         <div className="mini-stats mini-stats-three">
+          <div>
+            <span>Open port requests</span>
+            <strong>{(title.mod_port_requests || title.port_requests || []).filter((item) => item.status === 'open').length}</strong>
+          </div>
           <div>
             <span>Total open</span>
             <strong>{requestInfo.total}</strong>
