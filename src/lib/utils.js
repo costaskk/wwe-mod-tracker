@@ -946,28 +946,29 @@ export function buildUnifiedModsFeed({
         images,
         versionLinks
       ])
+
       const openDeadLinks = requests.filter(
         (req) =>
           req.status === 'open' &&
           req.attire_id === attire.id &&
           req.request_type === 'dead_link'
       ).length
+
       const openMissingLinks = requests.filter(
         (req) =>
           req.status === 'open' &&
           req.attire_id === attire.id &&
           req.request_type === 'missing_link'
       ).length
-      const hasDownload = links.length > 0
 
       const previewMediumUrl =
-      normalizedImages[0]?.medium ||
-      preferHeadshotMedium(wrestler) ||
-      pickFirstUrl(
-        attire.render_dds_external_url,
-        attire.render_dds_url,
-        buildCloudflareUrl(attire.render_dds_path)
-      )
+        normalizedImages[0]?.medium ||
+        preferHeadshotMedium(wrestler) ||
+        pickFirstUrl(
+          attire.render_dds_external_url,
+          attire.render_dds_url,
+          buildCloudflareUrl(attire.render_dds_path)
+        )
 
       const previewFullUrl =
         normalizedImages[0]?.full ||
@@ -1001,7 +1002,9 @@ export function buildUnifiedModsFeed({
           medium: img.medium,
           full: img.full
         })),
-        fullGallery: normalizedImages.map((img) => img.full || img.medium || img.thumb).filter(Boolean),
+        fullGallery: normalizedImages
+          .map((img) => img.full || img.medium || img.thumb)
+          .filter(Boolean),
         imageCount: normalizedImages.length,
         images: normalizedImages,
         raw: attire,
@@ -1013,7 +1016,10 @@ export function buildUnifiedModsFeed({
           attire.notes,
           attire.source_game,
           JSON.stringify(attire.moveset_json || {}),
-          JSON.stringify(attire.profile_json || {})
+          JSON.stringify(attire.profile_json || {}),
+          ...versionLinks.map((entry) =>
+            `${entry.source_game || ''} ${entry.download_url || ''} ${entry.notes || ''}`
+          )
         ]
           .join(' ')
           .toLowerCase()
@@ -1035,13 +1041,14 @@ export function buildUnifiedModsFeed({
       images,
       versionLinks
     ])
+
     const openDeadLinks = requests.filter(
       (req) => req.status === 'open' && req.request_type === 'dead_link'
     ).length
+
     const openMissingLinks = requests.filter(
       (req) => req.status === 'open' && req.request_type === 'missing_link'
     ).length
-    const hasDownload = links.length > 0
 
     const previewMediumUrl = normalizedImages[0]?.medium || ''
     const previewFullUrl = normalizedImages[0]?.full || previewMediumUrl
@@ -1074,7 +1081,9 @@ export function buildUnifiedModsFeed({
         medium: img.medium,
         full: img.full
       })),
-      fullGallery: normalizedImages.map((img) => img.full || img.medium || img.thumb).filter(Boolean),
+      fullGallery: normalizedImages
+        .map((img) => img.full || img.medium || img.thumb)
+        .filter(Boolean),
       imageCount: normalizedImages.length,
       images: normalizedImages,
       raw: arena,
@@ -1083,7 +1092,10 @@ export function buildUnifiedModsFeed({
         arena.creator_name,
         arena.notes,
         arena.source_game,
-        JSON.stringify(arena.profile_json || {})
+        JSON.stringify(arena.profile_json || {}),
+        ...versionLinks.map((entry) =>
+          `${entry.source_game || ''} ${entry.download_url || ''} ${entry.notes || ''}`
+        )
       ]
         .join(' ')
         .toLowerCase()
@@ -1106,21 +1118,22 @@ export function buildUnifiedModsFeed({
       audioFiles,
       versionLinks
     ])
+
     const openDeadLinks = requests.filter(
       (req) => req.status === 'open' && req.request_type === 'dead_link'
     ).length
+
     const openMissingLinks = requests.filter(
       (req) => req.status === 'open' && req.request_type === 'missing_link'
     ).length
-    const hasDownload = links.length > 0
 
-   const previewMediumUrl =
-    normalizedImages[0]?.medium ||
-    pickFirstUrl(
-      title.render_dds_external_url,
-      title.render_dds_url,
-      buildCloudflareUrl(title.render_dds_path)
-    )
+    const previewMediumUrl =
+      normalizedImages[0]?.medium ||
+      pickFirstUrl(
+        title.render_dds_external_url,
+        title.render_dds_url,
+        buildCloudflareUrl(title.render_dds_path)
+      )
 
     const previewFullUrl =
       normalizedImages[0]?.full ||
@@ -1154,7 +1167,9 @@ export function buildUnifiedModsFeed({
         medium: img.medium,
         full: img.full
       })),
-      fullGallery: normalizedImages.map((img) => img.full || img.medium || img.thumb).filter(Boolean),
+      fullGallery: normalizedImages
+        .map((img) => img.full || img.medium || img.thumb)
+        .filter(Boolean),
       imageCount: normalizedImages.length,
       images: normalizedImages,
       raw: title,
@@ -1162,7 +1177,13 @@ export function buildUnifiedModsFeed({
         title.name,
         title.creator_name,
         title.notes,
-        title.source_game
+        title.source_game,
+        ...audioFiles.map((file) =>
+          `${file.file_name || ''} ${file.download_url || ''} ${file.external_url || ''}`
+        ),
+        ...versionLinks.map((entry) =>
+          `${entry.source_game || ''} ${entry.download_url || ''} ${entry.notes || ''}`
+        )
       ]
         .join(' ')
         .toLowerCase()
@@ -1183,13 +1204,14 @@ export function buildUnifiedModsFeed({
       images,
       versionLinks
     ])
+
     const openDeadLinks = requests.filter(
       (req) => req.status === 'open' && req.request_type === 'dead_link'
     ).length
+
     const openMissingLinks = requests.filter(
       (req) => req.status === 'open' && req.request_type === 'missing_link'
     ).length
-    const hasDownload = links.length > 0
 
     const previewMediumUrl = normalizedImages[0]?.medium || ''
     const previewFullUrl = normalizedImages[0]?.full || previewMediumUrl
@@ -1222,7 +1244,9 @@ export function buildUnifiedModsFeed({
         medium: img.medium,
         full: img.full
       })),
-      fullGallery: normalizedImages.map((img) => img.full || img.medium || img.thumb).filter(Boolean),
+      fullGallery: normalizedImages
+        .map((img) => img.full || img.medium || img.thumb)
+        .filter(Boolean),
       imageCount: normalizedImages.length,
       images: normalizedImages,
       raw: otherMod,
@@ -1233,7 +1257,10 @@ export function buildUnifiedModsFeed({
         otherMod.source_game,
         otherMod.subtype,
         getOtherModSubtypeLabel(otherMod.subtype || ''),
-        JSON.stringify(otherMod.profile_json || {})
+        JSON.stringify(otherMod.profile_json || {}),
+        ...versionLinks.map((entry) =>
+          `${entry.source_game || ''} ${entry.download_url || ''} ${entry.notes || ''}`
+        )
       ]
         .join(' ')
         .toLowerCase()
