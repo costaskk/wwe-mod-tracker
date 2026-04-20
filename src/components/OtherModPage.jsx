@@ -255,7 +255,8 @@ export default function OtherModPage({
       download_url: form.download_url.trim(),
       source_game: form.source_game || 'WWE 2K25',
       notes: form.notes.trim(),
-      profile_json: profileJson
+      profile_json: profileJson,
+      updated_at: new Date().toISOString()
     }
 
     let otherModId = form.id
@@ -406,6 +407,17 @@ export default function OtherModPage({
     }
   }
 
+  async function touchOtherModUpdatedAt(otherModId) {
+    if (!otherModId) return
+
+    const { error } = await supabase
+      .from('other_mods')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', otherModId)
+
+    if (error) throw error
+  }
+
   async function handleAddOtherModCreator() {
     const created = await onAddCreator()
     if (created?.name) {
@@ -444,6 +456,8 @@ export default function OtherModPage({
             .eq('image_path', path)
 
           if (error) throw error
+
+          await touchOtherModUpdatedAt(form.id)
         }
       }
 
@@ -523,7 +537,10 @@ export default function OtherModPage({
 
       const { error: otherModError } = await supabase
         .from('other_mods')
-        .update({ download_url: cleanUrl })
+        .update({
+          download_url: cleanUrl,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', otherMod.id)
 
       if (otherModError) throw otherModError

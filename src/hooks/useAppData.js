@@ -67,6 +67,23 @@ function resolveRenderDdsUrls(item = {}) {
   }
 }
 
+function safeTime(value) {
+  const time = new Date(value || '').getTime()
+  return Number.isFinite(time) ? time : 0
+}
+
+function recentRowTime(row = {}) {
+  return Math.max(
+    safeTime(row.updated_at),
+    safeTime(row.fulfilled_at),
+    safeTime(row.created_at)
+  )
+}
+
+function sortRowsByRecent(rows = []) {
+  return [...rows].sort((a, b) => recentRowTime(b) - recentRowTime(a))
+}
+
 export default function useAppData(session) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -246,6 +263,7 @@ export default function useAppData(session) {
         supabase
           .from('mod_version_links')
           .select('*')
+          .order('updated_at', { ascending: false })
           .order('created_at', { ascending: false }),
 
         session?.user?.id
@@ -334,10 +352,10 @@ export default function useAppData(session) {
             ...img,
             ...resolveImageUrls(img)
           })),
-          version_links: (attireVersionLinksById[attire.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-          mod_version_links: (attireVersionLinksById[attire.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-          port_requests: (attirePortRequestsById[attire.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-          mod_port_requests: (attirePortRequestsById[attire.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          version_links: sortRowsByRecent(attireVersionLinksById[attire.id] || []),
+          mod_version_links: sortRowsByRecent(attireVersionLinksById[attire.id] || []),
+          port_requests: sortRowsByRecent(attirePortRequestsById[attire.id] || []),
+          mod_port_requests: sortRowsByRecent(attirePortRequestsById[attire.id] || [])
         }))),
         requests: [...(wrestler.mod_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
@@ -350,10 +368,10 @@ export default function useAppData(session) {
           ...img,
           ...resolveImageUrls(img)
         })),
-        version_links: (arenaVersionLinksById[arena.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-        mod_version_links: (arenaVersionLinksById[arena.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-        port_requests: (arenaPortRequestsById[arena.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-        mod_port_requests: (arenaPortRequestsById[arena.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        version_links: sortRowsByRecent(arenaVersionLinksById[arena.id] || []),
+        mod_version_links: sortRowsByRecent(arenaVersionLinksById[arena.id] || []),
+        port_requests: sortRowsByRecent(arenaPortRequestsById[arena.id] || []),
+        mod_port_requests: sortRowsByRecent(arenaPortRequestsById[arena.id] || []),
         requests: [...(arena.arena_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
         )
@@ -370,10 +388,10 @@ export default function useAppData(session) {
           ...file,
           file_url: file.download_url || file.external_url || (file.file_path ? getAssetUrl(file.file_path) : '')
         })),
-        version_links: (titleVersionLinksById[title.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-        mod_version_links: (titleVersionLinksById[title.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-        port_requests: (titlePortRequestsById[title.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-        mod_port_requests: (titlePortRequestsById[title.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        version_links: sortRowsByRecent(titleVersionLinksById[title.id] || []),
+        mod_version_links: sortRowsByRecent(titleVersionLinksById[title.id] || []),
+        port_requests: sortRowsByRecent(titlePortRequestsById[title.id] || []),
+        mod_port_requests: sortRowsByRecent(titlePortRequestsById[title.id] || []),
         requests: [...(title.title_belt_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
         )
@@ -385,10 +403,10 @@ export default function useAppData(session) {
           ...img,
           ...resolveImageUrls(img)
         })),
-        version_links: (otherVersionLinksById[otherMod.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-        mod_version_links: (otherVersionLinksById[otherMod.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-        port_requests: (otherPortRequestsById[otherMod.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
-        mod_port_requests: (otherPortRequestsById[otherMod.id] || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+        version_links: sortRowsByRecent(otherVersionLinksById[otherMod.id] || []),
+        mod_version_links: sortRowsByRecent(otherVersionLinksById[otherMod.id] || []),
+        port_requests: sortRowsByRecent(otherPortRequestsById[otherMod.id] || []),
+        mod_port_requests: sortRowsByRecent(otherPortRequestsById[otherMod.id] || []),
         requests: [...(otherMod.other_mod_requests || [])].sort(
           (a, b) => new Date(b.created_at) - new Date(a.created_at)
         )
@@ -402,6 +420,10 @@ export default function useAppData(session) {
             ? {
                 ...item.attire,
                 ...resolveRenderDdsUrls(item.attire),
+                version_links: sortRowsByRecent(attireVersionLinksById[item.attire.id] || []),
+                mod_version_links: sortRowsByRecent(attireVersionLinksById[item.attire.id] || []),
+                port_requests: sortRowsByRecent(attirePortRequestsById[item.attire.id] || []),
+                mod_port_requests: sortRowsByRecent(attirePortRequestsById[item.attire.id] || []),
                 attire_images: (item.attire.attire_images || []).map((img) => ({
                   ...img,
                   ...resolveImageUrls(img)
@@ -417,6 +439,10 @@ export default function useAppData(session) {
           arena: item.arena
             ? {
                 ...item.arena,
+                version_links: sortRowsByRecent(arenaVersionLinksById[item.arena.id] || []),
+                mod_version_links: sortRowsByRecent(arenaVersionLinksById[item.arena.id] || []),
+                port_requests: sortRowsByRecent(arenaPortRequestsById[item.arena.id] || []),
+                mod_port_requests: sortRowsByRecent(arenaPortRequestsById[item.arena.id] || []),
                 arena_images: (item.arena.arena_images || []).map((img) => ({
                   ...img,
                   ...resolveImageUrls(img)
@@ -427,6 +453,10 @@ export default function useAppData(session) {
             ? {
                 ...item.title_belt,
                 ...resolveRenderDdsUrls(item.title_belt),
+                version_links: sortRowsByRecent(titleVersionLinksById[item.title_belt.id] || []),
+                mod_version_links: sortRowsByRecent(titleVersionLinksById[item.title_belt.id] || []),
+                port_requests: sortRowsByRecent(titlePortRequestsById[item.title_belt.id] || []),
+                mod_port_requests: sortRowsByRecent(titlePortRequestsById[item.title_belt.id] || []),
                 title_belt_images: (item.title_belt.title_belt_images || []).map((img) => ({
                   ...img,
                   ...resolveImageUrls(img)
@@ -436,6 +466,10 @@ export default function useAppData(session) {
           other_mod: item.other_mod
             ? {
                 ...item.other_mod,
+                version_links: sortRowsByRecent(otherVersionLinksById[item.other_mod.id] || []),
+                mod_version_links: sortRowsByRecent(otherVersionLinksById[item.other_mod.id] || []),
+                port_requests: sortRowsByRecent(otherPortRequestsById[item.other_mod.id] || []),
+                mod_port_requests: sortRowsByRecent(otherPortRequestsById[item.other_mod.id] || []),
                 other_mod_images: (item.other_mod.other_mod_images || []).map((img) => ({
                   ...img,
                   ...resolveImageUrls(img)
@@ -497,9 +531,9 @@ export default function useAppData(session) {
       setOtherMods(normalizedOtherMods)
       setCreators(creatorResult.data || [])
       setCollections(repairedCollections)
-      setModAddRequests((modAddRequestsResult.data || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
-      setModPortRequests((modPortRequestsResult.data || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
-      setModVersionLinks((modVersionLinksResult.data || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
+      setModAddRequests(sortRowsByRecent(modAddRequestsResult.data || []))
+      setModPortRequests(sortRowsByRecent(modPortRequestsResult.data || []))
+      setModVersionLinks(sortRowsByRecent(modVersionLinksResult.data || []))
 
       setInstalledIds(new Set((installsResult.data || []).map((item) => item.attire_id)))
       setInstalledArenaIds(new Set((installedArenasResult.data || []).map((item) => item.arena_id)))

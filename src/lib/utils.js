@@ -894,6 +894,37 @@ export function getUnifiedModPreview(item = {}) {
   return full || medium || ''
 }
 
+function toSafeTime(value) {
+  const time = new Date(value || '').getTime()
+  return Number.isFinite(time) ? time : 0
+}
+
+function getRowsLatestTime(rows = []) {
+  return (rows || []).reduce((latest, row) => {
+    const rowLatest = Math.max(
+      toSafeTime(row?.updated_at),
+      toSafeTime(row?.created_at)
+    )
+    return rowLatest > latest ? rowLatest : latest
+  }, 0)
+}
+
+function getActivityUpdatedAt(record = {}, relatedGroups = []) {
+  const latest = Math.max(
+    toSafeTime(record?.updated_at),
+    toSafeTime(record?.created_at),
+    ...relatedGroups.map((group) => getRowsLatestTime(group))
+  )
+
+  return latest ? new Date(latest).toISOString() : ''
+}
+
+function countVersionLinkDownloads(rows = []) {
+  return (rows || []).reduce((total, row) => {
+    return total + parseDownloadLinks(row?.download_url || '').length
+  }, 0)
+}
+
 export function buildUnifiedModsFeed({
   wrestlers = [],
   arenas = [],
@@ -904,8 +935,17 @@ export function buildUnifiedModsFeed({
     (wrestler.attires || []).map((attire) => {
       const images = attire.attire_images || attire.images || []
       const normalizedImages = normalizeGalleryImages(images)
-      const links = parseDownloadLinks(attire.download_url || '')
+      const baseLinks = parseDownloadLinks(attire.download_url || '')
+      const versionLinks = attire.mod_version_links || attire.version_links || []
       const requests = attire.requests || wrestler.requests || []
+
+      const totalLinkCount = baseLinks.length + countVersionLinkDownloads(versionLinks)
+      const hasDownload = totalLinkCount > 0
+
+      const activityUpdatedAt = getActivityUpdatedAt(attire, [
+        images,
+        versionLinks
+      ])
       const openDeadLinks = requests.filter(
         (req) =>
           req.status === 'open' &&
@@ -944,14 +984,14 @@ export function buildUnifiedModsFeed({
         creatorName: attire.creator_name || '',
         sourceGame: attire.source_game || 'WWE 2K25',
         createdAt: attire.created_at || '',
-        updatedAt: attire.updated_at || '',
+        updatedAt: activityUpdatedAt || attire.updated_at || attire.created_at || '',
         ownerId: attire.owner_id || '',
         hasDownload,
         hasMissingLink: !hasDownload,
         openDeadLinks,
         openMissingLinks,
-        linkCount: links.length,
-        downloadCount: links.length,
+        linkCount: totalLinkCount,
+        downloadCount: totalLinkCount,
         installCount: 0,
         previewUrl: previewMediumUrl,
         previewMediumUrl,
@@ -984,8 +1024,17 @@ export function buildUnifiedModsFeed({
   const arenaItems = arenas.map((arena) => {
     const images = arena.arena_images || arena.images || []
     const normalizedImages = normalizeGalleryImages(images)
-    const links = parseDownloadLinks(arena.download_url || '')
+    const baseLinks = parseDownloadLinks(arena.download_url || '')
+    const versionLinks = arena.mod_version_links || arena.version_links || []
     const requests = arena.requests || []
+
+    const totalLinkCount = baseLinks.length + countVersionLinkDownloads(versionLinks)
+    const hasDownload = totalLinkCount > 0
+
+    const activityUpdatedAt = getActivityUpdatedAt(arena, [
+      images,
+      versionLinks
+    ])
     const openDeadLinks = requests.filter(
       (req) => req.status === 'open' && req.request_type === 'dead_link'
     ).length
@@ -1008,14 +1057,14 @@ export function buildUnifiedModsFeed({
       creatorName: arena.creator_name || '',
       sourceGame: arena.source_game || 'WWE 2K25',
       createdAt: arena.created_at || '',
-      updatedAt: arena.updated_at || '',
+      updatedAt: activityUpdatedAt || arena.updated_at || arena.created_at || '',
       ownerId: arena.owner_id || '',
       hasDownload,
       hasMissingLink: !hasDownload,
       openDeadLinks,
       openMissingLinks,
-      linkCount: links.length,
-      downloadCount: links.length,
+      linkCount: totalLinkCount,
+      downloadCount: totalLinkCount,
       installCount: 0,
       previewUrl: previewMediumUrl,
       previewMediumUrl,
@@ -1044,8 +1093,19 @@ export function buildUnifiedModsFeed({
   const titleItems = titleBelts.map((title) => {
     const images = title.title_belt_images || title.images || []
     const normalizedImages = normalizeGalleryImages(images)
-    const links = parseDownloadLinks(title.download_url || '')
+    const baseLinks = parseDownloadLinks(title.download_url || '')
+    const versionLinks = title.mod_version_links || title.version_links || []
+    const audioFiles = title.title_belt_audio_files || title.audio_files || []
     const requests = title.requests || []
+
+    const totalLinkCount = baseLinks.length + countVersionLinkDownloads(versionLinks)
+    const hasDownload = totalLinkCount > 0
+
+    const activityUpdatedAt = getActivityUpdatedAt(title, [
+      images,
+      audioFiles,
+      versionLinks
+    ])
     const openDeadLinks = requests.filter(
       (req) => req.status === 'open' && req.request_type === 'dead_link'
     ).length
@@ -1077,14 +1137,14 @@ export function buildUnifiedModsFeed({
       creatorName: title.creator_name || '',
       sourceGame: title.source_game || 'WWE 2K25',
       createdAt: title.created_at || '',
-      updatedAt: title.updated_at || '',
+      updatedAt: activityUpdatedAt || title.updated_at || title.created_at || '',
       ownerId: title.owner_id || '',
       hasDownload,
       hasMissingLink: !hasDownload,
       openDeadLinks,
       openMissingLinks,
-      linkCount: links.length,
-      downloadCount: links.length,
+      linkCount: totalLinkCount,
+      downloadCount: totalLinkCount,
       installCount: 0,
       previewUrl: previewMediumUrl,
       previewMediumUrl,
@@ -1112,8 +1172,17 @@ export function buildUnifiedModsFeed({
   const otherItems = otherMods.map((otherMod) => {
     const images = otherMod.other_mod_images || otherMod.images || []
     const normalizedImages = normalizeGalleryImages(images)
-    const links = parseDownloadLinks(otherMod.download_url || '')
+    const baseLinks = parseDownloadLinks(otherMod.download_url || '')
+    const versionLinks = otherMod.mod_version_links || otherMod.version_links || []
     const requests = otherMod.requests || []
+
+    const totalLinkCount = baseLinks.length + countVersionLinkDownloads(versionLinks)
+    const hasDownload = totalLinkCount > 0
+
+    const activityUpdatedAt = getActivityUpdatedAt(otherMod, [
+      images,
+      versionLinks
+    ])
     const openDeadLinks = requests.filter(
       (req) => req.status === 'open' && req.request_type === 'dead_link'
     ).length
@@ -1136,14 +1205,14 @@ export function buildUnifiedModsFeed({
       creatorName: otherMod.creator_name || '',
       sourceGame: otherMod.source_game || 'WWE 2K25',
       createdAt: otherMod.created_at || '',
-      updatedAt: otherMod.updated_at || '',
+      updatedAt: activityUpdatedAt || otherMod.updated_at || otherMod.created_at || '',
       ownerId: otherMod.owner_id || '',
       hasDownload,
       hasMissingLink: !hasDownload,
       openDeadLinks,
       openMissingLinks,
-      linkCount: links.length,
-      downloadCount: links.length,
+      linkCount: totalLinkCount,
+      downloadCount: totalLinkCount,
       installCount: 0,
       previewUrl: previewMediumUrl,
       previewMediumUrl,
@@ -1187,7 +1256,8 @@ export function sortUnifiedMods(items = [], sortBy = 'newest') {
   if (sortBy === 'updated') {
     return sorted.sort(
       (a, b) =>
-        new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
+        new Date(b.updatedAt || b.createdAt || 0).getTime() -
+        new Date(a.updatedAt || a.createdAt || 0).getTime()
     )
   }
 

@@ -186,6 +186,51 @@ export default function App() {
     setNotice({ type, title, message })
   }
 
+  async function touchModUpdatedAt(modType, id) {
+    if (!id) return
+
+    const now = new Date().toISOString()
+
+    if (modType === 'attire') {
+      const { error } = await supabase
+        .from('attires')
+        .update({ updated_at: now })
+        .eq('id', id)
+
+      if (error) throw error
+      return
+    }
+
+    if (modType === 'arena') {
+      const { error } = await supabase
+        .from('arenas')
+        .update({ updated_at: now })
+        .eq('id', id)
+
+      if (error) throw error
+      return
+    }
+
+    if (modType === 'title') {
+      const { error } = await supabase
+        .from('title_belts')
+        .update({ updated_at: now })
+        .eq('id', id)
+
+      if (error) throw error
+      return
+    }
+
+    if (modType === 'other') {
+      const { error } = await supabase
+        .from('other_mods')
+        .update({ updated_at: now })
+        .eq('id', id)
+
+      if (error) throw error
+    }
+  }
+
   function normalizeExternalUrl(value = '') {
     const clean = String(value || '').trim()
     if (!clean) return ''
@@ -374,6 +419,17 @@ export default function App() {
 
       const { error } = await supabase.from('mod_version_links').insert(payload)
       if (error) throw error
+
+      const modId =
+        context.modType === 'attire'
+          ? context.attireId
+          : context.modType === 'arena'
+            ? context.arenaId
+            : context.modType === 'title'
+              ? context.titleBeltId
+              : context.otherModId
+
+      await touchModUpdatedAt(context.modType, modId)
 
       if (requestId || context.requestId) {
         const { error: requestError } = await supabase
@@ -1263,7 +1319,8 @@ export default function App() {
         notes: attireForm.notes.trim(),
         status: attireForm.status,
         moveset_json: parseJsonOrNull(attireForm.moveset_json_text),
-        profile_json: parseJsonOrNull(attireForm.profile_json_text)
+        profile_json: parseJsonOrNull(attireForm.profile_json_text),
+        updated_at: new Date().toISOString()
       }
 
       let attireId = attireForm.id
@@ -1340,8 +1397,11 @@ export default function App() {
           external_medium_url: item.external_medium_url || '',
           external_thumb_url: item.external_thumb_url || ''
         }))
+
         const { error } = await supabase.from('attire_images').insert(inserts)
         if (error) throw error
+
+        await touchModUpdatedAt('attire', attireId)
       }
 
       setAttireModalOpen(false)
@@ -1712,7 +1772,8 @@ export default function App() {
             .update({
               render_dds_path: '',
               render_dds_name: '',
-              render_dds_external_url: ''
+              render_dds_external_url: '',
+              updated_at: new Date().toISOString()
             })
             .eq('id', attireForm.id)
 
@@ -1760,6 +1821,8 @@ export default function App() {
             .eq('image_path', path)
 
           if (error) throw error
+
+          await touchModUpdatedAt('attire', attireForm.id)
         }
 
         setWrestlers((current) =>
@@ -2041,7 +2104,10 @@ export default function App() {
       if (resolveModal.context.modCategory === 'arena') {
         const { error: arenaError } = await supabase
           .from('arenas')
-          .update({ download_url: cleanUrl })
+          .update({
+            download_url: cleanUrl,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', resolveModal.context.arenaId)
 
         if (arenaError) throw arenaError
@@ -2065,7 +2131,10 @@ export default function App() {
       } else if (resolveModal.context.modCategory === 'title') {
         const { error: titleError } = await supabase
           .from('title_belts')
-          .update({ download_url: cleanUrl })
+          .update({
+            download_url: cleanUrl,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', resolveModal.context.titleId)
 
         if (titleError) throw titleError
@@ -2089,7 +2158,10 @@ export default function App() {
       } else if (resolveModal.context.modCategory === 'other') {
         const { error: otherError } = await supabase
           .from('other_mods')
-          .update({ download_url: cleanUrl })
+          .update({
+            download_url: cleanUrl,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', resolveModal.context.otherModId)
 
         if (otherError) throw otherError
@@ -2113,7 +2185,10 @@ export default function App() {
       } else {
         const { error: attireError } = await supabase
           .from('attires')
-          .update({ download_url: cleanUrl })
+          .update({
+            download_url: cleanUrl,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', resolveModal.context.attireId)
 
         if (attireError) throw attireError

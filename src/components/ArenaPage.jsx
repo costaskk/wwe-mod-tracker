@@ -218,7 +218,8 @@ export default function ArenaPage({
         download_url: arenaForm.download_url.trim(),
         source_game: arenaForm.source_game || 'WWE 2K25',
         notes: arenaForm.notes.trim(),
-        profile_json: parseJsonOrNull(arenaForm.profile_json_text)
+        profile_json: parseJsonOrNull(arenaForm.profile_json_text),
+        updated_at: new Date().toISOString()
       }
 
       let arenaId = arenaForm.id
@@ -301,6 +302,17 @@ export default function ArenaPage({
     } finally {
       setSaving(false)
     }
+  }
+
+  async function touchArenaUpdatedAt(arenaId) {
+    if (!arenaId) return
+
+    const { error } = await supabase
+      .from('arenas')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', arenaId)
+
+    if (error) throw error
   }
 
   async function handleArenaAssetUpload(filesOrFile, kind) {
@@ -408,9 +420,11 @@ export default function ArenaPage({
             .from('arena_images')
             .delete()
             .eq('arena_id', arenaForm.id)
-            .eq('image_path', path)
+            .eq('image_path', path)            
 
           if (error) throw error
+
+          await touchArenaUpdatedAt(arenaForm.id)
         }
       }
 
@@ -506,7 +520,10 @@ export default function ArenaPage({
 
       const { error: arenaError } = await supabase
         .from('arenas')
-        .update({ download_url: cleanUrl })
+        .update({
+          download_url: cleanUrl,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', arena.id)
 
       if (arenaError) throw arenaError

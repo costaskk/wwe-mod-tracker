@@ -247,7 +247,8 @@ export default function TitleBeltPage({
         render_dds_external_url:
           form.render_dds_external_url ||
           form.render_dds_url ||
-          ''
+          '',
+        updated_at: new Date().toISOString()
       }
 
       let titleId = form.id
@@ -385,6 +386,17 @@ export default function TitleBeltPage({
     } finally {
       setSaving(false)
     }
+  }
+
+  async function touchTitleUpdatedAt(titleId) {
+    if (!titleId) return
+
+    const { error } = await supabase
+      .from('title_belts')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', titleId)
+
+    if (error) throw error
   }
 
   async function handleUpload(filesOrFile, kind) {
@@ -565,7 +577,8 @@ export default function TitleBeltPage({
             .update({
               render_dds_path: '',
               render_dds_name: '',
-              render_dds_external_url: ''
+              render_dds_external_url: '',
+              updated_at: new Date().toISOString()
             })
             .eq('id', form.id)
 
@@ -596,6 +609,8 @@ export default function TitleBeltPage({
             .eq('image_path', path)
 
           if (error) throw error
+
+          await touchTitleUpdatedAt(form.id)
         }
       }
 
@@ -629,6 +644,10 @@ export default function TitleBeltPage({
         ),
         pendingAudioUploads: []
       }))
+
+      if (form.persisted) {
+        await touchTitleUpdatedAt(form.id)
+      }
 
       openNotice('success', 'Audio removed', `${audioFile.file_name || 'Audio link'} was removed.`)
     } catch (err) {
@@ -710,7 +729,10 @@ export default function TitleBeltPage({
 
       const { error: titleError } = await supabase
         .from('title_belts')
-        .update({ download_url: cleanUrl })
+        .update({
+          download_url: cleanUrl,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', title.id)
 
       if (titleError) throw titleError
