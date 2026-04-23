@@ -5,6 +5,7 @@ import {
   getDownloadProviderLabel,
   getDownloadProviderMark,
   getOtherModSubtypeLabel,
+  getSubtypeIcon,
   findDuplicateOtherMod,
   SOURCE_GAMES,
   OTHER_MOD_SUBTYPES,
@@ -166,7 +167,7 @@ export default function OtherModEditorModal({
                       <option value="">Select a subtype</option>
                       {OTHER_MOD_SUBTYPES.map((item) => (
                         <option key={item} value={item}>
-                          {getOtherModSubtypeLabel(item)}
+                          {getSubtypeIcon(item)} {getOtherModSubtypeLabel(item)}
                         </option>
                       ))}
                     </select>

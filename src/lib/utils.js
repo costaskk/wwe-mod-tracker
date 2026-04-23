@@ -839,6 +839,7 @@ export function getSubtypeIcon(subtype = '') {
     case 'weapons': return '⚔'
     case 'moves': return '🕺'
     case 'gameplay': return '🎮'
+    case 'tools': return '🛠'
     default: return '📦'
   }
 }

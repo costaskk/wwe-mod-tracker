@@ -1,4 +1,4 @@
-import { getOtherModSubtypeLabel } from '../lib/utils'
+import { getOtherModSubtypeLabel, getSubtypeIcon } from '../lib/utils'
 
 export default function OtherModFilters({
   query,
@@ -76,7 +76,7 @@ export default function OtherModFilters({
               <option value="all">All subtypes</option>
               {normalizedSubtypeOptions.map((subtype) => (
                 <option key={subtype} value={subtype}>
-                  {getOtherModSubtypeLabel(subtype)}
+                  {getSubtypeIcon(subtype)} {getOtherModSubtypeLabel(subtype)}
                 </option>
               ))}
             </select>

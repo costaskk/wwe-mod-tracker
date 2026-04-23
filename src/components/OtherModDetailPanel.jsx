@@ -9,6 +9,7 @@ import {
   getDownloadProviderMark,
   requestSummary,
   getOtherModSubtypeLabel,
+  getSubtypeIcon,
   buildVersionEntries,
   isPortRequestBlocked
 } from '../lib/utils'
@@ -264,7 +265,8 @@ export default function OtherModDetailPanel({
 
           <div className="creator-highlight-row wrap-actions">
             <span className="creator-label">Subtype</span>
-            <span className="creator-badge prominent-creator-badge">
+            <span className={`pill subtype-pill subtype-${mod.subtype || 'misc'}`}>
+              <span className="pill-icon">{getSubtypeIcon(mod.subtype || '')}</span>
               {getOtherModSubtypeLabel(mod.subtype || '')}
             </span>
 
@@ -291,7 +293,9 @@ export default function OtherModDetailPanel({
             </div>
             <div>
               <span>Subtype</span>
-              <strong>{getOtherModSubtypeLabel(mod.subtype || '')}</strong>
+              <strong>
+                {getSubtypeIcon(mod.subtype || '')} {getOtherModSubtypeLabel(mod.subtype || '')}
+              </strong>
             </div>
             <div>
               <span>Updated</span>

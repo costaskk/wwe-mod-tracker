@@ -1,4 +1,4 @@
-import { formatDate, getOtherModSubtypeLabel } from '../lib/utils'
+import { formatDate, getOtherModSubtypeLabel, getSubtypeIcon } from '../lib/utils'
 
 function Toggle({ value, onChange, options }) {
   return (
@@ -159,7 +159,12 @@ export default function OtherModList({
                         </div>
                       </td>
 
-                      <td>{getOtherModSubtypeLabel(mod.subtype || '')}</td>
+                      <td>
+                        <span className={`pill subtype-pill subtype-${mod.subtype || 'misc'}`}>
+                          <span className="pill-icon">{getSubtypeIcon(mod.subtype || '')}</span>
+                          {getOtherModSubtypeLabel(mod.subtype || '')}
+                        </span>
+                      </td>
                       <td>{imageCount}</td>
                       <td>{openRequests}</td>
 
@@ -265,8 +270,12 @@ export default function OtherModList({
 
                     <div className="list-main-copy">
                       <div className="list-title">{mod.name || 'Unknown mod'}</div>
-                      <div className="small-text muted-text">
-                        {getOtherModSubtypeLabel(mod.subtype || '')} · Updated {formatDate(mod.updated_at)}
+                      <div className="small-text muted-text wrap-actions">
+                        <span className={`pill subtype-pill subtype-${mod.subtype || 'misc'}`}>
+                          <span className="pill-icon">{getSubtypeIcon(mod.subtype || '')}</span>
+                          {getOtherModSubtypeLabel(mod.subtype || '')}
+                        </span>
+                        <span>Updated {formatDate(mod.updated_at)}</span>
                       </div>
                     </div>
                   </div>
