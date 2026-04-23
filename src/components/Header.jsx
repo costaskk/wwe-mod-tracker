@@ -20,7 +20,9 @@ export default function Header({
   currentProfile,
   canContribute,
   deadLinksCount = 0,
-  missingLinksCount = 0
+  missingLinksCount = 0,
+  requestsSubmittedCount = 0,
+  requestsCompletedUnreadCount = 0
 }) {
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const addMenuRef = useRef(null)
@@ -141,10 +143,26 @@ export default function Header({
 
             <button
               type="button"
-              className={`nav-chip ${currentPage === 'requests' ? 'active' : ''}`}
+              className={`nav-chip has-badge ${currentPage === 'requests' ? 'active' : ''}`}
               onClick={onBrowseRequests}
             >
-              Requests
+              <span>Requests</span>
+
+              {(requestsSubmittedCount > 0 || requestsCompletedUnreadCount > 0) ? (
+                <span className="nav-chip-badges">
+                  {requestsSubmittedCount > 0 ? (
+                    <span className="nav-chip-badge warning">
+                      {requestsSubmittedCount > 99 ? '99+' : requestsSubmittedCount}
+                    </span>
+                  ) : null}
+
+                  {requestsCompletedUnreadCount > 0 ? (
+                    <span className="nav-chip-badge success">
+                      {requestsCompletedUnreadCount > 99 ? '99+' : requestsCompletedUnreadCount}
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
             </button>
 
             <button

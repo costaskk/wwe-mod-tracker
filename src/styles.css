@@ -4767,6 +4767,80 @@ select option {
   white-space: nowrap;
 }
 
+.nav-chip-badge.success {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  color: #06281d;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+}
+
+.request-card-preview,
+.request-card-preview-img,
+.request-card-preview-placeholder {
+  width: 100%;
+  display: block;
+}
+
+.request-card-preview {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 18px 18px 0 0;
+  overflow: hidden;
+}
+
+.request-card-preview-img,
+.request-card-preview-placeholder {
+  height: 220px;
+  object-fit: cover;
+}
+
+.request-card-preview-placeholder {
+  display: grid;
+  place-items: center;
+  background: rgba(63, 166, 255, 0.16);
+  color: #fff;
+  font-weight: 800;
+  text-align: center;
+  padding: 18px;
+}
+
+.request-card-body {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.request-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.request-link-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.request-link-chip:hover {
+  border-color: rgba(63, 166, 255, 0.34);
+  background: rgba(63, 166, 255, 0.12);
+}
+
+.request-complete-pill {
+  background: rgba(111, 227, 173, 0.14);
+  border-color: rgba(111, 227, 173, 0.24);
+  color: #d8ffec;
+}
+
 .nav-chip-badge.danger {
   background: linear-gradient(135deg, #ff4d6d, #ff7a59);
   color: #fff;

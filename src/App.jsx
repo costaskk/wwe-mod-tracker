@@ -435,7 +435,7 @@ export default function App() {
         const { error: requestError } = await supabase
           .from('mod_port_requests')
           .update({
-            status: 'fulfilled',
+            status: 'complete',
             fulfilled_by: session.user.id,
             fulfilled_at: new Date().toISOString(),
             notes: notes ? `Fulfilled: ${notes}` : 'Fulfilled with a version-specific download link.'
@@ -455,7 +455,18 @@ export default function App() {
     }
   }
 
-  async function submitAddModRequest({ modType, subtype, wrestlerName, itemName, creatorName, sourceGame, notes }) {
+  async function submitAddModRequest({
+  modType,
+  subtype,
+  wrestlerName,
+  itemName,
+  creatorName,
+  creatorUrl,
+  referenceUrl,
+  screenshotUrls,
+  sourceGame,
+  notes
+}) {
     if (!canContribute || !session) return
     setAddModRequestSubmitting(true)
 
@@ -467,6 +478,9 @@ export default function App() {
         wrestler_name: wrestlerName || '',
         item_name: itemName,
         creator_name: creatorName || '',
+        creator_url: creatorUrl || '',
+        reference_url: referenceUrl || '',
+        screenshot_urls: Array.isArray(screenshotUrls) ? screenshotUrls : [],
         source_game: sourceGame,
         notes: notes || '',
         status: 'open'
@@ -490,7 +504,7 @@ export default function App() {
 
     try {
       const payload = { status }
-      if (status === 'fulfilled') {
+      if (status === 'complete' || status === 'fulfilled') {
         payload.fulfilled_by = session.user.id
         payload.fulfilled_at = new Date().toISOString()
       }
@@ -510,7 +524,7 @@ export default function App() {
 
     try {
       const payload = { status }
-      if (status === 'fulfilled') {
+      if (status === 'complete' || status === 'fulfilled') {
         payload.fulfilled_by = session.user.id
         payload.fulfilled_at = new Date().toISOString()
       }
@@ -1937,6 +1951,361 @@ export default function App() {
     })
   }
 
+  async function fulfillAddRequest(request) {
+    if (!session || !request?.id || !canContribute) return
+
+    try {
+      const fulfilledIds = {}
+
+      if (!['attire', 'arena', 'title', 'other'].includes(request.mod_type)) {
+        throw new Error(`Unsupported request type: ${request.mod_type}`)
+      }
+
+      if (request.mod_type === 'other') {
+        const otherPayload = {
+          owner_id: session.user.id,
+          name: (request.item_name || '').trim(),
+          creator_name: (request.creator_name || '').trim(),
+          subtype: (request.subtype || '').trim(),
+          download_url: '',
+          notes: [
+            (request.notes || '').trim(),
+            request.creator_url ? `Creator link: ${request.creator_url}` : '',
+            request.reference_url ? `Reference link: ${request.reference_url}` : ''
+          ].filter(Boolean).join('\n\n'),
+          source_game: request.source_game || 'WWE 2K25',
+          updated_at: new Date().toISOString()
+        }
+
+        const { data: createdOtherMod, error: otherError } = await supabase
+          .from('other_mods')
+          .insert(otherPayload)
+          .select('id')
+          .single()
+
+        if (otherError) throw otherError
+
+        fulfilledIds.fulfilled_other_mod_id = createdOtherMod.id
+
+        const screenshotUrls = Array.isArray(request.screenshot_urls)
+          ? request.screenshot_urls.filter(Boolean)
+          : []
+
+        if (screenshotUrls.length) {
+          const imageRows = screenshotUrls.map((url, index) => ({
+            other_mod_id: createdOtherMod.id,
+            owner_id: session.user.id,
+            image_path: '',
+            image_name: `request-image-${index + 1}`,
+            external_original_url: url,
+            external_medium_url: url,
+            external_thumb_url: url
+          }))
+
+          const { error: imageError } = await supabase
+            .from('other_mod_images')
+            .insert(imageRows)
+
+          if (imageError) throw imageError
+        }
+      }
+
+      if (request.mod_type === 'arena') {
+        const arenaPayload = {
+          owner_id: session.user.id,
+          name: (request.item_name || '').trim(),
+          creator_name: (request.creator_name || '').trim(),
+          download_url: '',
+          notes: [
+            (request.notes || '').trim(),
+            request.creator_url ? `Creator link: ${request.creator_url}` : '',
+            request.reference_url ? `Reference link: ${request.reference_url}` : ''
+          ].filter(Boolean).join('\n\n'),
+          source_game: request.source_game || 'WWE 2K25',
+          updated_at: new Date().toISOString()
+        }
+
+        const { data: createdArena, error: arenaError } = await supabase
+          .from('arenas')
+          .insert(arenaPayload)
+          .select('id')
+          .single()
+
+        if (arenaError) throw arenaError
+
+        fulfilledIds.fulfilled_arena_id = createdArena.id
+
+        const screenshotUrls = Array.isArray(request.screenshot_urls)
+          ? request.screenshot_urls.filter(Boolean)
+          : []
+
+        if (screenshotUrls.length) {
+          const imageRows = screenshotUrls.map((url, index) => ({
+            arena_id: createdArena.id,
+            owner_id: session.user.id,
+            image_path: '',
+            image_name: `request-image-${index + 1}`,
+            external_original_url: url,
+            external_medium_url: url,
+            external_thumb_url: url
+          }))
+
+          const { error: imageError } = await supabase
+            .from('arena_images')
+            .insert(imageRows)
+
+          if (imageError) throw imageError
+        }
+      }
+
+      if (request.mod_type === 'title') {
+        const titlePayload = {
+          owner_id: session.user.id,
+          name: (request.item_name || '').trim(),
+          creator_name: (request.creator_name || '').trim(),
+          download_url: '',
+          render_dds_path: '',
+          render_dds_name: '',
+          notes: [
+            (request.notes || '').trim(),
+            request.creator_url ? `Creator link: ${request.creator_url}` : '',
+            request.reference_url ? `Reference link: ${request.reference_url}` : ''
+          ].filter(Boolean).join('\n\n'),
+          source_game: request.source_game || 'WWE 2K25',
+          updated_at: new Date().toISOString()
+        }
+
+        const { data: createdTitle, error: titleError } = await supabase
+          .from('title_belts')
+          .insert(titlePayload)
+          .select('id')
+          .single()
+
+        if (titleError) throw titleError
+
+        fulfilledIds.fulfilled_title_belt_id = createdTitle.id
+
+        const screenshotUrls = Array.isArray(request.screenshot_urls)
+          ? request.screenshot_urls.filter(Boolean)
+          : []
+
+        if (screenshotUrls.length) {
+          const imageRows = screenshotUrls.map((url, index) => ({
+            title_belt_id: createdTitle.id,
+            owner_id: session.user.id,
+            image_path: '',
+            image_name: `request-image-${index + 1}`,
+            external_original_url: url,
+            external_medium_url: url,
+            external_thumb_url: url
+          }))
+
+          const { error: imageError } = await supabase
+            .from('title_belt_images')
+            .insert(imageRows)
+
+          if (imageError) throw imageError
+        }
+      }
+
+      if (request.mod_type === 'attire') {
+        const wrestlerName = (request.wrestler_name || '').trim()
+        if (!wrestlerName) {
+          throw new Error('Attire requests need a wrestler name before they can be fulfilled.')
+        }
+
+        let wrestlerId = null
+
+        const existingWrestler = wrestlers.find(
+          (item) => (item.wrestler_name || '').trim().toLowerCase() === wrestlerName.toLowerCase()
+        )
+
+        if (existingWrestler) {
+          wrestlerId = existingWrestler.id
+        } else {
+          const { data: createdWrestler, error: wrestlerError } = await supabase
+            .from('wrestlers')
+            .insert({
+              owner_id: session.user.id,
+              wrestler_name: wrestlerName,
+              notes: '',
+              tags: []
+            })
+            .select('id')
+            .single()
+
+          if (wrestlerError) throw wrestlerError
+          wrestlerId = createdWrestler.id
+        }
+
+        const attirePayload = {
+          wrestler_id: wrestlerId,
+          owner_id: session.user.id,
+          name: (request.item_name || '').trim(),
+          era: '',
+          creator_name: (request.creator_name || '').trim(),
+          download_url: '',
+          source_game: request.source_game || 'WWE 2K25',
+          mod_type: 'original',
+          render_dds_path: '',
+          render_dds_name: '',
+          notes: [
+            (request.notes || '').trim(),
+            request.creator_url ? `Creator link: ${request.creator_url}` : '',
+            request.reference_url ? `Reference link: ${request.reference_url}` : ''
+          ].filter(Boolean).join('\n\n'),
+          status: 'missing',
+          updated_at: new Date().toISOString()
+        }
+
+        const { data: createdAttire, error: attireError } = await supabase
+          .from('attires')
+          .insert(attirePayload)
+          .select('id')
+          .single()
+
+        if (attireError) throw attireError
+
+        fulfilledIds.fulfilled_attire_id = createdAttire.id
+
+        const screenshotUrls = Array.isArray(request.screenshot_urls)
+          ? request.screenshot_urls.filter(Boolean)
+          : []
+
+        if (screenshotUrls.length) {
+          const imageRows = screenshotUrls.map((url, index) => ({
+            attire_id: createdAttire.id,
+            owner_id: session.user.id,
+            image_path: '',
+            image_name: `request-image-${index + 1}`,
+            external_original_url: url,
+            external_medium_url: url,
+            external_thumb_url: url
+          }))
+
+          const { error: imageError } = await supabase
+            .from('attire_images')
+            .insert(imageRows)
+
+          if (imageError) throw imageError
+        }
+      }
+
+      const { error: requestError } = await supabase
+        .from('mod_add_requests')
+        .update({
+          status: 'complete',
+          fulfilled_by: session.user.id,
+          fulfilled_at: new Date().toISOString(),
+          ...fulfilledIds
+        })
+        .eq('id', request.id)
+
+      if (requestError) throw requestError
+
+      openNotice('success', 'Request fulfilled', `${request.item_name} was added to the website.`)
+      await fetchAll()
+    } catch (err) {
+      openNotice('error', 'Could not fulfill request', err.message || 'Could not fulfill this request.')
+    }
+  }
+
+  const requestBadgeSummary = useMemo(() => {
+    if (!session?.user?.id) {
+      return {
+        submittedCount: 0,
+        completedUnreadCount: 0
+      }
+    }
+
+    const mine = [
+      ...(modAddRequests || []).filter((item) => item.user_id === session.user.id),
+      ...(modPortRequests || []).filter((item) => item.user_id === session.user.id)
+    ]
+
+    const submittedCount = mine.length
+
+    const completedUnreadCount = mine.filter((item) =>
+      (item.status === 'complete' || item.status === 'fulfilled') &&
+      item.fulfilled_at &&
+      (
+        !item.requester_viewed_at ||
+        new Date(item.requester_viewed_at).getTime() < new Date(item.fulfilled_at).getTime()
+      )
+    ).length
+
+    return {
+      submittedCount,
+      completedUnreadCount
+    }
+  }, [session, modAddRequests, modPortRequests])
+
+  async function markRequestsViewed(items = []) {
+    if (!session?.user?.id || !items.length) return
+
+    const addIds = items.filter((item) => item.kind === 'add').map((item) => item.id)
+    const portIds = items.filter((item) => item.kind === 'port').map((item) => item.id)
+
+    const viewedAt = new Date().toISOString()
+
+    if (addIds.length) {
+      const { error } = await supabase
+        .from('mod_add_requests')
+        .update({ requester_viewed_at: viewedAt })
+        .in('id', addIds)
+        .eq('user_id', session.user.id)
+
+      if (error) throw error
+    }
+
+    if (portIds.length) {
+      const { error } = await supabase
+        .from('mod_port_requests')
+        .update({ requester_viewed_at: viewedAt })
+        .in('id', portIds)
+        .eq('user_id', session.user.id)
+
+      if (error) throw error
+    }
+
+    await fetchAll()
+  }
+
+  function openRequestedAttireTarget(target) {
+    if (!target?.attireId) return
+
+    const parent = wrestlers.find((wrestler) =>
+      (wrestler.attires || []).some((attire) => attire.id === target.attireId)
+    )
+
+    if (!parent) return
+
+    openAttireFromAllMods({
+      modType: 'attire',
+      entityId: target.attireId,
+      raw: {
+        id: target.attireId,
+        wrestler_id: parent.id
+      },
+      parentTitle: parent.wrestler_name
+    })
+  }
+
+  function openRequestedArenaTarget(target) {
+    if (!target?.arenaId) return
+    openArenaFromAllMods({ entityId: target.arenaId })
+  }
+
+  function openRequestedTitleTarget(target) {
+    if (!target?.titleId) return
+    openTitleFromAllMods({ entityId: target.titleId })
+  }
+
+  function openRequestedOtherModTarget(target) {
+    if (!target?.otherModId) return
+    openOtherModFromAllMods({ entityId: target.otherModId })
+  }
+
   async function submitRequest(notes) {
     if (!canContribute || !requestModal.context) return
     setRequestSubmitting(true)
@@ -2120,7 +2489,7 @@ export default function App() {
         const { error: requestError } = await supabase
           .from('arena_requests')
           .update({
-            status: 'fulfilled',
+            status: 'complete',
             notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
           })
           .eq('arena_id', resolveModal.context.arenaId)
@@ -2147,7 +2516,7 @@ export default function App() {
         const { error: requestError } = await supabase
           .from('title_belt_requests')
           .update({
-            status: 'fulfilled',
+            status: 'complete',
             notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
           })
           .eq('title_belt_id', resolveModal.context.titleId)
@@ -2174,7 +2543,7 @@ export default function App() {
         const { error: requestError } = await supabase
           .from('other_mod_requests')
           .update({
-            status: 'fulfilled',
+            status: 'complete',
             notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
           })
           .eq('other_mod_id', resolveModal.context.otherModId)
@@ -2201,7 +2570,7 @@ export default function App() {
         const { error: requestError } = await supabase
           .from('mod_requests')
           .update({
-            status: 'fulfilled',
+            status: 'complete',
             notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
           })
           .eq('attire_id', resolveModal.context.attireId)
@@ -2901,6 +3270,8 @@ export default function App() {
           onBrowseAdmin={() => {}}
           deadLinksCount={0}
           missingLinksCount={0}
+          requestsSubmittedCount={0}
+          requestsCompletedUnreadCount={0}
         />
         <div className="message error">Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY before running the app.</div>
       </div>
@@ -2929,6 +3300,8 @@ export default function App() {
         onBrowseAdmin={goAdminPage} 
         deadLinksCount={deadLinksCount}
         missingLinksCount={missingLinksCount}
+        requestsSubmittedCount={requestBadgeSummary.submittedCount}
+        requestsCompletedUnreadCount={requestBadgeSummary.completedUnreadCount}
       />
       <AuthPanel session={session} currentProfile={currentProfile} />
       <StatsGrid stats={stats} />
@@ -3184,9 +3557,14 @@ export default function App() {
             onOpenImageViewer={openImageViewer}
             onOpenAddRequestModal={() => setAddModRequestModal(true)}
             onFulfillPortRequest={openVersionLinkModalFromPortRequest}
-            onMarkAddRequestFulfilled={(request) => updateAddRequestStatus(request, 'fulfilled')}
+            onMarkAddRequestFulfilled={fulfillAddRequest}
             onUpdateAddRequestStatus={updateAddRequestStatus}
             onUpdatePortRequestStatus={updatePortRequestStatus}
+            onOpenRequestedAttire={openRequestedAttireTarget}
+            onOpenRequestedArena={openRequestedArenaTarget}
+            onOpenRequestedTitle={openRequestedTitleTarget}
+            onOpenRequestedOtherMod={openRequestedOtherModTarget}
+            onMarkRequestsViewed={markRequestsViewed}
           />
         ) : currentPage === 'issues' ? (
           <LinkIssuesPage

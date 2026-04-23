@@ -35,7 +35,7 @@ function getContextSubtitle(context = {}) {
 
   if (context.modCategory === 'other') {
     const subtype = context.otherModSubtype || ''
-    return subtype ? `Other mod · ${subtype}` : 'Other mod'
+    return subtype ? `Other mod · ${getOtherModSubtypeLabel(subtype)}` : 'Other mod'
   }
 
   return context.wrestlerName || 'Unknown wrestler'

@@ -172,6 +172,8 @@ export function emptyWrestler() {
     notes: '',
     tags_text: '',
     headshot_path: '',
+    headshot_medium_path: '',
+    headshot_thumb_path: '',
     headshot_url: '',
     headshot_thumb_url: '',
     headshot_medium_url: '',
@@ -219,6 +221,7 @@ export function emptyAttire(wrestlerId = null) {
     render_dds_path: '',
     render_dds_url: '',
     render_dds_name: '',
+    render_dds_external_url: '',
     images: [],
     pendingImageUploads: [],
     moveset_json_text: '',
@@ -271,6 +274,7 @@ export function emptyTitleBelt() {
     render_dds_path: '',
     render_dds_url: '',
     render_dds_name: '',
+    render_dds_external_url: '',
     images: [],
     pendingImageUploads: [],
     audio_files: [],
@@ -304,6 +308,8 @@ export function normalizeWrestlerForEditor(wrestler) {
     notes: wrestler.notes || '',
     tags_text: (wrestler.tags || []).join(', '),
     headshot_path: wrestler.headshot_path || '',
+    headshot_medium_path: wrestler.headshot_medium_path || '',
+    headshot_thumb_path: wrestler.headshot_thumb_path || '',
     headshot_url: preferHeadshotMedium(wrestler),
     headshot_thumb_url: preferHeadshotThumb(wrestler),
     headshot_medium_url: preferHeadshotMedium(wrestler),
@@ -337,11 +343,16 @@ export function normalizeWrestlerForEditor(wrestler) {
       screenshots: (item.titantron_images || item.screenshots || []).map((img) => ({
         id: img.id || null,
         path: img.image_path || img.path || '',
+        medium_path: img.image_medium_path || img.medium_path || '',
+        thumb_path: img.image_thumb_path || img.thumb_path || '',
         thumb_url: preferImageThumb(img),
         image_url: preferImageMedium(img),
         full_image_url: preferImageFull(img),
         url: preferImageMedium(img),
-        name: img.image_name || img.name || ''
+        name: img.image_name || img.name || '',
+        external_original_url: img.external_original_url || '',
+        external_medium_url: img.external_medium_url || '',
+        external_thumb_url: img.external_thumb_url || ''
       })),
       pendingScreenshotUploads: []
     })),
@@ -372,13 +383,18 @@ export function normalizeAttireForEditor(attire) {
     moveset_json_text: attire.moveset_json ? JSON.stringify(attire.moveset_json, null, 2) : '',
     profile_json_text: attire.profile_json ? JSON.stringify(attire.profile_json, null, 2) : '',
     images: (attire.attire_images || attire.images || []).map((img) => ({
-      id: img.id,
+      id: img.id || null,
       path: img.image_path || img.path || '',
+      medium_path: img.image_medium_path || img.medium_path || '',
+      thumb_path: img.image_thumb_path || img.thumb_path || '',
       thumb_url: preferImageThumb(img),
       image_url: preferImageMedium(img),
       full_image_url: preferImageFull(img),
       url: preferImageMedium(img),
-      name: img.image_name || img.name || ''
+      name: img.image_name || img.name || '',
+      external_original_url: img.external_original_url || '',
+      external_medium_url: img.external_medium_url || '',
+      external_thumb_url: img.external_thumb_url || ''
     })),
     pendingImageUploads: []
   }
@@ -421,11 +437,16 @@ export function normalizeArenaForEditor(arena) {
     images: (arena.arena_images || arena.images || []).map((img) => ({
       id: img.id || null,
       path: img.image_path || img.path || '',
+      medium_path: img.image_medium_path || img.medium_path || '',
+      thumb_path: img.image_thumb_path || img.thumb_path || '',
       thumb_url: preferImageThumb(img),
       image_url: preferImageMedium(img),
       full_image_url: preferImageFull(img),
       url: preferImageMedium(img),
-      name: img.image_name || img.name || ''
+      name: img.image_name || img.name || '',
+      external_original_url: img.external_original_url || '',
+      external_medium_url: img.external_medium_url || '',
+      external_thumb_url: img.external_thumb_url || ''
     })),
     pendingImageUploads: []
   }
@@ -451,11 +472,16 @@ export function normalizeTitleBeltForEditor(titleBelt) {
     images: (titleBelt.title_belt_images || titleBelt.images || []).map((img) => ({
       id: img.id || null,
       path: img.image_path || img.path || '',
+      medium_path: img.image_medium_path || img.medium_path || '',
+      thumb_path: img.image_thumb_path || img.thumb_path || '',
       thumb_url: preferImageThumb(img),
       image_url: preferImageMedium(img),
       full_image_url: preferImageFull(img),
       url: preferImageMedium(img),
-      name: img.image_name || img.name || ''
+      name: img.image_name || img.name || '',
+      external_original_url: img.external_original_url || '',
+      external_medium_url: img.external_medium_url || '',
+      external_thumb_url: img.external_thumb_url || ''
     })),
     pendingImageUploads: [],
     audio_files: (titleBelt.title_belt_audio_files || titleBelt.audio_files || []).map((file) => ({
@@ -488,11 +514,16 @@ export function normalizeOtherModForEditor(otherMod) {
     images: (otherMod.other_mod_images || otherMod.images || []).map((img) => ({
       id: img.id || null,
       path: img.image_path || img.path || '',
+      medium_path: img.image_medium_path || img.medium_path || '',
+      thumb_path: img.image_thumb_path || img.thumb_path || '',
       thumb_url: preferImageThumb(img),
       image_url: preferImageMedium(img),
       full_image_url: preferImageFull(img),
       url: preferImageMedium(img),
-      name: img.image_name || img.name || ''
+      name: img.image_name || img.name || '',
+      external_original_url: img.external_original_url || '',
+      external_medium_url: img.external_medium_url || '',
+      external_thumb_url: img.external_thumb_url || ''
     })),
     pendingImageUploads: []
   }
