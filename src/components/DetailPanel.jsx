@@ -399,6 +399,30 @@ function CompactRow({
   const downloadLinks = parseDownloadLinks(attire.download_url || '')
   const canEdit = session && canManageContent(attire.owner_id)
 
+  const versionEntries = buildVersionEntries(attire)
+  const hasAnyLinks = versionEntries.some((entry) =>
+    parseDownloadLinks(entry.download_url || '').length > 0
+  )
+
+  const openRequests = (wrestler.requests || []).filter(
+    (request) => request.attire_id === attire.id && request.status === 'open'
+  )
+
+  const fixTargetRequest =
+    openRequests.find((request) => request.request_type === 'dead_link') ||
+    openRequests.find((request) => request.request_type === 'missing_link') ||
+    (!hasAnyLinks
+      ? {
+          id: null,
+          request_type: 'missing_link',
+          link_scope: 'base',
+          affected_source_game: attire.source_game || 'WWE 2K25',
+          affected_url: '',
+          affected_provider: '',
+          mod_version_link_id: null
+        }
+      : null)
+
   return (
     <div className="compact-attire-row">
       <div className="compact-main">
@@ -430,7 +454,7 @@ function CompactRow({
             <button
               className={installed ? 'primary-button small-btn' : 'secondary-button small-btn'}
               disabled={!session}
-              onClick={() => onToggleInstalled(attire)}
+              onClick={() => onToggleInstalled(attire, installed)}
               type="button"
             >
               {installed ? 'Installed' : 'Install'}
@@ -475,29 +499,45 @@ function CompactRow({
           ) : null}
 
           {canContribute ? (
-            downloadLinks.length ? (
-              downloadLinks.map((link, index) => {
-                const provider = getDownloadProvider(link)
-                return (
-                  <button
-                    key={`${link}-${index}`}
-                    className={`ghost-button small-btn provider-${provider}`}
-                    disabled={!session}
-                    onClick={() =>
-                      onCreateRequest(
-                        wrestler.id,
-                        attire.id,
-                        'dead_link',
-                        wrestler.wrestler_name,
-                        `${attire.name} [${getDownloadProviderLabel(provider)}]`,
-                        `Dead link reported: ${link}`
-                      )
-                    }
-                    type="button"
-                  >
-                    Report {getDownloadProviderLabel(provider)}
-                  </button>
-                )
+            hasAnyLinks ? (
+              versionEntries.flatMap((entry) => {
+                const links = parseDownloadLinks(entry.download_url || '')
+
+                return links.map((link, index) => {
+                  const provider = getDownloadProvider(link)
+                  const gameLabel = entry.source_game || 'Unknown game'
+                  const isBaseEntry = String(entry.id).startsWith('base-')
+
+                  return (
+                    <button
+                      key={`${entry.id}-${link}-${index}`}
+                      className={`ghost-button small-btn provider-${provider}`}
+                      disabled={!session}
+                      onClick={() =>
+                        
+
+                        onCreateRequest(
+                          wrestler.id,
+                          attire.id,
+                          'dead_link',
+                          wrestler.wrestler_name,
+                          `${attire.name} [${gameLabel} · ${getDownloadProviderLabel(provider)}]`,
+                          `Dead ${gameLabel} link reported: ${link}`,
+                          {
+                            link_scope: isBaseEntry ? 'base' : 'version',
+                            affected_source_game: gameLabel,
+                            affected_url: link,
+                            affected_provider: provider,
+                            mod_version_link_id: isBaseEntry ? null : entry.id
+                          }
+                        )
+                      }
+                      type="button"
+                    >
+                      Report {gameLabel} {getDownloadProviderLabel(provider)}
+                    </button>
+                  )
+                })
               })
             ) : (
               <button
@@ -509,7 +549,15 @@ function CompactRow({
                     attire.id,
                     'missing_link',
                     wrestler.wrestler_name,
-                    attire.name
+                    attire.name,
+                    'Missing links for all versions.',
+                    {
+                      link_scope: 'base',
+                      affected_source_game: attire.source_game || 'WWE 2K25',
+                      affected_url: '',
+                      affected_provider: '',
+                      mod_version_link_id: null
+                    }
                   )
                 }
                 type="button"
@@ -540,17 +588,11 @@ function CompactRow({
             </button>
           ) : null}
 
-          {canContribute && (requestInfo.deadLinks > 0 || !attire.download_url?.trim()) ? (
+          {canContribute && fixTargetRequest ? (
             <button
               className="secondary-button small-btn"
               disabled={!session}
-              onClick={() =>
-                onResolveLink(
-                  wrestler,
-                  attire,
-                  requestInfo.deadLinks > 0 ? 'dead_link' : 'missing_link'
-                )
-              }
+              onClick={() => onResolveLink(wrestler, attire, fixTargetRequest)}
               type="button"
             >
               Fix link
@@ -867,9 +909,32 @@ export default function DetailPanel({
               (wrestler.attires || []).map((attire) => {
                 const installed = installedIds?.has ? installedIds.has(attire.id) : false
                 const requestInfo = requestSummary(wrestler.requests || [], 'attire_id', attire.id)
+
+                const versionEntries = buildVersionEntries(attire)
+                const hasAnyLinks = versionEntries.some((entry) =>
+                  parseDownloadLinks(entry.download_url || '').length > 0
+                )
+
+                const openRequests = (wrestler.requests || []).filter(
+                  (request) => request.attire_id === attire.id && request.status === 'open'
+                )
+
+                const fixTargetRequest =
+                  openRequests.find((request) => request.request_type === 'dead_link') ||
+                  openRequests.find((request) => request.request_type === 'missing_link') ||
+                  (!hasAnyLinks
+                    ? {
+                        id: null,
+                        request_type: 'missing_link',
+                        link_scope: 'base',
+                        affected_source_game: attire.source_game || 'WWE 2K25',
+                        affected_url: '',
+                        affected_provider: '',
+                        mod_version_link_id: null
+                      }
+                    : null)
                 const screenshots = attire.attire_images || []
                 const validScreenshots = screenshots.filter((image) => image.image_url || image.url)
-                const downloadLinks = parseDownloadLinks(attire.download_url || '')
                 const canEditAttire = session && canManageContent(attire.owner_id)
 
                 return (
@@ -1022,7 +1087,7 @@ export default function DetailPanel({
                         <button
                           className={`small-btn ${installed ? 'primary-button' : 'secondary-button'}`}
                           disabled={!session}
-                          onClick={() => onToggleInstalled(attire)}
+                          onClick={() => onToggleInstalled(attire, installed)}
                           type="button"
                         >
                           {installed ? 'Installed in my game' : 'Mark installed'}
@@ -1075,29 +1140,45 @@ export default function DetailPanel({
                       ) : null}
 
                       {canContribute ? (
-                        downloadLinks.length ? (
-                          downloadLinks.map((link, index) => {
-                            const provider = getDownloadProvider(link)
-                            return (
-                              <button
-                                key={`${link}-${index}`}
-                                className={`ghost-button small-btn provider-${provider}`}
-                                disabled={!session}
-                                onClick={() =>
-                                  onCreateRequest(
-                                    wrestler.id,
-                                    attire.id,
-                                    'dead_link',
-                                    wrestler.wrestler_name,
-                                    `${attire.name} [${getDownloadProviderLabel(provider)}]`,
-                                    `Dead link reported: ${link}`
-                                  )
-                                }
-                                type="button"
-                              >
-                                Report {getDownloadProviderLabel(provider)}
-                              </button>
-                            )
+                        hasAnyLinks ? (
+                          versionEntries.flatMap((entry) => {
+                            const links = parseDownloadLinks(entry.download_url || '')
+
+                            return links.map((link, index) => {
+                              const provider = getDownloadProvider(link)
+                              const gameLabel = entry.source_game || 'Unknown game'
+                              const isBaseEntry = String(entry.id).startsWith('base-')
+                              return (
+                                <button
+                                  key={`${entry.id}-${link}-${index}`}
+                                  className={`ghost-button small-btn provider-${provider}`}
+                                  disabled={!session}
+                                  
+                                  onClick={() =>
+                                    
+
+                                    onCreateRequest(
+                                      wrestler.id,
+                                      attire.id,
+                                      'dead_link',
+                                      wrestler.wrestler_name,
+                                      `${attire.name} [${gameLabel} · ${getDownloadProviderLabel(provider)}]`,
+                                      `Dead ${gameLabel} link reported: ${link}`,
+                                      {
+                                        link_scope: isBaseEntry ? 'base' : 'version',
+                                        affected_source_game: gameLabel,
+                                        affected_url: link,
+                                        affected_provider: provider,
+                                        mod_version_link_id: isBaseEntry ? null : entry.id
+                                      }
+                                    )
+                                  }
+                                  type="button"
+                                >
+                                  Report {gameLabel} {getDownloadProviderLabel(provider)}
+                                </button>
+                              )
+                            })
                           })
                         ) : (
                           <button
@@ -1109,7 +1190,15 @@ export default function DetailPanel({
                                 attire.id,
                                 'missing_link',
                                 wrestler.wrestler_name,
-                                attire.name
+                                attire.name,
+                                'Missing links for all versions.',
+                                {
+                                  link_scope: 'base',
+                                  affected_source_game: attire.source_game || 'WWE 2K25',
+                                  affected_url: '',
+                                  affected_provider: '',
+                                  mod_version_link_id: null
+                                }
                               )
                             }
                             type="button"
@@ -1140,17 +1229,11 @@ export default function DetailPanel({
                         </button>
                       ) : null}
 
-                      {canContribute && (requestInfo.deadLinks > 0 || !attire.download_url?.trim()) ? (
+                      {canContribute && fixTargetRequest ? (
                         <button
                           className="secondary-button small-btn"
                           disabled={!session}
-                          onClick={() =>
-                            onResolveLink(
-                              wrestler,
-                              attire,
-                              requestInfo.deadLinks > 0 ? 'dead_link' : 'missing_link'
-                            )
-                          }
+                          onClick={() => onResolveLink(wrestler, attire, fixTargetRequest)}
                           type="button"
                         >
                           Fix link

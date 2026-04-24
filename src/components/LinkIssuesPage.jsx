@@ -10,6 +10,37 @@ import {
   getSubtypeIcon
 } from '../lib/utils'
 
+function buildVersionEntries(item = {}) {
+  const entries = []
+  const baseLinks = parseDownloadLinks(item.download_url || '')
+
+  if (baseLinks.length) {
+    entries.push({
+      id: `base-${item.id || item.name || item.source_game || 'mod'}`,
+      source_game: item.source_game || 'Unknown game',
+      download_url: baseLinks.join('\n')
+    })
+  }
+
+  ;(item.mod_version_links || item.version_links || []).forEach((entry, index) => {
+    if (!String(entry?.download_url || '').trim()) return
+
+    entries.push({
+      id: entry.id || `version-${index}`,
+      source_game: entry.source_game || 'Unknown game',
+      download_url: entry.download_url || ''
+    })
+  })
+
+  const seen = new Set()
+  return entries.filter((entry) => {
+    const key = `${entry.source_game}::${entry.download_url}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 function CategoryBadge({ modType, modSubtype }) {
   return (
     <div className="wrap-actions">
@@ -35,20 +66,24 @@ function ProviderList({ links = [] }) {
 
   return (
     <div className="download-links-list">
-      {links.map((link, index) => {
-        const provider = getDownloadProvider(link)
+      {links.map((entry, index) => {
+        const url = typeof entry === 'string' ? entry : entry.url
+        const game = typeof entry === 'string' ? '' : entry.source_game
+        const provider = getDownloadProvider(url)
 
         return (
           <a
-            key={`${link}-${index}`}
+            key={`${url}-${game}-${index}`}
             className={`download-link-chip provider-${provider}`}
-            href={link}
+            href={url}
             target="_blank"
             rel="noreferrer"
-            title={link}
+            title={url}
           >
             <span className="provider-mark">{getDownloadProviderMark(provider)}</span>
-            <span className="provider-label">{getDownloadProviderLabel(provider)}</span>
+            <span className="provider-label">
+              {game ? `${game} · ` : ''}{getDownloadProviderLabel(provider)}
+            </span>
           </a>
         )
       })}
@@ -183,16 +218,82 @@ export default function LinkIssuesPage({
   const [query, setQuery] = useState('')
 
   const issues = useMemo(() => {
-    const attireIssues = wrestlers.flatMap((wrestler) =>
+    const attireDeadIssues = wrestlers.flatMap((wrestler) =>
+      (wrestler.requests || [])
+        .filter(
+          (request) =>
+            request.status === 'open' &&
+            request.request_type === 'dead_link' &&
+            request.attire_id
+        )
+        .map((request) => {
+          const attire = (wrestler.attires || []).find((item) => item.id === request.attire_id)
+          if (!attire) return null
+
+          const attirePreviewImage = (attire.attire_images || [])[0]
+          const attirePreview = attirePreviewImage
+            ? getPreviewUrls(attirePreviewImage)
+            : {
+                thumbUrl: wrestler.headshot_thumb_url || wrestler.headshot_url || '',
+                previewUrl: wrestler.headshot_full_url || wrestler.headshot_url || ''
+              }
+
+          return {
+            key: `attire-request-${request.id}`,
+            modType: 'attire',
+            modSubtype: '',
+            parentLabel: wrestler.wrestler_name || 'Unknown wrestler',
+            itemName: attire.name || 'Unknown attire',
+            ownerId: attire.owner_id,
+            creatorName: attire.creator_name || '',
+            sourceGame: request.affected_source_game || attire.source_game || '',
+            thumbUrl: attirePreview.thumbUrl,
+            previewUrl: attirePreview.previewUrl,
+            issueType: 'dead_link',
+            requestInfo: { total: 1, missingLinks: 0, deadLinks: 1 },
+            links: request.affected_url
+              ? [{
+                  url: request.affected_url,
+                  source_game: request.affected_source_game || '',
+                  provider: request.affected_provider || ''
+                }]
+              : [],
+            request,
+            onEdit: onEditAttire ? () => onEditAttire(attire) : null,
+            onFix: onResolveLink ? () => onResolveLink(wrestler, attire, request) : null,
+            onRequestNote: null
+          }
+        })
+        .filter(Boolean)
+    )
+
+    const attireMissingIssues = wrestlers.flatMap((wrestler) =>
       (wrestler.attires || []).flatMap((attire) => {
-        const requestInfo = requestSummary(wrestler.requests || [], 'attire_id', attire.id)
-        const links = parseDownloadLinks(attire.download_url || '')
-        const missing = links.length === 0
-        const dead = requestInfo.deadLinks > 0
+        const versionEntries = buildVersionEntries(attire)
+        const links = versionEntries.flatMap((entry) =>
+          parseDownloadLinks(entry.download_url || '').map((link) => ({
+            url: link,
+            source_game: entry.source_game || 'Unknown game'
+          }))
+        )
 
-        if (!missing && !dead) return []
+        if (links.length > 0) return []
 
-        const issueType = dead ? 'dead_link' : 'missing_link'
+        const openMissingRequest =
+          (wrestler.requests || []).find(
+            (request) =>
+              request.status === 'open' &&
+              request.request_type === 'missing_link' &&
+              request.attire_id === attire.id
+          ) || {
+            id: null,
+            request_type: 'missing_link',
+            link_scope: 'base',
+            affected_source_game: attire.source_game || 'WWE 2K25',
+            affected_url: '',
+            affected_provider: '',
+            mod_version_link_id: null
+          }
 
         const attirePreviewImage = (attire.attire_images || [])[0]
         const attirePreview = attirePreviewImage
@@ -203,7 +304,7 @@ export default function LinkIssuesPage({
             }
 
         return [{
-          key: `attire-${attire.id}`,
+          key: `attire-missing-${attire.id}`,
           modType: 'attire',
           modSubtype: '',
           parentLabel: wrestler.wrestler_name || 'Unknown wrestler',
@@ -213,22 +314,28 @@ export default function LinkIssuesPage({
           sourceGame: attire.source_game || '',
           thumbUrl: attirePreview.thumbUrl,
           previewUrl: attirePreview.previewUrl,
-          issueType,
-          requestInfo,
-          links,
+          issueType: 'missing_link',
+          requestInfo: { total: 1, missingLinks: 1, deadLinks: 0 },
+          links: [],
+          request: openMissingRequest,
           onEdit: onEditAttire ? () => onEditAttire(attire) : null,
-          onFix: onResolveLink ? () => onResolveLink(wrestler, attire, issueType) : null,
+          onFix: onResolveLink ? () => onResolveLink(wrestler, attire, openMissingRequest) : null,
           onRequestNote: onCreateRequest
             ? () =>
                 onCreateRequest(
                   wrestler.id,
                   attire.id,
-                  issueType,
+                  'missing_link',
                   wrestler.wrestler_name,
                   attire.name,
-                  issueType === 'dead_link'
-                    ? 'Please review the reported dead link(s).'
-                    : 'Please add a working download link.'
+                  'Please add a working download link.',
+                  {
+                    link_scope: 'base',
+                    affected_source_game: attire.source_game || 'WWE 2K25',
+                    affected_url: '',
+                    affected_provider: '',
+                    mod_version_link_id: null
+                  }
                 )
             : null
         }]
@@ -365,7 +472,7 @@ export default function LinkIssuesPage({
       other: 4
     }
 
-    return [...attireIssues, ...arenaIssues, ...titleIssues, ...otherModIssues].sort((a, b) => {
+    return [...attireDeadIssues, ...attireMissingIssues, ...arenaIssues, ...titleIssues, ...otherModIssues].sort((a, b) => {
       if (a.issueType !== b.issueType) {
         return a.issueType === 'dead_link' ? -1 : 1
       }
@@ -412,7 +519,11 @@ export default function LinkIssuesPage({
         issue.issueType,
         getModTypeLabel(issue.modType),
         issue.modSubtype ? getOtherModSubtypeLabel(issue.modSubtype) : '',
-        ...issue.links
+        ...(issue.links || []).map((entry) =>
+          typeof entry === 'string'
+            ? entry
+            : `${entry.url || ''} ${entry.source_game || ''} ${entry.provider || ''}`
+        )
       ]
         .join(' ')
         .toLowerCase()

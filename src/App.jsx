@@ -1262,8 +1262,14 @@ export default function App() {
     }
   }
 
-  function addWrestlerAudioLink(kind = 'entrance_music') {
-    if (!canContribute) return
+  function addWrestlerAudioLink(newItem) {
+    if (!canContribute || !newItem) return
+
+    const normalizedUrl = normalizeExternalUrl(
+      newItem.download_url || newItem.external_url || newItem.file_url || ''
+    )
+
+    if (!normalizedUrl) return
 
     setWrestlerForm((current) => ({
       ...current,
@@ -1275,12 +1281,12 @@ export default function App() {
           persisted: false,
           wrestler_id: current.id || null,
           owner_id: session?.user?.id || '',
-          audio_type: kind === 'callname' ? 'callname' : 'entrance_music',
+          audio_type: newItem.audio_type === 'callname' ? 'callname' : 'entrance_music',
           file_path: '',
-          file_name: '',
-          file_url: '',
-          download_url: '',
-          external_url: ''
+          file_name: String(newItem.file_name || '').trim(),
+          file_url: normalizedUrl,
+          download_url: normalizedUrl,
+          external_url: normalizedUrl
         }
       ]
     }))
@@ -1289,14 +1295,22 @@ export default function App() {
   function updateWrestlerAudioLink(audioKey, changes = {}) {
     setWrestlerForm((current) => ({
       ...current,
-      audio_files: (current.audio_files || []).map((item) =>
-        getAudioRecordKey(item) === audioKey
-          ? {
-              ...item,
-              ...changes
-            }
-          : item
-      )
+      audio_files: (current.audio_files || []).map((item) => {
+        if (getAudioRecordKey(item) !== audioKey) return item
+
+        const next = { ...item, ...changes }
+
+        const resolvedUrl = normalizeExternalUrl(
+          next.download_url || next.external_url || next.file_url || ''
+        )
+
+        return {
+          ...next,
+          download_url: resolvedUrl,
+          external_url: resolvedUrl,
+          file_url: resolvedUrl
+        }
+      })
     }))
   }
 
@@ -1943,11 +1957,28 @@ export default function App() {
     }
   }
 
-  function createRequest(wrestlerId, attireId, requestType, wrestlerName, attireName, prefillNotes = '') {
+  function createRequest(
+    wrestlerId,
+    attireId,
+    requestType,
+    wrestlerName,
+    attireName,
+    prefillNotes = '',
+    metadata = {}
+  ) {
     if (!canContribute) return
+
     setRequestModal({
       open: true,
-      context: { wrestlerId, attireId, requestType, wrestlerName, attireName, prefillNotes }
+      context: {
+        wrestlerId,
+        attireId,
+        requestType,
+        wrestlerName,
+        attireName,
+        prefillNotes,
+        ...metadata
+      }
     })
   }
 
@@ -2340,7 +2371,12 @@ export default function App() {
           wrestler_id: requestModal.context.wrestlerId,
           attire_id: requestModal.context.attireId,
           request_type: requestModal.context.requestType,
-          notes: (notes || '').trim()
+          notes: (notes || '').trim(),
+          link_scope: requestModal.context.link_scope || 'base',
+          affected_source_game: requestModal.context.affected_source_game || '',
+          affected_url: requestModal.context.affected_url || '',
+          affected_provider: requestModal.context.affected_provider || '',
+          mod_version_link_id: requestModal.context.mod_version_link_id || null
         })
 
         if (error) throw error
@@ -2447,8 +2483,9 @@ export default function App() {
     })
   }
 
-  function openResolveLink(wrestler, attire, issueType) {
+  function openResolveLink(wrestler, attire, request) {
     if (!canContribute) return
+
     setResolveModal({
       open: true,
       context: {
@@ -2456,8 +2493,13 @@ export default function App() {
         wrestlerName: wrestler.wrestler_name,
         attireId: attire.id,
         attireName: attire.name,
-        issueType,
-        currentUrl: attire.download_url || ''
+        requestId: request.id,
+        issueType: request.request_type,
+        currentUrl: request.affected_url || attire.download_url || '',
+        linkScope: request.link_scope || 'base',
+        affectedSourceGame: request.affected_source_game || '',
+        affectedProvider: request.affected_provider || '',
+        modVersionLinkId: request.mod_version_link_id || null
       }
     })
   }
@@ -2552,32 +2594,40 @@ export default function App() {
 
         if (requestError) throw requestError
       } else {
-        const { error: attireError } = await supabase
-          .from('attires')
-          .update({
-            download_url: cleanUrl,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', resolveModal.context.attireId)
+        if (resolveModal.context.linkScope === 'version' && resolveModal.context.modVersionLinkId) {
+          const { error: versionError } = await supabase
+            .from('mod_version_links')
+            .update({
+              download_url: cleanUrl,
+              updated_at: new Date().toISOString(),
+              ...(notes ? { notes: `Resolved: ${notes}` } : {})
+            })
+            .eq('id', resolveModal.context.modVersionLinkId)
 
-        if (attireError) throw attireError
+          if (versionError) throw versionError
+        } else {
+          const { error: attireError } = await supabase
+            .from('attires')
+            .update({
+              download_url: cleanUrl,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', resolveModal.context.attireId)
 
-        const requestTypes =
-          resolveModal.context.issueType === 'dead_link'
-            ? ['dead_link']
-            : ['missing_link', 'dead_link']
+          if (attireError) throw attireError
+        }
 
-        const { error: requestError } = await supabase
-          .from('mod_requests')
-          .update({
-            status: 'complete',
-            notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
-          })
-          .eq('attire_id', resolveModal.context.attireId)
-          .eq('status', 'open')
-          .in('request_type', requestTypes)
+        if (resolveModal.context.requestId) {
+          const { error: requestError } = await supabase
+            .from('mod_requests')
+            .update({
+              status: 'complete',
+              notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
+            })
+            .eq('id', resolveModal.context.requestId)
 
-        if (requestError) throw requestError
+          if (requestError) throw requestError
+        }
       }
 
       setResolveModal({ open: false, context: null })
