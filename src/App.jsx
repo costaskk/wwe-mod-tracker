@@ -2512,6 +2512,8 @@ export default function App() {
       const cleanUrl = (url || '').trim()
       if (!cleanUrl) throw new Error('A corrected download URL is required.')
 
+      const resolvedStatus = 'resolved'
+
       if (resolveModal.context.modCategory === 'arena') {
         const { error: arenaError } = await supabase
           .from('arenas')
@@ -2617,14 +2619,33 @@ export default function App() {
           if (attireError) throw attireError
         }
 
+        await touchModUpdatedAt('attire', resolveModal.context.attireId)
+
         if (resolveModal.context.requestId) {
           const { error: requestError } = await supabase
             .from('mod_requests')
             .update({
-              status: 'complete',
+              status: resolvedStatus,
               notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
             })
             .eq('id', resolveModal.context.requestId)
+
+          if (requestError) throw requestError
+        } else {
+          const requestTypes =
+            resolveModal.context.issueType === 'dead_link'
+              ? ['dead_link']
+              : ['missing_link', 'dead_link']
+
+          const { error: requestError } = await supabase
+            .from('mod_requests')
+            .update({
+              status: resolvedStatus,
+              notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
+            })
+            .eq('attire_id', resolveModal.context.attireId)
+            .eq('status', 'open')
+            .in('request_type', requestTypes)
 
           if (requestError) throw requestError
         }
