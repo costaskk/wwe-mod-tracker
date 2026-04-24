@@ -231,6 +231,13 @@ export default function App() {
     }
   }
 
+  function normalizeRequestStatus(status = '') {
+    if (status === 'complete' || status === 'resolved') return 'fulfilled'
+    return status
+  }
+
+  const normalizedStatus = normalizeRequestStatus(status)
+
   function normalizeExternalUrl(value = '') {
     const clean = String(value || '').trim()
     if (!clean) return ''
@@ -404,12 +411,19 @@ export default function App() {
 
     try {
       const context = versionLinkModal.context
+      const cleanSourceGame = String(sourceGame || '').trim()
+      const cleanDownloadUrl = String(downloadUrl || '').trim()
+      const cleanNotes = String(notes || '').trim()
+
+      if (!cleanSourceGame) throw new Error('Source game is required.')
+      if (!cleanDownloadUrl) throw new Error('Download URL is required.')
+
       const payload = {
         owner_id: session.user.id,
         mod_type: context.modType,
-        source_game: sourceGame,
-        download_url: downloadUrl,
-        notes: notes || ''
+        source_game: cleanSourceGame,
+        download_url: cleanDownloadUrl,
+        notes: cleanNotes
       }
 
       if (context.modType === 'attire') payload.attire_id = context.attireId
@@ -435,10 +449,12 @@ export default function App() {
         const { error: requestError } = await supabase
           .from('mod_port_requests')
           .update({
-            status: 'complete',
+            status: 'fulfilled',
             fulfilled_by: session.user.id,
             fulfilled_at: new Date().toISOString(),
-            notes: notes ? `Fulfilled: ${notes}` : 'Fulfilled with a version-specific download link.'
+            notes: cleanNotes
+              ? `Fulfilled: ${cleanNotes}`
+              : 'Fulfilled with a version-specific download link.'
           })
           .eq('id', requestId || context.requestId)
 
@@ -446,7 +462,11 @@ export default function App() {
       }
 
       setVersionLinkModal({ open: false, context: null })
-      openNotice('success', 'Version link added', `${context.itemName} now includes a ${sourceGame} download link.`)
+      openNotice(
+        'success',
+        'Version link added',
+        `${context.itemName} now includes a ${cleanSourceGame} download link.`
+      )
       await fetchAll()
     } catch (err) {
       openNotice('error', 'Could not save version link', err.message || 'Could not save this version link.')
@@ -503,16 +523,22 @@ export default function App() {
     if (!session || !request?.id) return
 
     try {
-      const payload = { status }
-      if (status === 'complete' || status === 'fulfilled') {
+      const normalizedStatus = status === 'complete' ? 'fulfilled' : status
+
+      const payload = { status: normalizedStatus }
+      if (normalizedStatus === 'fulfilled') {
         payload.fulfilled_by = session.user.id
         payload.fulfilled_at = new Date().toISOString()
       }
 
-      const { error } = await supabase.from('mod_add_requests').update(payload).eq('id', request.id)
+      const { error } = await supabase
+        .from('mod_add_requests')
+        .update(payload)
+        .eq('id', request.id)
+
       if (error) throw error
 
-      openNotice('success', 'Request updated', `The request was marked as ${status}.`)
+      openNotice('success', 'Request updated', `The request was marked as ${normalizedStatus}.`)
       await fetchAll()
     } catch (err) {
       openNotice('error', 'Could not update request', err.message || 'Could not update this request.')
@@ -523,16 +549,22 @@ export default function App() {
     if (!session || !request?.id) return
 
     try {
-      const payload = { status }
-      if (status === 'complete' || status === 'fulfilled') {
+      const normalizedStatus = status === 'complete' ? 'fulfilled' : status
+
+      const payload = { status: normalizedStatus }
+      if (normalizedStatus === 'fulfilled') {
         payload.fulfilled_by = session.user.id
         payload.fulfilled_at = new Date().toISOString()
       }
 
-      const { error } = await supabase.from('mod_port_requests').update(payload).eq('id', request.id)
+      const { error } = await supabase
+        .from('mod_port_requests')
+        .update(payload)
+        .eq('id', request.id)
+
       if (error) throw error
 
-      openNotice('success', 'Request updated', `The request was marked as ${status}.`)
+      openNotice('success', 'Request updated', `The request was marked as ${normalizedStatus}.`)
       await fetchAll()
     } catch (err) {
       openNotice('error', 'Could not update request', err.message || 'Could not update this request.')
@@ -2225,7 +2257,7 @@ export default function App() {
       const { error: requestError } = await supabase
         .from('mod_add_requests')
         .update({
-          status: 'complete',
+          status: 'fulfilled',
           fulfilled_by: session.user.id,
           fulfilled_at: new Date().toISOString(),
           ...fulfilledIds
@@ -2257,7 +2289,7 @@ export default function App() {
     const submittedCount = mine.length
 
     const completedUnreadCount = mine.filter((item) =>
-      (item.status === 'complete' || item.status === 'fulfilled') &&
+      item.status === 'fulfilled' &&
       item.fulfilled_at &&
       (
         !item.requester_viewed_at ||
