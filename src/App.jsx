@@ -2512,7 +2512,7 @@ export default function App() {
       const cleanUrl = (url || '').trim()
       if (!cleanUrl) throw new Error('A corrected download URL is required.')
 
-      const resolvedStatus = 'resolved'
+      const resolvedStatus = 'fulfilled'
 
       if (resolveModal.context.modCategory === 'arena') {
         const { error: arenaError } = await supabase
@@ -2533,7 +2533,7 @@ export default function App() {
         const { error: requestError } = await supabase
           .from('arena_requests')
           .update({
-            status: 'complete',
+            status: resolvedStatus,
             notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
           })
           .eq('arena_id', resolveModal.context.arenaId)
@@ -2560,7 +2560,7 @@ export default function App() {
         const { error: requestError } = await supabase
           .from('title_belt_requests')
           .update({
-            status: 'complete',
+            status: resolvedStatus,
             notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
           })
           .eq('title_belt_id', resolveModal.context.titleId)
@@ -2587,7 +2587,7 @@ export default function App() {
         const { error: requestError } = await supabase
           .from('other_mod_requests')
           .update({
-            status: 'complete',
+            status: resolvedStatus,
             notes: notes ? `Resolved: ${notes}` : 'Resolved through link update.'
           })
           .eq('other_mod_id', resolveModal.context.otherModId)
@@ -2663,56 +2663,6 @@ export default function App() {
     } finally {
       setResolvingLink(false)
     }
-  }
-
-  function openAddWrestler() {
-    if (!canContribute) return
-    setWrestlerForm(emptyWrestler())
-    setWrestlerModalOpen(true)
-  }
-
-  function openEditWrestler(wrestler) {
-    if (!canManageContent(wrestler.owner_id)) return
-    setWrestlerForm(normalizeWrestlerForEditor(wrestler))
-    setWrestlerModalOpen(true)
-  }
-
-  function openAddAttire(wrestler) {
-    if (!canContribute) return
-    setAttireForm({ ...emptyAttire(wrestler.id), pendingImageUploads: [] })
-    setAttireModalOpen(true)
-  }
-
-  function openEditAttire(attire) {
-    if (!canManageContent(attire.owner_id)) return
-
-    const normalized = normalizeAttireForEditor(attire)
-
-    setAttireForm({
-      ...normalized,
-      images: normalized.images || [],
-      pendingImageUploads: [] 
-    })
-
-    setAttireModalOpen(true)
-  }
-
-  function openEditArenaFromIssues(arena) {
-    if (!arena?.id) return
-
-    setArenaSelectSignal({
-      arenaId: arena.id,
-      ts: Date.now()
-    })
-
-    setCurrentPage('arenas')
-    window.history.replaceState({}, '', `${window.location.pathname}?page=arenas`)
-
-    openNotice(
-      'info',
-      'Arena selected',
-      `Go to the Arenas section and edit "${arena.name}".`
-    )
   }
 
   function openEditTitleBeltFromIssues(titleBelt) {
