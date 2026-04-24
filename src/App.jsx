@@ -2665,6 +2665,56 @@ export default function App() {
     }
   }
 
+  function openAddWrestler() {
+    if (!canContribute) return
+    setWrestlerForm(emptyWrestler())
+    setWrestlerModalOpen(true)
+  }
+
+  function openEditWrestler(wrestler) {
+    if (!canManageContent(wrestler.owner_id)) return
+    setWrestlerForm(normalizeWrestlerForEditor(wrestler))
+    setWrestlerModalOpen(true)
+  }
+
+  function openAddAttire(wrestler) {
+    if (!canContribute) return
+    setAttireForm({ ...emptyAttire(wrestler.id), pendingImageUploads: [] })
+    setAttireModalOpen(true)
+  }
+
+  function openEditAttire(attire) {
+    if (!canManageContent(attire.owner_id)) return
+
+    const normalized = normalizeAttireForEditor(attire)
+
+    setAttireForm({
+      ...normalized,
+      images: normalized.images || [],
+      pendingImageUploads: [] 
+    })
+
+    setAttireModalOpen(true)
+  }
+
+  function openEditArenaFromIssues(arena) {
+    if (!arena?.id) return
+
+    setArenaSelectSignal({
+      arenaId: arena.id,
+      ts: Date.now()
+    })
+
+    setCurrentPage('arenas')
+    window.history.replaceState({}, '', `${window.location.pathname}?page=arenas`)
+
+    openNotice(
+      'info',
+      'Arena selected',
+      `Go to the Arenas section and edit "${arena.name}".`
+    )
+  }
+
   function openEditTitleBeltFromIssues(titleBelt) {
     if (!titleBelt?.id) return
 
